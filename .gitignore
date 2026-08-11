@@ -1,0 +1,41 @@
+# LaTeX build outputs
+/build/
+/tmp/
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.xdv
+
+# Local course materials and private exports
+/materials-local/
+/recordings-local/
+/lms-exports-local/
+/private/
+courses/*/materials/
+courses/*/recordings/
+courses/*/lms-exports/
+
+# Active assessed code stays local until publication is explicitly approved
+/assignments/*/*/submission/
+/assignments/*/*/tests-local/
+
+# Large raw media should never be committed to this notes repository
+*.m4a
+*.mov
+*.mp3
+*.mp4
+*.wav
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+
+# macOS and editors
+.DS_Store
+*.swp
+*~

@@ -1,0 +1,144 @@
+% Actual class: 01
+% Slide decks: M1-L1 Introduction (2026); M1-L2 Network Layer & Physical Resilience (2026)
+% Exact scope: L1 pp. 1--28; L2 pp. 1--47
+% NTULearn supplement: Not used
+% Human verified: Yes
+
+\section{第 01 节课：Internet、Layered Architecture 与 Physical Resilience}
+\label{lecture:SC2008-L01}
+
+\lecturemeta
+  {SC2008-L01}
+  {2026-08-11}
+  {M1-L1 Introduction (2026)；M1-L2 Network Layer \& Physical Resilience (2026)}
+  {L1 pp.~1--28；L2 pp.~1--47}
+  {未使用}
+  {已确认（2026-08-11）}
+
+\subsection{本讲主线}
+
+本讲从 Internet（互联网）的基本定义出发，用 Layered Network Architecture（分层网络体系结构）分解复杂网络，再用 encapsulation（封装）说明数据如何真正传输，最后计算 link/network availability（链路/网络可用性）。
+
+\lecturetopic{SC2008-L01-T01}{Internet 的基本认识}
+
+\keyidea{Internet（互联网）不是单一网络或单一应用，而是通过 standard protocols（标准协议）互连的 heterogeneous networks（异构网络）基础设施。}
+
+不同 networks（网络）可能使用 Ethernet（以太网）、Wi-Fi（无线局域网）、optical fibre（光纤）、cellular communication（蜂窝通信）或 submarine cables（海底电缆），但可借助共同的 protocol suite（协议族）交换信息。
+
+WWW（World Wide Web，万维网）是运行在 Internet（互联网）上的 application（应用），两者并不等同；email（电子邮件）、file transfer（文件传输）和 voice/video communication（音视频通信）同样使用 Internet（互联网）。
+
+历史部分只需把握四个影响设计的节点：packet switching（分组交换）让共享链路按分组传输；TCP/IP（传输控制协议/网际协议）提供互联基础；DNS（域名系统）完成 host name（主机名）到 IP address（IP 地址）的可扩展解析；WWW（万维网）推动 Internet（互联网）成为大众信息平台。
+
+\lecturetopic{SC2008-L01-T02}{为什么采用 Layering，以及 OSI 与 TCP/IP 模型}
+
+Layering（分层）把 hosts（主机）、routers（路由器）、links（链路）、applications（应用）以及 hardware/software（硬件/软件）拆成职责清晰的模块。
+
+\begin{itemize}
+  \item \textbf{Simplicity（简化设计）：}每层只处理一组明确问题。
+  \item \textbf{Modularity（模块化）：}只要 interface（接口）保持兼容，一层的实现可以独立替换。
+  \item \textbf{Incremental change（渐进演化）：}可以在局部增加协议或功能。
+  \item \textbf{Cost（代价）：}额外 header（首部）、功能重复以及受限的 cross-layer optimization（跨层优化）。
+\end{itemize}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}X@{}}
+  \toprule
+  Internet 5-layer & 对应 OSI layer（层） & PDU（协议数据单元） & 主要职责与例子 \\
+  \midrule
+  Application（应用层） & Application、Presentation、Session & message/data & 支持网络应用与数据表示；HTTP、FTP、SMTP \\
+  Transport（传输层） & Transport & TCP segment / UDP datagram & process-to-process delivery（进程到进程传递）；TCP、UDP \\
+  Network（网络层） & Network & packet / IP datagram & logical addressing（逻辑寻址）、forwarding（转发）与 routing（路由）；IP \\
+  Data link（数据链路层） & Data link & frame & 相邻 network elements（网络节点）间传输；Ethernet、Wi-Fi、PPP \\
+  Physical（物理层） & Physical & bit & 在传输介质上表示与发送 bits/signals（比特/信号） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Transport layer（传输层）并不天然保证可靠性：TCP 提供 reliable, ordered delivery（可靠、有序传递），UDP 则提供 connectionless best-effort delivery（无连接、尽力而为传递）。
+
+\lecturetopic{SC2008-L01-T03}{Protocol、Service、Interface 与 Virtual Communication}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}X@{}}
+  \toprule
+  概念 & 关系方向 & 含义 \\
+  \midrule
+  Protocol（协议） & 同层、横向 & 规定 peer entities（对等实体）交换报文的 format（格式）、semantics（含义）、order（顺序）和 actions（动作）。 \\
+  Service（服务） & 相邻层、纵向 & 描述 layer $n$ 向 layer $n+1$ 提供什么能力。 \\
+  Interface（接口） & 本机相邻层之间 & 描述上层如何调用下层 service（服务）；service（服务）通常在 SAP（Service Access Point，服务访问点）处获得。 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.92\textwidth}{!}{\input{figures/peer-service-protocol}}
+  \caption{Protocol（协议）是同层的逻辑关系；service（服务）由下层经本地 interface（接口）向上提供。}
+  \label{fig:sc2008-l01-peer-service}
+\end{figure}
+
+Layer $n+1$ 交给 layer $n$ 的数据称为 $n$-SDU（Service Data Unit，服务数据单元）；layer $n$ 加入自己的 protocol control information（协议控制信息）后形成 $n$-PDU（Protocol Data Unit，协议数据单元）：
+\[
+  n\text{-PDU}=H_n+n\text{-SDU}.
+\]
+
+Peer communication（对等通信）是 virtual communication（虚拟通信）：同层实体在逻辑上按照 protocol（协议）通信，但实际数据需要借助 lower-layer services（下层服务）传输。跨越不同 networks（网络）时通常经过 routers（路由器）；同一 LAN（局域网）内则不一定经过 router（路由器）。
+
+经典 HTTP over TCP（运行在 TCP 上的 HTTP）中，HTTP protocol（HTTP 协议）规定 request/response（请求/响应）的格式和顺序；application（应用）通过 socket interface（套接字接口）使用 TCP service（TCP 服务）；两端 TCP entities（TCP 实体）再按 TCP protocol（TCP 协议）协作。
+
+\lecturetopic{SC2008-L01-T04}{Encapsulation 与 Router Processing}
+
+发送方沿 protocol stack（协议栈）自上而下进行 encapsulation（封装），接收方自下而上执行 decapsulation（解封装）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/encapsulation}}
+  \caption{五层模型中的 encapsulation（封装）。$H_T,H_N,H_L$ 分别表示传输层、网络层和链路层首部，$T_L$ 表示 link trailer（链路层尾部）。}
+  \label{fig:sc2008-l01-encapsulation}
+\end{figure}
+
+Application layer（应用层）生成 application message（应用层报文）；Transport layer（传输层）添加 TCP/UDP header（TCP/UDP 首部）；Network layer（网络层）添加 IP header（IP 首部）；Data link layer（数据链路层）通常添加 frame header/trailer（帧首部/尾部）；Physical layer（物理层）把 frame（帧）表示为 bits/signals（比特/信号）。
+
+Router（路由器）通常处理 Physical、Data link 和 Network layers（物理层、数据链路层和网络层）：它移除到达链路的 frame header/trailer（帧首部/尾部），检查并转发 IP datagram（IP 数据报），再为下一跳创建新的 frame（帧）。因此 link-layer header（链路层首部）逐跳更换；IP header（IP 首部）总体端到端保留，但 TTL（生存时间）等字段会被路由器更新。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L01-E01}{Encapsulation 开销计算}。
+
+\lecturetopic{SC2008-L01-T05}{Reliability、Availability 与 Network Resilience}
+
+Reliability（可靠性）与 availability（可用性）应区分：
+
+\begin{itemize}
+  \item Reliability $R(t)$（可靠度）表示系统在时间区间 $[0,t]$ 内持续不失效的概率。
+  \item Availability $A$（可用性）表示随机时刻系统处于可工作状态的概率，或长期可工作时间比例。
+\end{itemize}
+
+若系统在 operation-repair cycles（运行-修复周期）中交替工作，并采用长期平均量，则
+\[
+  \mathrm{MTBF}=\mathrm{MTTF}+\mathrm{MTTR},
+  \qquad
+  A=\frac{\mathrm{MTTF}}{\mathrm{MTTF}+\mathrm{MTTR}}.
+\]
+其中 MTTF（Mean Time to Failure，平均失效前时间）描述平均运行时长，MTTR（Mean Time to Repair，平均修复时间）描述平均修复时长。
+
+令 $b_i$ 为 link $i$ 的 unavailability/failure probability（不可用概率），$r_i$ 为 availability（可用概率），则
+\[
+  r_i=1-b_i.
+\]
+在 link failures are independent（链路失效相互独立）的假设下：
+\[
+  r_{\mathrm{series}}=\prod_i r_i,
+  \qquad
+  b_{\mathrm{parallel}}=\prod_i b_i,
+  \qquad
+  r_{\mathrm{parallel}}=1-b_{\mathrm{parallel}}.
+\]
+
+Series path（串联路径）要求所有链路可用；parallel paths（并联路径）只有全部失效才断开。路径共享 link（链路）、landing station（登陆站）或 power supply（电源）时，independence assumption（独立性假设）可能失效；earthquake（地震）导致多条 submarine cables（海底电缆）同时中断就是 common-cause failure（共因失效）。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L01-E02}{Single、Series、Parallel 与 Hybrid availability}。
+
+\subsection{一分钟回顾}
+
+Internet（互联网）通过 standard protocols（标准协议）互连 heterogeneous networks（异构网络）。Layering（分层）用明确的 service/interface（服务/接口）降低复杂度，而 protocol（协议）规定 peer entities（对等实体）的协作规则。数据在发送端逐层 encapsulation（封装），router（路由器）逐跳更新 link-layer information（链路层信息）并转发 IP datagram（IP 数据报）。Network availability（网络可用性）的串并联公式只有在对应失效事件独立时才能直接相乘。

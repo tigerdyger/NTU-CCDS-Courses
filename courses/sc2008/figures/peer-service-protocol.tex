@@ -1,0 +1,21 @@
+\begin{tikzpicture}[
+  >=Latex,
+  entity/.style={draw=noteBlue,rounded corners=2pt,fill=blue!6,
+    minimum width=2.8cm,minimum height=1.15cm,align=center},
+  virtual/.style={<->,dashed,thick,draw=ntuRed},
+  local/.style={<->,thick,draw=noteBlue}
+]
+  \node[entity] (a-upper) at (0,2.2) {Host A\\Layer $n+1$ entity};
+  \node[entity] (a-lower) at (0,0) {Host A\\Layer $n$ entity};
+  \node[entity] (b-upper) at (9.5,2.2) {Host B\\Layer $n+1$ entity};
+  \node[entity] (b-lower) at (9.5,0) {Host B\\Layer $n$ entity};
+
+  \draw[virtual] (a-upper) -- node[above,fill=white,inner sep=2pt]
+    {$(n+1)$-protocol（协议）} (b-upper);
+  \draw[virtual] (a-lower) -- node[below,fill=white,inner sep=2pt]
+    {$n$-protocol（协议）} (b-lower);
+  \draw[local] (a-upper) -- node[left,align=right]
+    {$n$-service（服务）\\via $n$-SAP} (a-lower);
+  \draw[local] (b-upper) -- node[right,align=left]
+    {$n$-service（服务）\\via $n$-SAP} (b-lower);
+\end{tikzpicture}

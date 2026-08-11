@@ -1,0 +1,26 @@
+\begin{tikzpicture}[
+  >=Latex,
+  stage/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum height=0.85cm,align=center},
+  flow/.style={->,thick,draw=noteBlue}
+]
+  \node[stage] (app) at (0,0) {$M$};
+  \node[stage] (transport) at (3.6,0) {$H_T\mid M$};
+  \node[stage] (network) at (7.5,0) {$H_N\mid H_T\mid M$};
+  \node[stage] (link) at (12.1,0) {$H_L\mid H_N\mid H_T\mid M\mid T_L$};
+  \node[stage] (physical) at (16.2,0) {bits/signals\\（比特/信号）};
+
+  \draw[flow] (app) -- node[above,align=center]{Transport\\封装} (transport);
+  \draw[flow] (transport) -- node[above,align=center]{Network\\封装} (network);
+  \draw[flow] (network) -- node[above,align=center]{Link\\封装} (link);
+  \draw[flow] (link) -- node[above,align=center]{Physical\\传输} (physical);
+
+  \node[below=0.35cm of app,align=center,text width=2.7cm]
+    {application\\message};
+  \node[below=0.35cm of transport,align=center,text width=2.7cm]
+    {segment/\\datagram};
+  \node[below=0.35cm of network,align=center,text width=2.7cm]
+    {IP datagram};
+  \node[below=0.35cm of link,align=center,text width=2.7cm]
+    {frame};
+\end{tikzpicture}

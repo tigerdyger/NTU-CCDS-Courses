@@ -1,0 +1,29 @@
+\begin{tikzpicture}[
+  >=Latex,
+  endpoint/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum width=0.9cm,minimum height=0.65cm},
+  link/.style={thick,draw=noteBlue},
+  backup/.style={thick,draw=ntuRed}
+]
+  \node[anchor=east] at (0.6,4.6) {Series（串联）};
+  \node[endpoint] (s1) at (2.0,4.6) {SG};
+  \node[endpoint] (h1) at (5.0,4.6) {HW};
+  \node[endpoint] (a1) at (8.0,4.6) {AU};
+  \draw[link] (s1) -- node[above] {$b_1$} (h1);
+  \draw[link] (h1) -- node[above] {$b_2$} (a1);
+
+  \node[anchor=east] at (0.6,2.7) {Parallel（并联）};
+  \node[endpoint] (s2) at (2.0,2.7) {SG};
+  \node[endpoint] (a2) at (8.0,2.7) {AU};
+  \draw[link] (s2) to[bend left=22] node[above] {$b_1$} (a2);
+  \draw[backup] (s2) to[bend right=22] node[below] {$b_2$} (a2);
+
+  \node[anchor=east] at (0.6,0.5) {Hybrid（混合）};
+  \node[endpoint] (s3) at (2.0,0.5) {SG};
+  \node[endpoint] (h3) at (5.0,0.5) {HW};
+  \node[endpoint] (a3) at (8.0,0.5) {AU};
+  \draw[link] (s3) -- node[above] {$b_1$} (h3);
+  \draw[link] (h3) -- node[above] {$b_2$} (a3);
+  \draw[backup] (s3) to[bend right=28] node[below] {$b_3$} (a3);
+
+\end{tikzpicture}

@@ -1,0 +1,72 @@
+% Lecture example set: SC2008-L01
+% Source: M1-L2 encapsulation and network-availability examples
+% Human verified: Yes
+
+\exercisemeta
+  {SC2008-L01-EX}
+  {2026-08-11}
+  {M1-L2 的 encapsulation 与 network availability 内容；E01 为自编检验例}
+  {答案已完成并确认}
+  {已确认（2026-08-11）}
+
+\exercisequestion{SC2008-L01-E01}{Encapsulation 开销计算}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L01-T04}{Encapsulation 与 Router Processing}
+
+\subsubsection*{题目}
+
+一个 application message（应用层报文）长 $500$ bytes。TCP header（TCP 首部）和 IPv4 header（IPv4 首部）各为 $20$ bytes，Ethernet header（以太网首部）为 $14$ bytes，trailer（尾部）为 $4$ bytes。忽略 preamble（前导码）和 inter-frame gap（帧间隔），且不需要 padding（填充）。求 TCP segment（TCP 报文段）、IP datagram（IP 数据报）与 Ethernet frame（以太网帧）的长度，并计算相对于该 frame（帧）的 application payload efficiency（应用层有效载荷效率）。
+
+\begin{workedsolution}
+每一层只加入本层开销：
+\begin{align*}
+  L_{\mathrm{TCP}} &= 500+20=520\ \text{bytes},\\
+  L_{\mathrm{IP}}  &= 520+20=540\ \text{bytes},\\
+  L_{\mathrm{frame}} &= 540+14+4=558\ \text{bytes}.
+\end{align*}
+因此总 header/trailer overhead（首尾开销）为 $558-500=58$ bytes，应用层有效载荷效率为
+\[
+  \eta=\frac{500}{558}\times 100\%\approx 89.6\%.
+\]
+\end{workedsolution}
+
+\textbf{检查点：}application layer（应用层）把 message（报文）交给 Transport layer（传输层）；添加 TCP header（TCP 首部）的是 Transport layer（传输层），不是 Application layer（应用层）。
+
+\exercisequestion{SC2008-L01-E02}{Single、Series、Parallel 与 Hybrid Availability}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L01-T05}{Reliability、Availability 与 Network Resilience}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/availability-topologies}}
+  \caption{例题中的 series（串联）、parallel（并联）和 hybrid（混合）拓扑。}
+  \label{fig:sc2008-l01-availability-topologies}
+\end{figure}
+
+\subsubsection*{题目}
+
+假设每条 link（链路）的 failure probability（失效概率）均为 $b=0.05$，且不同链路的失效相互独立。分别求 single link（单链路）的可用性，以及图中 series（串联）、parallel（并联）和 hybrid（混合）拓扑的可用性与断开概率。
+
+\begin{workedsolution}
+单条链路的可用概率为 $r=1-b=0.95$。Series path（串联路径）只有两条链路都可用时才连通；parallel links（并联链路）只有全部失效时才断开；hybrid topology（混合拓扑）断开要求上方 series path（串联路径）和下方 direct link（直连链路）同时失效。因此
+\begin{align*}
+  r_{\mathrm{single}}
+    &=0.95,\\
+  r_{\mathrm{series}}
+    &=0.95^2=0.9025,
+  &b_{\mathrm{series}}
+    &=1-0.9025=0.0975,\\
+  b_{\mathrm{parallel}}
+    &=0.05^2=0.0025,
+  &r_{\mathrm{parallel}}
+    &=1-0.0025=0.9975,\\
+  b_{\mathrm{hybrid}}
+    &=\bigl(1-0.95^2\bigr)\times0.05=0.004875,
+  &r_{\mathrm{hybrid}}
+    &=1-0.004875=0.995125.
+\end{align*}
+\end{workedsolution}
+
+\textbf{检查点：}先写清楚目标 event（事件）是“连通”还是“断开”，再判断所需事件是“全部发生”还是“至少一个发生”。若路径共享 physical infrastructure（物理基础设施）或存在 common-cause failure（共因失效），则不能直接使用上述独立乘法。
