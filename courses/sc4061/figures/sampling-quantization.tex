@@ -1,0 +1,34 @@
+\begin{tikzpicture}[>=Latex,font=\small]
+  % Sampling panel.
+  \begin{scope}
+    \draw[->] (0,0) -- (5.4,0) node[right] {$x$};
+    \draw[->] (0,0) -- (0,3.6) node[above] {intensity};
+    \draw[very thick,draw=orange!90!black,smooth]
+      plot coordinates {(0.25,0.55) (0.8,1.25) (1.35,0.9) (1.9,2.35)
+                        (2.45,1.55) (3.0,3.05) (3.55,1.25) (4.1,2.15)
+                        (4.65,1.65) (5.05,2.65)};
+    \foreach \x/\y in {0.5/0.85,1.1/1.05,1.7/1.8,2.3/1.7,2.9/2.8,3.5/1.3,4.1/2.15,4.7/1.75}{
+      \draw[->,draw=noteBlue] (\x,0) -- (\x,\y);
+      \fill[noteBlue] (\x,\y) circle (1.8pt);
+    }
+    \node[below=0.55cm,align=center] at (2.7,0)
+      {sampling（采样）\\$x=m\Delta x$};
+  \end{scope}
+
+  \draw[->,very thick,draw=ntuRed] (5.9,1.8) -- node[above] {$Q(\cdot)$} (7.1,1.8);
+
+  % Quantization panel.
+  \begin{scope}[xshift=7.5cm]
+    \draw[->] (0,0) -- (5.4,0) node[right] {$m$};
+    \draw[->] (0,0) -- (0,3.6) node[above] {level};
+    \foreach \y in {0.8,1.6,2.4,3.2}{
+      \draw[dotted,draw=gray] (0,\y) -- (5.1,\y);
+    }
+    \foreach \x/\y in {0.5/0.8,1.1/0.8,1.7/1.6,2.3/1.6,2.9/3.2,3.5/1.6,4.1/2.4,4.7/1.6}{
+      \draw[->,draw=noteBlue] (\x,0) -- (\x,\y);
+      \fill[noteBlue] (\x,\y) circle (1.8pt);
+    }
+    \node[below=0.55cm,align=center] at (2.7,0)
+      {quantization（量化）\\continuous value $\rightarrow$ finite levels};
+  \end{scope}
+\end{tikzpicture}

@@ -1,0 +1,23 @@
+\begin{tikzpicture}[
+  >=Latex,
+  stage/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum width=2.7cm,minimum height=1.2cm,align=center},
+  flow/.style={->,thick,draw=noteBlue},
+  inverse/.style={<-,dashed,very thick,draw=ntuRed}
+]
+  \node[stage] (scene) {3D scene\\（三维场景）};
+  \node[stage,right=0.55cm of scene] (radiance) {lighting \& reflection\\（光照与反射）};
+  \node[stage,right=0.55cm of radiance] (optics) {lens \& aperture\\（透镜与光圈）};
+  \node[stage,right=0.55cm of optics] (sensor) {sensor exposure\\（传感器曝光）};
+  \node[stage,right=0.55cm of sensor] (digital) {sampling + quantization\\digital image（数字图像）};
+
+  \draw[flow] (scene) -- (radiance);
+  \draw[flow] (radiance) -- (optics);
+  \draw[flow] (optics) -- (sensor);
+  \draw[flow] (sensor) -- (digital);
+
+  \draw[inverse]
+    ([yshift=-0.25cm]scene.south) to[bend right=22]
+    node[below,align=center]{Computer Vision（计算机视觉）：\\从 image evidence（图像证据）反推 scene properties（场景属性）}
+    ([yshift=-0.25cm]digital.south);
+\end{tikzpicture}

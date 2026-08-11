@@ -1,0 +1,163 @@
+% Actual class: 01
+% Slide decks: L0 Introduction Slides (Week 1); L1 Imaging v1 full
+% Exact scope: L0 pp. 1--21; L1 pp. 1--24
+% NTULearn supplement: Not used
+% Human verified: Yes
+
+\section{第 01 节课：Imaging、Photometry 与 Digital Image Formation}
+\label{lecture:SC4061-L01}
+
+\lecturemeta
+  {SC4061-L01}
+  {2026-08-11}
+  {L0 Introduction Slides (Week 1)；L1 Imaging v1 full}
+  {L0 pp.~1--21；L1 pp.~1--24}
+  {未使用}
+  {已确认（2026-08-11）}
+
+\subsection{本讲主线}
+
+本讲说明 digital image（数字图像）如何形成：三维 scene（场景）中的光经过 surface reflection（表面反射）、lens/aperture（透镜/光圈）和 sensor（传感器），再经 sampling（采样）与 quantization（量化）成为矩阵。Computer Vision（计算机视觉）则尝试从最终图像反推出场景信息。
+
+\lecturetopic{SC4061-L01-T01}{Computer Vision 是一个 Inverse Problem}
+
+\keyidea{Image（图像）不是 scene（场景）的直接副本，而是 lighting（光照）、material（材质）、geometry（几何）、optics（光学系统）和 digitization（数字化）共同作用的结果。}
+
+伪装场景说明 local appearance（局部外观）不足以可靠确定 object boundary（物体边界），识别还需要 global shape（整体形状）和 context（上下文）。光照错觉则说明相同 measured intensity（测量强度）在不同环境中可能对应不同的 perceptual interpretation（感知解释）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/imaging-pipeline}}
+  \caption{从 scene（场景）到 digital image（数字图像）的 forward process（正向过程），以及 Computer Vision（计算机视觉）的反向推断目标。}
+  \label{fig:sc4061-l01-imaging-pipeline}
+\end{figure}
+
+由于多个不同场景可能产生相似图像，从 image（图像）恢复 scene properties（场景属性）通常是 ill-posed inverse problem（不适定逆问题），需要先验知识、上下文或多个观测约束答案。
+
+\lecturetopic{SC4061-L01-T02}{Camera Imaging System}
+
+一个简化的 camera imaging system（相机成像系统）包含 aperture（光圈）、optical system（光学系统）和 image sensor（图像传感器）。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}X@{}}
+  \toprule
+  Human eye（人眼） & Camera（相机） & 核心变量 & 作用 \\
+  \midrule
+  pupil（瞳孔） & aperture（光圈） & aperture diameter（光圈直径） & 控制进光量，并影响 depth of field（景深） \\
+  eye lens（晶状体） & camera lens（相机镜头） & focal length（焦距） & 改变光线方向，在 image plane（像平面）形成聚焦 \\
+  retina（视网膜） & sensor（传感器） & exposure（曝光量） & 把到达的光能转换为可数字化的电信号 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Optical axis（光轴）是系统的中心参考轴。Aperture（光圈）限制允许进入的 ray bundle（光线束），lens（透镜）决定几何映射，sensor plane（传感器平面）记录 image irradiance（图像辐照度）。
+
+\lecturetopic{SC4061-L01-T03}{Thin Lens Model 与 Magnification}
+
+Thin lens model（薄透镜模型）用三个理想化 principal rays（主光线）确定物点的像点：平行于光轴的光线折射后通过远焦点；通过近焦点的光线折射后平行于光轴；通过 optical center（光心）的光线在薄透镜近似下保持直线。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/thin-lens}}
+  \caption{Thin lens（薄透镜）的三条 principal rays（主光线）。$Y/y$ 位于图示截面内；$X/x$ 垂直于图示截面，$\odot/\otimes$ 分别表示指向纸外/纸内。}
+  \label{fig:sc4061-l01-thin-lens}
+\end{figure}
+
+\begin{samepage}
+令 $u=\hat Z$ 为 object distance（物距），$v=\hat z$ 为 image distance（像距），$f$ 为 focal length（焦距），则
+\[
+  \boxed{\frac{1}{u}+\frac{1}{v}=\frac{1}{f}}.
+\]
+Signed magnification（带符号放大率）为
+\[
+  \boxed{m=\frac{y}{Y}=\frac{x}{X}=-\frac{v}{u}}.
+\]
+负号表示 real image（实像）相对物体倒立。讲义图中的 $X/x$ 是垂直于所画截面的另一组横向坐标，与 $Y/y$ 满足相同缩放关系。
+\end{samepage}
+
+\textbf{对应例题：}\relatedexercise{SC4061-L01-E01}{Thin Lens 成像与放大率}。
+
+\lecturetopic{SC4061-L01-T04}{Depth of Field 与 Aperture Trade-off}
+
+严格聚焦的 object plane（物平面）会映射为 sensor 上的理想 image plane（像平面）。其他深度的物点在 sensor 上形成 circle of confusion（弥散圆）；当其小于可接受阈值时，视觉上仍被认为清晰。Depth of field（景深）就是满足该清晰标准的物距范围。
+
+对于 off-axis point（离轴点）$P$，通过 optical center（光心）$O$ 的 chief ray（主光线）在 thin-lens approximation（薄透镜近似）下不偏折，因此理想像点 $q$ 必须位于该直线上，而不会落到 optical axis（光轴）上。Sensor plane（传感器平面）与 $q$ 所在的 ideal image plane（理想像平面）不重合时，才形成以 chief ray 与 sensor 交点为中心的 blur circle（模糊圆）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.88\textwidth}{!}{\input{figures/depth-of-field}}
+  \caption{离轴场景点 $P$ 聚焦到离轴像点 $q$；sensor plane（传感器平面）偏离理想像平面时，wide aperture（大光圈）产生更大的 blur circle（模糊圆）。}
+  \label{fig:sc4061-l01-depth-of-field}
+\end{figure}
+
+\[
+  \begin{gathered}
+    \text{smaller aperture（更小光圈）}
+    \Longrightarrow \text{smaller blur circle（更小模糊圆）}\\
+    \Longrightarrow \text{larger DoF（更大景深）}
+  \end{gathered}
+\]
+代价是进光量减少，通常需要 longer exposure（更长曝光）或 higher gain（更高增益）；光圈过小时还会受到 diffraction（衍射）限制。Pinhole camera（针孔相机）是 aperture 趋近于零的极端情况，景深大但进光量很小。
+
+\lecturetopic{SC4061-L01-T05}{Photometry：从光照到 Pixel Intensity}
+
+在 Lambertian reflection（朗伯反射）假设下，scene point（场景点）$P$ 的 radiance（辐亮度）可写为
+\[
+  L(P)=\rho\max\!\left(0,\bm I^{\mathsf T}\bm n\right),
+\]
+其中 $\rho$ 是 albedo（反照率），$\bm I$ 是 source radiance vector（光源辐亮度向量），$\bm n$ 是 surface normal（表面法向量）。Dot product（点积）描述表面朝向与入射光方向的匹配程度。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/photometry-pipeline}}
+  \caption{Photometric image formation（光度成像）的两个阶段：表面产生 radiance，光学系统把它转换为 sensor irradiance。}
+  \label{fig:sc4061-l01-photometry}
+\end{figure}
+
+在讲义采用的理想模型中，sensor point（传感器点）$p$ 的 irradiance（辐照度）为
+\[
+  E(p)=L(P)\frac{\pi}{4}\left(\frac{d}{v}\right)^2\cos^4\alpha,
+\]
+其中 $d$ 是 aperture diameter（光圈直径），$v$ 是 image distance（像距），$\alpha$ 是光线相对 optical axis（光轴）的夹角。该式说明进光量近似随 $d^2$ 增加，离轴位置因 $\cos^4\alpha$ 出现 vignetting（暗角）。
+
+更常用的简化表达是
+\[
+  f(x,y)=i(x,y)r(x,y),
+\]
+其中 $i$ 为 illumination（光照），$r$ 为 reflectance（反射率）。只观察 $f$ 无法唯一分离 $i$ 与 $r$，这正是 inverse problem（逆问题）的一个具体来源。
+
+\lecturetopic{SC4061-L01-T06}{Sensor、Sampling、Quantization 与 Image Matrix}
+
+Sensor array（传感器阵列）由二维 photo-detectors（光电探测器）组成。每个探测器记录的信号与 exposure（曝光量）相关：
+\[
+  \text{exposure}=\text{irradiance}\times\text{exposure time}.
+\]
+单个探测器主要测量强度；Bayer mask（拜耳滤色阵列）让不同位置分别采集 R/G/B（红/绿/蓝）通道，再通过 demosaicing（去马赛克）估计每个 pixel（像素）的完整颜色。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/sampling-quantization}}
+  \caption{Sampling（采样）离散化空间位置，quantization（量化）把测量值映射到有限灰度等级。}
+  \label{fig:sc4061-l01-sampling-quantization}
+\end{figure}
+
+二维数字化过程可统一写成
+\[
+  \boxed{g[m,n]=Q\!\left(f(m\Delta x,n\Delta y)\right)}.
+\]
+Sampling interval（采样间隔）过大会丢失空间细节并引发 aliasing（混叠）；quantization levels（量化等级）过少会产生 banding（色带）或明显的强度跳变。$b$-bit quantization（$b$ 位量化）共有 $2^b$ 个等级，例如 8-bit 灰度通常为 $0$--$255$。
+
+Grayscale image（灰度图像）可视为 scalar function（标量函数）$f(x,y)$ 或二维矩阵；RGB image（彩色图像）可视为三个通道组成的三维数组。代码中通常采用
+\[
+  \boxed{I[\text{row},\text{column}]=I[y,x]},
+\]
+即 $x$ 对应 column（列），$y$ 对应 row（行）。Python/NumPy 通常从 0 编号，MATLAB 通常从 1 编号。
+
+PNG/TIFF 常用于 lossless representation（无损表示），JPEG 使用 lossy compression（有损压缩），JPEG~2000 使用 wavelet-based compression（基于小波的压缩）。文件大小不能只由 pixel count（像素数）决定，还必须说明 channel count（通道数）、bit depth（位深）和 compression（压缩方式）。
+
+\textbf{对应例题：}\relatedexercise{SC4061-L01-E02}{Sampling、Quantization 与存储量}。
+
+\subsection{一分钟回顾}
+
+三维 scene（场景）先通过 lighting 与 reflection（光照与反射）产生 radiance（辐亮度），再由 lens 和 aperture（透镜和光圈）映射为 sensor irradiance（传感器辐照度），最后经 sampling 与 quantization（采样与量化）成为 image matrix（图像矩阵）。Thin lens equation（薄透镜公式）描述几何成像；aperture（光圈）同时影响亮度和 depth of field（景深）；pixel intensity（像素强度）并不等于物体固有属性。Computer Vision（计算机视觉）则试图沿这条链反向推断场景。

@@ -1,0 +1,32 @@
+\begin{tikzpicture}[>=Latex,font=\small]
+  \draw[->,thin] (-6,0) -- (3.3,0) node[right] {optical axis（光轴）};
+
+  % Thin lens and focal points.
+  \draw[very thick,draw=noteBlue]
+    (0,-2.15) .. controls (-0.28,-1.2) and (-0.28,1.2) .. (0,2.15)
+    .. controls (0.28,1.2) and (0.28,-1.2) .. (0,-2.15);
+  \fill[noteBlue] (-1.55,0) circle (2pt) node[below] {$F_l$};
+  \fill[noteBlue] (1.55,0) circle (2pt) node[above] {$F_r$};
+  \fill[noteBlue] (0,0) circle (2pt) node[below left] {$O$};
+
+  % Object and inverted image.
+  \draw[->,very thick,draw=ntuRed] (-5,0) -- node[midway,left] {$Y$} (-5,2.4)
+    node[above] {$P$};
+  \draw[->,very thick,draw=ntuRed] (2.2,0) -- node[midway,right] {$y$} (2.2,-1.03)
+    node[below] {$p$};
+  \node[draw=gray,rounded corners=1pt,fill=white,inner sep=2pt]
+    at (-4.25,-0.58) {$X:\ \odot$};
+  \node[draw=gray,rounded corners=1pt,fill=white,inner sep=2pt]
+    at (2.72,0.58) {$x:\ \otimes$};
+
+  % Three principal rays.
+  \draw[thick,draw=orange!90!black] (-5,2.4) -- (0,2.4) -- (2.2,-1.03);
+  \draw[thick,draw=noteBlue] (-5,2.4) -- (0,0) -- (2.2,-1.03);
+  \draw[thick,draw=green!45!black] (-5,2.4) -- (0,-1.03) -- (2.2,-1.03);
+
+  % Distance guides.
+  \draw[<->] (-5,-1.72) -- node[fill=white,inner sep=1pt] {$u=\hat Z$} (0,-1.72);
+  \draw[<->] (0,-1.72) -- node[fill=white,inner sep=1pt] {$v=\hat z$} (2.2,-1.72);
+  \draw[<->,draw=gray] (-1.55,-1.35) -- node[fill=white,inner sep=1pt] {$f$} (0,-1.35);
+  \draw[<->,draw=gray] (0,-1.35) -- node[fill=white,inner sep=1pt] {$f$} (1.55,-1.35);
+\end{tikzpicture}

@@ -1,0 +1,20 @@
+\begin{tikzpicture}[
+  >=Latex,
+  stage/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum width=3.1cm,minimum height=1.15cm,align=center},
+  flow/.style={->,thick,draw=noteBlue}
+]
+  \node[stage] (light) at (0,1.05) {light source\\$\bm I$};
+  \node[stage] (surface) at (0,-1.05) {surface properties\\$\rho,\bm n$};
+  \node[stage] (radiance) at (4.4,0) {scene radiance\\$L(P)=\rho\max(0,\bm I^{\mathsf T}\bm n)$};
+  \node[stage] (optics) at (9.0,0) {camera optics\\$d,v,\alpha$};
+  \node[stage] (irradiance) at (13.5,0) {sensor irradiance\\$E(p)$};
+
+  \draw[flow] (light.east) -- (radiance.west);
+  \draw[flow] (surface.east) -- (radiance.west);
+  \draw[flow] (radiance) -- (optics);
+  \draw[flow] (optics) -- (irradiance);
+
+  \node[below=0.35cm of optics,align=center]
+    {$E(p)=L(P)\dfrac{\pi}{4}\left(\dfrac{d}{v}\right)^2\cos^4\alpha$};
+\end{tikzpicture}

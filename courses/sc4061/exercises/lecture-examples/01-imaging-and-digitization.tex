@@ -1,0 +1,72 @@
+% Lecture example set: SC4061-L01
+% Source: L1 Imaging concepts; questions are self-contained check examples
+% Human verified: Yes
+
+\exercisemeta
+  {SC4061-L01-EX}
+  {2026-08-11}
+  {L1 Imaging 的 thin lens、sampling 与 quantization 内容；题目为自编检验例}
+  {答案已完成并确认}
+  {已确认（2026-08-11）}
+
+\exercisequestion{SC4061-L01-E01}{Thin Lens 成像与放大率}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L01-T03}{Thin Lens Model 与 Magnification}
+
+\subsubsection*{题目}
+
+一个 focal length（焦距）为 $f=50\,\mathrm{mm}$ 的 thin lens（薄透镜）拍摄距离 $u=500\,\mathrm{mm}$、高度 $Y=180\,\mathrm{mm}$ 的物体。求 image distance（像距）$v$、signed magnification（带符号放大率）$m$ 和像高 $y$。
+
+\begin{workedsolution}
+由 thin lens equation（薄透镜公式）
+\[
+  \frac{1}{v}=\frac{1}{f}-\frac{1}{u}
+  =\frac{1}{50}-\frac{1}{500}
+  =\frac{9}{500},
+\]
+得到
+\[
+  v=\frac{500}{9}\,\mathrm{mm}\approx55.6\,\mathrm{mm}.
+\]
+因此
+\[
+  m=-\frac{v}{u}=-\frac{1}{9}\approx-0.111,
+  \qquad
+  y=mY=-20\,\mathrm{mm}.
+\]
+Sensor（传感器）应位于透镜后约 $55.6\,\mathrm{mm}$；像高为 $20\,\mathrm{mm}$，负号表示 image（像）相对物体倒立。
+\end{workedsolution}
+
+\textbf{检查点：}只写 $|m|$ 会丢失 orientation（方向）信息；采用带符号约定时，real inverted image（倒立实像）的放大率为负。
+
+\exercisequestion{SC4061-L01-E02}{Sampling、Quantization 与存储量}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L01-T06}{Sensor、Sampling、Quantization 与 Image Matrix}
+
+\subsubsection*{题目}
+
+一幅未压缩 RGB image（RGB 彩色图像）包含 $1{,}000{,}000$ 个 pixels（像素），每个 channel（通道）采用 8-bit quantization（8 位量化）。
+
+\begin{enumerate}[label=(\alph*)]
+  \item 求原始存储量，并分别用 MB（十进制）和 MiB（二进制）表示。
+  \item 若两个空间方向的 sampling interval（采样间隔）都减半，而 field of view（视野）不变，pixel count（像素数）变为原来的多少倍？
+  \item 分别写出 sampling rate（采样率）不足和 quantization levels（量化等级）不足的典型失真。
+\end{enumerate}
+
+\begin{workedsolution}
+每个 pixel 包含三个 8-bit channels，因此
+\[
+  S=1{,}000{,}000\times3\times8
+   =24{,}000{,}000\ \text{bits}
+   =3{,}000{,}000\ \text{bytes}.
+\]
+所以存储量为 $3.00\,\mathrm{MB}$，或
+\[
+  \frac{3{,}000{,}000}{2^{20}}\approx2.86\,\mathrm{MiB}.
+\]
+两个方向的间隔都减半时，每个方向的采样点数加倍，总像素数变为 $2\times2=4$ 倍。Sampling rate 不足会产生 aliasing（混叠）；quantization levels 不足会产生 banding（色带）或明显的灰度跳变。
+\end{workedsolution}
+
+\textbf{检查点：}“1 megapixel”本身不能确定文件大小；还必须说明 channel count（通道数）、bit depth（位深）以及是否 compression（压缩）。
