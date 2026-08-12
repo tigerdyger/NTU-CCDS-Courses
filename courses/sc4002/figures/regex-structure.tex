@@ -1,0 +1,19 @@
+\begin{tikzpicture}[
+  >=Latex,
+  root/.style={draw=ntuRed,rounded corners=2pt,fill=red!5,
+    minimum width=3.4cm,minimum height=1cm,align=center,font=\bfseries},
+  branch/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum width=3.15cm,minimum height=1.25cm,align=center},
+  flow/.style={->,thick,draw=noteBlue}
+]
+  \node[root] (regex) at (0,2.2) {Regular Expression\\（正则表达式）};
+  \node[branch] (atoms) at (-6.0,0) {Atoms（原子）\\literal、class、\texttt{.}};
+  \node[branch] (quantifiers) at (-2.0,0) {Quantifiers（量词）\\\texttt{? * + \{m,n\}}};
+  \node[branch] (anchors) at (2.0,0) {Anchors（锚点）\\\texttt{\textasciicircum{} \$ \textbackslash b}};
+  \node[branch] (composition) at (6.0,0) {Composition（组合）\\concatenation、\texttt{|}、\texttt{()}};
+
+  \draw[flow] (regex) -- (atoms);
+  \draw[flow] (regex) -- (quantifiers);
+  \draw[flow] (regex) -- (anchors);
+  \draw[flow] (regex) -- (composition);
+\end{tikzpicture}

@@ -1,0 +1,24 @@
+\begin{tikzpicture}[
+  >=Latex,
+  stage/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum width=2.75cm,minimum height=1.15cm,align=center},
+  flow/.style={->,thick,draw=noteBlue}
+]
+  \node[stage] (bytes) {UTF-8 bytes\\（字节序列）};
+  \node[stage,right=0.7cm of bytes] (chars) {character string\\（字符序列）};
+  \node[stage,right=0.7cm of chars] (regex) {surface patterns\\（RegEx 表面模式）};
+  \node[stage,right=0.7cm of regex] (structure) {tokens \& syntax\\（词元与句法）};
+  \node[stage,right=0.7cm of structure] (meaning) {semantics\\（语义）};
+
+  \draw[flow] (bytes) -- (chars);
+  \draw[flow] (chars) -- (regex);
+  \draw[flow] (regex) -- (structure);
+  \draw[flow] (structure) -- (meaning);
+
+  \node[below=0.45cm of bytes,align=center,text width=2.8cm]
+    {storage（存储）};
+  \node[below=0.45cm of regex,align=center,text width=2.8cm]
+    {matching（匹配）};
+  \node[below=0.45cm of meaning,align=center,text width=2.8cm]
+    {understanding（理解）};
+\end{tikzpicture}

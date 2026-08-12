@@ -1,0 +1,60 @@
+% Lecture example set: SC4002-L01
+% Source: T1 Regular Expressions; questions are self-contained check examples
+% Actual live coverage: Unverified
+% Human verified: Answers checked in discussion
+
+\exercisemeta
+  {SC4002-L01-EX}
+  {2026-08-12}
+  {T1 Regular Expressions 的 quantifier、grouping 与 error analysis；题目为自编检验例}
+  {答案已完成并核对}
+  {已确认（2026-08-12）}
+
+\exercisequestion{SC4002-L01-E01}{Quantifier、Grouping 与完整匹配}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4002-L01-T03}{Regular Expressions：字符层面的模式语言}
+
+\subsubsection*{题目}
+
+分别写出下列 patterns（模式）在 full-string matching（完整字符串匹配）语义下生成的字符串形式，并指出是否包含 empty string（空字符串）$\varepsilon$：
+\[
+  \texttt{\detokenize{^ab*$}}
+  \qquad\text{和}\qquad
+  \texttt{\detokenize{^(ab)*$}}.
+\]
+
+\begin{workedsolution}
+\texttt{\detokenize{^ab*$}} 中，\texttt{a} 必须出现一次，\texttt{*} 只修饰紧邻的 \texttt{b}：
+\[
+  \{a,ab,abb,abbb,\ldots\}=\{ab^k\mid k\ge 0\}.
+\]
+它不包含 $\varepsilon$。\texttt{\detokenize{^(ab)*$}} 则重复整个 group（分组）\texttt{ab}：
+\[
+  \{\varepsilon,ab,abab,ababab,\ldots\}=\{(ab)^k\mid k\ge 0\}.
+\]
+$\varepsilon$ 是一次成功的 zero-length match（零长度匹配），不是 no match（匹配失败）或程序中的 \texttt{null/None}。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L01-E02}{RegEx 的 Precision 与 Recall}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4002-L01-T03}{Regular Expressions：字符层面的模式语言}
+
+\subsubsection*{题目}
+
+在文本 \texttt{The cat saw the theater and the dog.} 中，目标是找出作为 English article（英文冠词）出现的所有 \texttt{the}，并忽略大小写。若使用区分大小写的 pattern \texttt{\detokenize{the}}，求 TP、FP、FN、precision 和 recall。
+
+\begin{workedsolution}
+真实目标为句首 \texttt{The}、\texttt{the theater} 前的 \texttt{the} 和 \texttt{the dog} 前的 \texttt{the}，共 3 个。Pattern 实际找到后两个冠词以及 \texttt{theater} 内部的 \texttt{the}，因此
+\[
+  \mathrm{TP}=2,\qquad \mathrm{FP}=1,\qquad \mathrm{FN}=1.
+\]
+故
+\[
+  \mathrm{Precision}=\frac{2}{3},
+  \qquad
+  \mathrm{Recall}=\frac{2}{3}.
+\]
+可用 word boundary（词边界）和 case-insensitive matching（大小写不敏感匹配）改进，例如语义等价于 \texttt{\detokenize{\bthe\b}} 加相应 flag；具体语法依 regex engine（正则引擎）而异。
+\end{workedsolution}

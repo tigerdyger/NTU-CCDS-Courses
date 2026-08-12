@@ -1,0 +1,118 @@
+% Actual class: 01
+% Released materials: L0 Introduction; T0 UTF-8; T1 Regular Expressions
+% Exact released scope: L0 pp. 1--18; T0 pp. 1--8; T1 pp. 1--16
+% Actual live coverage: Unverified
+% Video supplement: Not available / not used
+% Human verified: Material classification confirmed; live coverage unverified
+
+\section{第 01 节课：NLP Introduction、Text Encoding 与 Regular Expressions}
+\label{lecture:SC4002-L01}
+
+\lecturemeta
+  {SC4002-L01}
+  {2026-08-12}
+  {L0 Introduction；T0 UTF-8；T1 Regular Expressions (2026)}
+  {Week 1 已发布：L0 pp.~1--18；T0 pp.~1--8；T1 pp.~1--16；实际课堂范围未核实}
+  {无回放或网课可用}
+  {材料归类已确认；现场范围未核实}
+
+\subsection{本讲主线}
+
+计算机先用 encoding（编码）把字符保存为 bytes（字节），解码后才能在 character string（字符序列）上进行 Regular Expression（正则表达式）匹配；NLP（自然语言处理）则进一步研究词法、句法和语义。正确存储或匹配文字均不等于理解语言。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/text-processing-levels}}
+  \caption{从 text storage（文本存储）到 language understanding（语言理解）的层次。RegEx 通常作用于已正确解码的 character string，而非原始 bytes。}
+  \label{fig:sc4002-l01-text-levels}
+\end{figure}
+
+\lecturetopic{SC4002-L01-T01}{NLP 与 Natural-language Ambiguity}
+
+\keyidea{Natural Language Processing（自然语言处理）的核心困难之一是 ambiguity（歧义）：相同表面形式可能对应不同词性、句法结构或含义，必须利用 context（上下文）消解。}
+
+例如
+\texttt{I made her duck} 中，\texttt{duck} 可作 noun/verb（名词/动词），\texttt{her} 可表达所属或受事，\texttt{make} 也有 create/cook/cause（制作/烹饪/使令）等含义。因此 pattern matching（模式匹配）能产生类似 ELIZA 的流畅回应，却不能单独证明系统拥有 semantic understanding（语义理解）。
+
+\lecturetopic{SC4002-L01-T02}{Unicode 与 UTF-8：不考核的编码背景}
+
+\textbf{考核状态：}T0 首页明确标注 UTF-8 topic is unexaminable（UTF-8 专题不考核）；只需掌握概念边界。
+
+\begin{center}
+\small
+\begin{tabularx}{0.92\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}X>{\raggedright\arraybackslash}p{3.0cm}@{}}
+  \toprule
+  概念 & 含义 & 示例 \\
+  \midrule
+  Character（字符） & 抽象的文字或符号 & \texttt{A}、\texttt{\char"81EA} \\
+  Code point（码点） & Unicode 分配给字符的整数编号 & \texttt{A} 为 \texttt{U+0041} \\
+  UTF-8 encoding（UTF-8 编码） & 把 code point 转换为 1--4 bytes 的变长编码；ASCII 保持单字节兼容 & \texttt{A} 为 \texttt{41}（hex） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+若 encode/decode（编码/解码）使用不同规则就会产生 mojibake（乱码）。即使字符已正确恢复，计算机仍不知道 word/sentence boundary（词/句边界）及其含义；中文等语言通常没有显式空格词界。
+
+\lecturetopic{SC4002-L01-T03}{Regular Expressions：字符层面的模式语言}
+
+Regular Expression（正则表达式，RegEx）是描述 a set of strings（字符串集合）的形式化记法，工程上用于在 corpus（语料）中搜索满足 pattern（模式）的 substring（子串）。它处理表面字符模式，不自动理解词义或句法。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.92\textwidth}{!}{\input{figures/regex-structure}}
+  \caption{RegEx 主主题及其下属构件。Quantifier（量词）修饰紧邻的 atom/group（原子/分组）；anchor（锚点）描述位置而不消费字符。}
+  \label{fig:sc4002-l01-regex-structure}
+\end{figure}
+
+\subsubsection{Atoms、Character Classes 与 Anchors}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{4.2cm}X@{}}
+  \toprule
+  Pattern & 含义 & 关键区别 \\
+  \midrule
+  \texttt{\detokenize{test}} & literal concatenation（字面连接）；通常区分大小写 & 只描述连续字符 \texttt{test} \\
+  \texttt{\detokenize{[abc]}}、\texttt{\detokenize{[A-Z]}} & character class/range（字符类/范围），匹配其中一个字符 & \texttt{[abc]} 不是字符串 \texttt{abc} \\
+  \texttt{\detokenize{[^.]}} & negated character class（取反字符类） & class 内的 \texttt{.} 是字面句点，故匹配一个非句点字符 \\
+  \texttt{\detokenize{.}}、\texttt{\detokenize{\.}} & wildcard（通配符）/escaped period（转义句点） & \texttt{.} 的 newline 行为依 regex engine 而异 \\
+  \texttt{\detokenize{^}}、\texttt{\detokenize{$}} & 行或字符串的起点/终点 & 具体含义受 multiline mode（多行模式）影响 \\
+  \texttt{\detokenize{\b}}、\texttt{\detokenize{\B}} & word boundary/non-boundary（词边界/非词边界） & ``word character'' 的 Unicode 定义依引擎而异 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Quantifiers、Grouping 与 Precedence}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}X>{\raggedright\arraybackslash}p{4.2cm}@{}}
+  \toprule
+  Pattern & 含义 & 示例 \\
+  \midrule
+  \texttt{\detokenize{?}}、\texttt{\detokenize{*}}、\texttt{\detokenize{+}} & 前一项出现 0--1、0--多、1--多次 & \texttt{\detokenize{colou?r}} 匹配 \texttt{color/colour} \\
+  \texttt{\detokenize{{n}}}、\texttt{\detokenize{{m,n}}} & 恰好 $n$ 次、$m$ 到 $n$ 次 & 作用于 immediately preceding item（紧邻前项） \\
+  \texttt{\detokenize{(ab)+}} & grouping（分组）后整体重复 & 匹配 \texttt{ab}、\texttt{abab}、$\ldots$ \\
+  \texttt{\detokenize{cat|dog}} & alternation（选择） & 匹配 \texttt{cat} 或 \texttt{dog} \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Precedence（优先级）可概括为 parentheses（括号）$>$ quantifiers（量词）$>$ concatenation/anchors（连接/锚点）$>$ alternation（选择）。不确定时应主动加括号。常见 backtracking engine（回溯型引擎）通常先找 leftmost match（最左匹配）；默认量词多为 greedy（贪婪），但“RegEx 总匹配全局最长字符串”不是无条件规则。
+
+\subsubsection{Pattern Refinement 与 Error Analysis}
+
+查找英文冠词 \texttt{the} 时，\texttt{\detokenize{the}} 会误匹配 \texttt{there}，也会漏掉 \texttt{The}。可改为 \texttt{\detokenize{\b[tT]he\b}}；若引擎支持 case-insensitive flag（大小写不敏感标志），也可使用相应 flag。规则选择取决于应用和 regex dialect（正则方言）。
+
+\begin{align*}
+  \mathrm{Precision} &= \frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FP}}, &
+  \mathrm{Recall} &= \frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FN}}.
+\end{align*}
+限制过松通常增加 false positives（假阳性），限制过严通常增加 false negatives（假阴性）。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L01-E01}{Quantifier、Grouping 与完整匹配}；
+\relatedexercise{SC4002-L01-E02}{RegEx 的 Precision 与 Recall}。
+
+\subsection{一分钟回顾}
+
+Unicode 为 character（字符）分配 code point（码点），UTF-8 把码点编码为 bytes；RegEx 在解码后的 character string 上描述表面模式；NLP 则进一步处理 token、syntax 和 semantics（词元、句法和语义）。RegEx 的核心是分清 atom、quantifier、anchor、grouping 与 alternation，并用 false positive/negative 分析规则缺陷。
