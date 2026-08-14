@@ -1,0 +1,28 @@
+\begin{tikzpicture}[
+  >=Latex,
+  user/.style={draw=noteBlue,rounded corners=2pt,fill=blue!6,minimum width=3.5cm,minimum height=0.95cm,align=center},
+  kernel/.style={draw=ntuRed,rounded corners=2pt,fill=red!6,minimum width=3.5cm,minimum height=0.95cm,align=center},
+  hardware/.style={draw=black!65,rounded corners=2pt,fill=black!5,minimum width=3.5cm,minimum height=0.95cm,align=center},
+  down/.style={->,very thick,draw=noteBlue},
+  up/.style={->,very thick,draw=ntuRed},
+  stepblue/.style={circle,fill=noteBlue,text=white,inner sep=1.5pt,font=\scriptsize\bfseries},
+  stepred/.style={circle,fill=ntuRed,text=white,inner sep=1.5pt,font=\scriptsize\bfseries}
+]
+  \node[font=\bfseries,anchor=east] at (1.4,2.15) {User mode};
+  \node[user] (app) at (4.6,2.15) {application / library API};
+
+  \draw[thick] (0.8,1.15) -- (13.2,1.15);
+  \node[anchor=east,font=\small,fill=white,inner sep=1pt] at (13.05,1.38)
+    {user/kernel privilege boundary};
+
+  \node[font=\bfseries,anchor=east] at (1.4,0.0) {Kernel mode};
+  \node[kernel] (entry) at (4.6,0.0) {system-call handler};
+  \node[kernel] (isr) at (10.4,0.0) {device driver / ISR};
+
+  \draw[thick] (0.8,-1.05) -- (13.2,-1.05);
+  \node[font=\bfseries,anchor=east] at (1.4,-2.05) {Hardware};
+  \node[hardware] (dev) at (10.4,-2.05) {I/O device controller};
+
+  \draw[down] (app) -- node[stepblue]{1} (entry);
+  \draw[up] (dev) -- node[stepred]{2} (isr);
+\end{tikzpicture}

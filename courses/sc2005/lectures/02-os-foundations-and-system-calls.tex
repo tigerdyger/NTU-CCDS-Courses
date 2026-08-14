@@ -1,0 +1,146 @@
+% Actual class: 02
+% Slide decks: Course Introduction - S2; Part 1 (Intro and Background); Tutorial One
+% Exact scope: Course Introduction pp. 1--10 (administrative); Part 1 pp. 1--46; Tutorial One p. 1
+% Video supplement: Part 1.1, Part 1.2, Part 1.3 (complete)
+% Human verified: Yes
+
+\section{第 02 节课：OS Foundations、Interrupts 与 System Calls}
+\label{lecture:SC2005-L02}
+
+\lecturemeta
+  {SC2005-L02}
+  {2026-08-14}
+  {Course Introduction - S2；Part 1 (Intro and Background)；Tutorial One}
+  {Course Introduction pp.~1--10（课程行政信息）；Part 1 pp.~1--46；Tutorial One p.~1}
+  {Part 1.1、Part 1.2、Part 1.3 全部视频}
+  {已确认（2026-08-14；讲解与问答核验）}
+
+\subsection{本讲主线}
+
+Operating System（操作系统，OS）用 abstraction（抽象）隐藏硬件细节，并在多个 programs（程序）之间分配 CPU、memory（内存）和 I/O devices（输入输出设备）。Multiprogramming（多道程序设计）依靠 interrupt（中断）在 CPU 工作与 I/O 等待之间重叠执行；dual-mode operation（双模式运行）和 memory protection（内存保护）限制普通程序的权限；system call（系统调用）则提供从 user mode（用户态）进入 kernel mode（内核态）的受控入口。
+
+\lecturetopic{SC2005-L02-T01}{Operating System 的角色与目标}
+
+\keyidea{OS 是 application（应用）与 hardware（硬件）之间的管理层：它提供抽象、分配资源并执行保护策略，但普通用户指令通常直接在 CPU 上运行，并非每条指令都要经过 OS。}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.4cm}X@{}}
+  \toprule
+  视角 & 核心含义 & 代表性抽象或职责 \\
+  \midrule
+  Abstraction provider（抽象提供者） & 隐藏 hardware complexity（硬件复杂性），提供稳定 interface（接口） & file（文件）、process（进程）、virtual memory（虚拟内存） \\
+  Resource allocator（资源分配器） & 在竞争者之间分配有限资源 & CPU scheduling（CPU 调度）、memory allocation（内存分配）、I/O scheduling（I/O 调度） \\
+  Control program（控制程序） & 检查操作是否合法，防止程序相互破坏或破坏 OS & privilege（特权）、access control（访问控制）、fault handling（故障处理） \\
+  Kernel（内核） & OS 中以高 privilege level（特权级）运行的核心部分 & 响应 system call、interrupt 与 exception（异常） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+OS 同时追求 user convenience（用户便利性）和 efficient hardware utilization（高效利用硬件）。精细的资源分配通常需要更多 workload information（工作负载信息），而要求用户提供过多信息又会降低便利性，因此两项目标之间存在 trade-off（权衡）。
+
+\lecturetopic{SC2005-L02-T02}{Multiprogramming、Time-sharing 与 Multiprocessing}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{4.4cm}X@{}}
+  \toprule
+  系统/机制 & 核心机制 & 首要目的 \\
+  \midrule
+  Simple batch system（简单批处理系统） & memory 中通常只有一个 user job；该 job 等待 I/O 时 CPU 可能空闲 & 简化自动作业序列 \\
+  Multiprogramming（多道程序设计） & 多个 jobs 同驻 main memory；一个 job 阻塞时运行另一个 & 提高 CPU utilization（利用率） \\
+  Time-sharing（分时） & 在 multiprogramming 基础上快速切换并允许 preemption（抢占） & 提供 interactive response（交互响应） \\
+  Multiprocessing / multicore（多处理/多核） & 多个 cores（核心）可同时执行 instruction streams（指令流） & 获得 true parallelism（真正并行）与更高 throughput（吞吐量） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/concurrency-parallelism}}
+  \caption{单核 multiprogramming（多道程序设计）通过切换形成 concurrency（并发）；multicore hardware（多核硬件）允许多个执行流真正 parallel（并行）。}
+  \label{fig:sc2005-l02-concurrency-parallelism}
+\end{figure}
+
+Multiprogramming 是 OS mechanism（操作系统机制），multiprocessing 是 hardware capability（硬件能力）。Multithreading（多线程）描述一个 process 内存在多个 threads（线程）；单核上也能并发执行多个 threads，因此它不能作为 multiprocessing 的同义词。
+
+Real-time system（实时系统）的正确性同时取决于计算结果和完成时间：关键任务必须在 deadline（截止时间）前完成。它不等于“平均运行得很快”；general-purpose OS（通用操作系统）偶尔错过 deadline，仍不能据此称为 hard real-time OS（硬实时操作系统）。
+
+\textbf{对应练习：}\relatedexercise{SC2005-TUT01-Q03}{Multiprogramming 与 Multiprocessing}。
+
+\lecturetopic{SC2005-L02-T03}{Interrupt-driven I/O、Context 与 DMA}
+
+CPU、main memory 和 device controllers（设备控制器）通过 bus（总线）连接。每个 controller 通常管理特定设备并带有 local buffer（本地缓冲区）；CPU 可以执行程序，同时 controller 独立处理较慢的 I/O request（I/O 请求）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/interrupt-io-timeline}}
+  \caption{Interrupt-driven I/O（中断驱动 I/O）：1，Process A 通过 system call 进入 OS；2，OS 启动 I/O；3，device 完成后产生 hardware interrupt；4，ISR 结束后由 OS 继续调度。}
+  \label{fig:sc2005-l02-interrupt-timeline}
+\end{figure}
+
+典型过程为：Process A 发起 system call；OS 配置 controller 并阻塞 A；scheduler（调度器）运行 Process B；设备完成传输后产生 hardware interrupt（硬件中断）；CPU 保存必要状态并执行 ISR（Interrupt Service Routine，中断服务程序）；OS 再决定恢复 A、B 或其他 process。
+
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{3.1cm}X@{}}
+  \toprule
+  事件 & 来源与时序 & 典型用途 \\
+  \midrule
+  Hardware interrupt（硬件中断） & 外部 device 产生，asynchronous（异步） & I/O 完成、timer（定时器）到期 \\
+  Trap / synchronous exception（陷阱/同步异常） & 当前 CPU instruction 引起，synchronous（同步） & system call、除零、非法地址、非法特权指令 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Interrupt entry（中断入口）必然需要 context save（上下文保存），但不必然产生 process context switch（进程上下文切换）。只有 scheduler 决定改运行另一个 process 时才发生后者；若 ISR 结束后返回同一 process，则只经历 privilege/control transfer（特权级/控制流切换）。处理 ISR 时也不是永久禁止全部中断：实现通常短暂 mask（屏蔽）部分中断，并可允许更高优先级中断嵌套。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/dma-paths}}
+  \caption{课程抽象中的 ordinary interrupt-driven I/O（普通中断驱动 I/O）与 DMA（直接内存访问）。}
+  \label{fig:sc2005-l02-dma-paths}
+\end{figure}
+
+对于 ordinary interrupt-driven I/O，完成中断到达时，数据可能仍在 controller buffer，随后由 CPU/driver（驱动）参与搬入 main memory。对于 DMA（Direct Memory Access，直接内存访问），OS 先设置 memory region（内存区域）和 transfer count（传输计数），controller 再直接传输整个 block（数据块），完成后通常只产生一次 interrupt。
+
+“Without CPU intervention（无需 CPU 介入）”仅指 bulk data movement（批量数据搬运）阶段；CPU 仍负责配置 DMA 和处理完成中断。“每 byte 一个中断、每 block 一个中断”是课程用于对比的简化模型，实际设备也可能进行 buffering（缓冲）和 batching（批处理）。
+
+Storage hierarchy（存储层次）按典型距离可概括为 registers $\rightarrow$ cache $\rightarrow$ main memory $\rightarrow$ secondary storage（寄存器、缓存、主存、二级存储）。越接近 CPU 通常越快、越小、单位成本越高；本讲仅作背景，不作为当前考核重点。
+
+\textbf{对应练习：}\relatedexercise{SC2005-TUT01-Q01}{Interrupt-driven I/O 与 DMA}。
+
+\lecturetopic{SC2005-L02-T04}{Dual-mode、I/O 与 Memory Protection}
+
+Dual-mode operation 用 hardware privilege（硬件特权级）区分 user mode，以及 kernel mode（内核态）、monitor mode（监控态）或 supervisor mode（管理态）。普通程序在 user mode 执行；interrupt 或 trap 使 CPU 进入 kernel mode；return-from-trap（陷阱返回）再恢复 user mode。
+
+Root/admin（管理员账户）是 OS 内部的 account/permission concept（账户/权限概念），不是 CPU mode。管理员启动的普通程序仍通常在 user mode，只能通过 system call 或获授权的 kernel extension（内核扩展）间接影响 kernel-mode code。
+
+课程模型将 I/O instructions（I/O 指令）视为 privileged instructions（特权指令）：普通程序必须请求 OS 检查设备、操作和访问权限。现代系统也可能使用 memory-mapped I/O（内存映射 I/O），但相应 address range（地址范围）仍由 privilege 与 memory mapping（内存映射）保护。
+
+在 base-limit protection（基址-界限保护）的简化模型中，base register 保存第一个合法 physical address（物理地址），limit register 保存合法区域长度。访问合法当且仅当
+\[
+  \boxed{\text{base}\leq \text{address}<\text{base}+\text{limit}}.
+\]
+所以最后一个合法 byte address 为 $\text{base}+\text{limit}-1$。加载 base/limit 的指令本身必须是 privileged；否则程序可以自行扩大可访问区域。
+
+\textbf{对应练习：}\relatedexercise{SC2005-TUT01-Q02}{Protection 与 Trap 判断}。
+
+\lecturetopic{SC2005-L02-T05}{OS Services、API 与 System Call}
+
+OS services（操作系统服务）包括 program execution（程序执行）、I/O、file systems（文件系统）、communication（通信）、resource allocation（资源分配）、accounting（统计）、error detection（错误检测）以及 protection/security（保护与安全）。System call 是 user program 请求这些 kernel services（内核服务）的受控接口。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.88\textwidth}{!}{\input{figures/privilege-boundary}}
+  \caption{两种进入 kernel 的方向：1，system call/trap（系统调用/陷阱）由当前程序同步触发；2，hardware interrupt（硬件中断）由 device 异步触发。}
+  \label{fig:sc2005-l02-privilege-boundary}
+\end{figure}
+
+Library API（库接口）不等于 system call。以 C 为例，\texttt{fopen()} 是 standard library function（标准库函数）；其实现可能调用 \texttt{open()} system call。Library wrapper（库封装）准备 system-call number（系统调用号）和 arguments（参数），再执行专门的 \texttt{syscall}/\texttt{svc} instruction；hardware 据此切换 privilege level 并跳转到注册的 kernel entry point（内核入口），而不是让 user program 普通跳转到 kernel memory。
+
+并非所有 API calls 都进入 kernel：例如只在 user space（用户空间）计算字符串长度的 \texttt{strlen()} 通常不产生 system call。反过来，一个 API call 也可能触发多个 system calls。即使调用了 file I/O system call，若数据已在 page cache（页缓存）中，也不一定产生新的 physical-device interrupt（物理设备中断）。
+
+\subsection{一分钟回顾}
+\par\noindent
+OS 通过 abstractions（抽象）提供易用接口，通过 scheduling（调度）和 multiprogramming 提高资源利用率，并用 privilege 与 address checks（地址检查）保护系统。System call/trap 是 program 到 kernel 的同步受控入口；hardware interrupt 是 device 到 CPU 的异步通知。DMA 让 controller 直接搬运 data block，但 CPU 仍负责配置和完成处理。Concurrency（并发）可以存在于单核系统，parallelism（并行）则要求多个执行资源。

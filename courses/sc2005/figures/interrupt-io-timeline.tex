@@ -1,0 +1,26 @@
+\begin{tikzpicture}[
+  >=Latex,
+  cpu/.style={draw=noteBlue,rounded corners=2pt,fill=blue!7,minimum height=0.8cm,align=center},
+  dev/.style={draw=ntuRed,rounded corners=2pt,fill=red!6,minimum height=0.8cm,align=center},
+  flow/.style={->,thick,draw=noteBlue},
+  signal/.style={->,very thick,draw=ntuRed},
+  stepblue/.style={circle,fill=noteBlue,text=white,inner sep=1.5pt,font=\scriptsize\bfseries},
+  stepred/.style={circle,fill=ntuRed,text=white,inner sep=1.5pt,font=\scriptsize\bfseries}
+]
+  \node[font=\bfseries,anchor=east] at (1.35,1.2) {CPU lane};
+  \node[cpu,minimum width=1.9cm] (pa) at (2.5,1.2) {Process A};
+  \node[cpu,minimum width=2.1cm] (os1) at (5.0,1.2) {OS: start I/O};
+  \node[cpu,minimum width=2.3cm] (pb) at (7.9,1.2) {Process B};
+  \node[cpu,minimum width=1.5cm] (isr) at (10.45,1.2) {ISR};
+  \node[cpu,minimum width=2.3cm] (next) at (12.9,1.2) {next process};
+
+  \node[font=\bfseries,anchor=east] at (1.35,-0.9) {Device lane};
+  \node[dev,minimum width=4.8cm] (transfer) at (7.9,-0.9) {controller transfers data};
+
+  \draw[flow] (pa) -- node[stepblue]{1} (os1);
+  \draw[flow] (os1) -- (pb);
+  \draw[flow] (pb) -- (isr);
+  \draw[flow] (isr) -- node[stepblue]{4} (next);
+  \draw[signal] (os1.south) -- node[stepred]{2} (transfer.west);
+  \draw[signal] (transfer.east) -- node[stepred]{3} (isr.south);
+\end{tikzpicture}

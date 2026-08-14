@@ -1,0 +1,97 @@
+% Tutorial set: 01
+% Source: Tutorial One, p. 1
+% Session date: 2026-08-14
+% Human verified: Yes
+
+\section{Tutorial 01：OS Operation、Protection 与 Multiprogramming}
+\label{tutorial:SC2005-TUT01}
+
+\exercisemeta
+  {SC2005-TUT01}
+  {2026-08-14}
+  {Tutorial One，p.~1，Questions 1--3}
+  {已完成并经课堂材料与问答核对}
+  {已确认（2026-08-14）}
+
+\exercisequestion{SC2005-TUT01-Q01}{Computer Operation、Interrupt 与 DMA}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L02-T03}{Interrupt-driven I/O、Context 与 DMA}
+
+\subsubsection*{题目}
+
+说明 CPU、device controller（设备控制器）与 main memory（主存）如何协作完成 I/O；比较 ordinary interrupt-driven I/O（普通中断驱动 I/O）和 DMA（直接内存访问），并说明 OS 在其中的作用。
+
+\begin{checkedsolution}
+User process 先通过 system call 请求 I/O，OS 检查权限并配置 controller。Process 可在等待期间进入 blocked state（阻塞状态），由 scheduler 运行其他 ready process（就绪进程）；controller 完成操作后通过 hardware interrupt 通知 CPU，OS 执行 ISR 并更新等待进程的状态。
+
+在课程的 ordinary I/O 模型中，完成中断到达时数据仍可能在 controller buffer，CPU/driver 还要把数据搬入 main memory。DMA 中，OS 预先设置 memory region 和 transfer count，controller 直接在 device 与 main memory 之间传输 block，完成后再产生 interrupt。因此 DMA 减少 CPU 的逐项搬运与中断开销，但不省略初始化、权限检查和完成处理。
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+DMA 不是“完全不需要 CPU”，也不是 polling（轮询）：CPU 仍配置传输，device 完成后仍用 interrupt 通知 OS。
+
+\exercisequestion{SC2005-TUT01-Q02}{Protection 与 Trap 判断}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L02-T04}{Dual-mode、I/O 与 Memory Protection}；
+\relatedtopic{SC2005-L02-T05}{OS Services、API 与 System Call}
+
+\subsubsection*{题目与判断}
+
+在本课程的 protection model（保护模型）下，判断下列说法并说明理由。
+
+\begin{enumerate}[label=(\alph*)]
+  \item 所有 I/O instructions 都是 privileged instructions。
+  \item $\text{base}=\texttt{0x1000}$、$\text{limit}=\texttt{0x1000}$ 时，访问 \texttt{0x1FFF} 会产生 trap。
+  \item Windows 和 Linux 属于 real-time operating systems（实时操作系统）。
+  \item System call 总会引起 trap。
+\end{enumerate}
+
+\begin{checkedsolution}
+\begin{enumerate}[label=(\alph*)]
+  \item \textbf{True（按课程模型）。}I/O 需要由 OS 统一检查操作合法性和 access permission（访问权限），普通程序必须经 system call 请求。现代 memory-mapped I/O 的指令形式可能是普通 load/store，但对应地址仍受 privilege 与 mapping 保护。
+  \item \textbf{False。}合法区间为
+    \[
+      [\texttt{0x1000},\texttt{0x1000}+\texttt{0x1000})
+      =[\texttt{0x1000},\texttt{0x2000}),
+    \]
+    所以 \texttt{0x1FFF} 是最后一个合法地址；\texttt{0x2000} 才越界。
+  \item \textbf{False（默认配置）。}Windows 和普通 Linux distribution（发行版）主要是 general-purpose OS，不能保证所有关键任务满足 fixed deadline（固定截止时间）。特定 real-time extension/configuration（实时扩展/配置）不改变该默认分类。
+  \item \textbf{True（按课程语义）。}System call 通过专门的 instruction 产生受控的 synchronous exception/trap，使 CPU 从 user mode 进入 kernel mode。不同 architecture（体系结构）可能称其为 \texttt{syscall}、\texttt{svc} 等，但 privilege transition（特权级转换）的语义相同。
+\end{enumerate}
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+Base-limit 区间的上界不包含在内；root/admin permission（管理员权限）也不能替代 CPU 的 kernel mode。
+
+\exercisequestion{SC2005-TUT01-Q03}{Multiprogramming 与 Multiprocessing}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L02-T02}{Multiprogramming、Time-sharing 与 Multiprocessing}
+
+\subsubsection*{题目}
+
+区分 multiprogramming（多道程序设计）与 multiprocessing（多处理），并说明两者各自的主要动机。
+
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}X@{}}
+  \toprule
+  概念 & 条件与行为 & 主要动机 \\
+  \midrule
+  Multiprogramming & 多个 programs/jobs 同驻 memory；一个 job 等待 I/O 时，OS 把单个 CPU 切换给另一个 job & 重叠 CPU work 与 I/O wait，提高 utilization；单核也可实现 \\
+  Multiprocessing & 系统具有多个 processors/cores，可同时执行多个 instruction streams & 提高 throughput、获得 parallelism，并可能通过 redundancy（冗余）改善可靠性 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+因此“memory 中存在多个 jobs”不代表它们正在并行执行。Multithreading 也不是 multiprocessing 的同义词：多个 threads 可以在单核上交替并发，也可以在多核上并行。
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+先判断题目描述的是 software scheduling mechanism（软件调度机制）还是 multiple execution resources（多个执行资源）；前者对应 multiprogramming，后者才对应 multiprocessing。
