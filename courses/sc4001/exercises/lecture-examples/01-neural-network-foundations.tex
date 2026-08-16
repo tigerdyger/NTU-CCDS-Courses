@@ -1,0 +1,108 @@
+% Lecture example set: SC4001-L01
+% Source: 1_foundations pp. 13--14; L1_summary pp. 12--14
+% Human verified: Yes
+
+\exercisemeta
+  {SC4001-L01-EX}
+  {2026-08-14}
+  {1\_foundations pp.~13--14；L1\_summary pp.~12--14}
+  {答案已根据讲义与讨论核对}
+  {已确认（2026-08-16）}
+
+\exercisequestion{SC4001-L01-E01}{Single-neuron Forward Computation}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4001-L01-T02}{Artificial Neuron 与 Forward Computation}；
+\relatedtopic{SC4001-L01-T03}{Activation Functions 与 Nonlinearity}
+
+\subsubsection*{题目}
+
+一个 neuron（神经元）的参数和 activation function（激活函数）为
+\[
+  \bm w=
+  \begin{bmatrix}2.5\\-0.2\\1.0\end{bmatrix},
+  \qquad b=-0.5,
+  \qquad f(u)=\frac{0.8}{1+e^{-1.2u}}.
+\]
+分别求 inputs（输入）
+\[
+  \bm x^{(1)}=
+  \begin{bmatrix}0.8\\2.0\\-0.5\end{bmatrix},
+  \qquad
+  \bm x^{(2)}=
+  \begin{bmatrix}-0.4\\1.5\\1.0\end{bmatrix}
+\]
+对应的 synaptic input（突触输入）$u$ 和 output（输出）$y$。
+
+\begin{checkedsolution}
+对于第一个 input，
+\begin{align*}
+  u^{(1)}
+    &=\bm w^{\mathsf T}\bm x^{(1)}+b \\
+    &=2.5(0.8)-0.2(2.0)+1.0(-0.5)-0.5=0.6,\\
+  y^{(1)}
+    &=\frac{0.8}{1+e^{-1.2(0.6)}}\approx0.538.
+\end{align*}
+对于第二个 input，
+\begin{align*}
+  u^{(2)}
+    &=2.5(-0.4)-0.2(1.5)+1.0(1.0)-0.5=-0.8,\\
+  y^{(2)}
+    &=\frac{0.8}{1+e^{-1.2(-0.8)}}\approx0.222.
+\end{align*}
+\end{checkedsolution}
+
+\textbf{检查点：}先计算 $u$，再代入 $f$；图中连接 constant input（常数输入）$+1$ 的 $-0.5$ 是 bias。Sigmoid-like output（类 Sigmoid 输出）是连续值，$u>0$ 不代表 $y=1$。
+
+\exercisequestion{SC4001-L01-E02}{Discrete Perceptron 与 Odd Parity}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4001-L01-T02}{Artificial Neuron 与 Forward Computation}；
+\relatedtopic{SC4001-L01-T03}{Activation Functions 与 Nonlinearity}
+
+\subsubsection*{题目}
+
+一个 network（网络）接收 binary input（布尔输入）$\bm x=(x_1,x_2,x_3)\in\{0,1\}^3$。所有 neurons 使用 threshold activation（阈值激活）$\mathbf 1(u>0)$。令
+\begin{align*}
+  u_1&=x_1+x_2+x_3-\tfrac12,& y_1&=\mathbf 1(u_1>0),\\
+  u_2&=x_1+x_2+x_3-\tfrac32,& y_2&=\mathbf 1(u_2>0),\\
+  u_3&=x_1+x_2+x_3-\tfrac52,& y_3&=\mathbf 1(u_3>0),\\
+  u&=y_1-y_2+y_3-\tfrac12,& y&=\mathbf 1(u>0).
+\end{align*}
+求该 network 实现的 Boolean function（布尔函数）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.9\textwidth}{!}{\input{figures/parity-network}}
+  \caption{讲义 network 的等价紧凑表示：先统计 $s=x_1+x_2+x_3$，再构造三个 threshold features（阈值特征）。}
+  \label{fig:sc4001-l01-parity-network}
+\end{figure}
+
+\begin{checkedsolution}
+令 $s=x_1+x_2+x_3$，即输入中 1 的数量。则 $y_1,y_2,y_3$ 分别表示 $s\ge1$、$s\ge2$、$s=3$。逐个检查 $s\in\{0,1,2,3\}$：
+\begin{center}
+\begin{tabular}{@{}cccccc@{}}
+  \toprule
+  $s$ & $y_1$ & $y_2$ & $y_3$ & $u$ & $y$ \\
+  \midrule
+  0 & 0 & 0 & 0 & $-\tfrac12$ & 0 \\
+  1 & 1 & 0 & 0 & $ \tfrac12$ & 1 \\
+  2 & 1 & 1 & 0 & $-\tfrac12$ & 0 \\
+  3 & 1 & 1 & 1 & $ \tfrac12$ & 1 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+因此 network 在输入中有奇数个 1 时输出 1：
+\[
+  \boxed{y=x_1\oplus x_2\oplus x_3}.
+\]
+等价的 sum-of-products（乘积项之和）形式为
+\[
+  y=\bar x_1\bar x_2x_3
+   +\bar x_1x_2\bar x_3
+   +x_1\bar x_2\bar x_3
+   +x_1x_2x_3.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}当 $s=2$ 时 $y_1=y_2=1$，两者在 output neuron 中相消，所以 $y=0$。Odd parity（奇校验）不是 linearly separable（线性可分）的；hidden layer（隐藏层）使网络能够实现单个 threshold neuron 无法表示的 Boolean function。

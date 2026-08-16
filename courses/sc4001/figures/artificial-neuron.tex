@@ -1,0 +1,27 @@
+\begin{tikzpicture}[
+  >=Latex,
+  node distance=1.0cm and 1.5cm,
+  every node/.style={font=\small},
+  input/.style={circle,draw=noteBlue,thick,minimum size=7mm},
+  op/.style={circle,draw=ntuRed,thick,minimum size=10mm},
+  block/.style={draw=noteBlue,rounded corners,thick,minimum width=15mm,minimum height=9mm}
+]
+  \node[input] (x1) {$x_1$};
+  \node[input,below=of x1] (x2) {$x_2$};
+  \node[below=0.7cm of x2] (dots) {$\vdots$};
+  \node[input,below=0.7cm of dots] (xn) {$x_n$};
+  \node[input,below=of xn] (bias) {$+1$};
+
+  \node[op,right=3.1cm of dots] (sum) {$\sum$};
+  \node[block,right=1.5cm of sum] (act) {$f(u)$};
+  \node[right=1.4cm of act] (out) {$y$};
+
+  \draw[->] (x1) -- node[above,sloped] {$w_1$} (sum);
+  \draw[->] (x2) -- node[above,sloped] {$w_2$} (sum);
+  \draw[->] (xn) -- node[above,sloped] {$w_n$} (sum);
+  \draw[->] (bias) -- node[above,sloped] {$b$} (sum);
+  \draw[->,thick] (sum) -- node[above] {$u=\bm w^{\mathsf T}\bm x+b$} (act);
+  \draw[->,thick] (act) -- (out);
+
+  \node[fit=(x1)(xn),draw=noteBlue,dashed,rounded corners,inner sep=5pt,label=above:{input vector $\bm x$}] {};
+\end{tikzpicture}

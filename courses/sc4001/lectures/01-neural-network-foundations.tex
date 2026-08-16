@@ -1,0 +1,152 @@
+% Actual class: 01
+% Slide decks: 0_overview; 1_foundations; L1_summary
+% Exact scope: 0_overview pp. 1--26; 1_foundations pp. 1--28; L1_summary pp. 1--22
+% Video supplement: Lecture1_Part1 and Lecture1_Part2, complete visual scope checked
+% Human verified: Yes
+
+\section{第 01 节课：Artificial Neurons 与 Gradient-based Learning}
+\label{lecture:SC4001-L01}
+
+\lecturemeta
+  {SC4001-L01}
+  {2026-08-14}
+  {0\_overview；1\_foundations；L1\_summary}
+  {0\_overview pp.~1--26；1\_foundations pp.~1--28；L1\_summary pp.~1--22}
+  {Lecture1\_Part1（36:40）与 Lecture1\_Part2（56:27）；完整画面范围已核对}
+  {已确认（2026-08-16；检查题全部答对）}
+
+\subsection{本讲主线}
+
+Artificial neuron（人工神经元）先计算 affine input（仿射输入）$u=\bm w^{\mathsf T}\bm x+b$，再通过 activation function（激活函数）得到 $y=f(u)$。Training（训练）则选择 weights（权重）与 biases（偏置）以最小化 loss function（损失函数），gradient descent（梯度下降）沿 negative gradient（负梯度）迭代更新参数。
+
+\textbf{课程提示：}本课程采用 flipped classroom（翻转课堂）；课前观看录像，课堂用于总结、例题、代码与互动。当前考核为 programming assignment（25\%）、group project（30\%）、open-book final exam（40\%）和 tutorial participation（5\%）。
+
+\lecturetopic{SC4001-L01-T01}{从 Biological Neuron 到 Artificial Neural Network}
+
+\keyidea{Artificial neural network（人工神经网络）只借用了“输入、连接强度、聚合、输出”的结构性类比，并不是 biological brain（生物大脑）的精确复制。}
+
+\begin{center}
+\small
+\begin{tabularx}{0.9\textwidth}{@{}>{\raggedright\arraybackslash}p{3.4cm}X@{}}
+  \toprule
+  Biological neuron（生物神经元） & Artificial neuron（人工神经元） \\
+  \midrule
+  dendrite（树突） & input / feature（输入/特征）$x_i$ \\
+  synapse（突触） & weight（权重）$w_i$ \\
+  soma（细胞体） & weighted aggregation 与 activation（加权聚合与激活） \\
+  axon（轴突） & output（输出）$y$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Feedforward neural network（前馈神经网络）把 neurons（神经元）按 layers（层）连接；当 hidden layers（隐藏层）较多时通常称为 deep neural network（深度神经网络）。CNN（卷积神经网络）等结构将在后续课程展开，本讲只建立基本计算单元。
+
+\lecturetopic{SC4001-L01-T02}{Artificial Neuron 与 Forward Computation}
+
+令 input vector（输入向量）$\bm x\in\mathbb R^n$、weight vector（权重向量）$\bm w\in\mathbb R^n$、bias（偏置）$b\in\mathbb R$。Neuron（神经元）的 forward computation（前向计算）为
+\[
+  \boxed{u=\bm w^{\mathsf T}\bm x+b
+  =\sum_{i=1}^{n}w_i x_i+b},
+  \qquad
+  \boxed{y=f(u)}.
+\]
+$u$ 是 total synaptic input（总突触输入）或 pre-activation（激活前值）；$f(u)$ 是 activation（激活值）。本讲模型中 output（输出）等于 activation，即 $y=f(u)$。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.82\textwidth}{!}{\input{figures/artificial-neuron}}
+  \caption{Artificial neuron（人工神经元）的两阶段计算：weighted sum（加权和）后接 activation function（激活函数）。}
+  \label{fig:sc4001-l01-artificial-neuron}
+\end{figure}
+
+Bias 可视为 constant input（常数输入）$+1$ 对应的额外权重。它移动 boundary（边界）$\bm w^{\mathsf T}\bm x+b=0$；若没有 bias，线性边界被强制通过 origin（原点）。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L01-E01}{Single-neuron Forward Computation}。
+
+\lecturetopic{SC4001-L01-T03}{Activation Functions 与 Nonlinearity}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{2.2cm}X@{}}
+  \toprule
+  Function & 定义 & Range（值域） & 核心性质 \\
+  \midrule
+  Threshold / unit step & $\mathbf 1(u>0)$ & $\{0,1\}$ & binary decision（离散判断）；$u=0$ 时输出 0 \\
+  Linear & $u$ & $\mathbb R$ & 适合 regression output（回归输出）；本身不增加非线性 \\
+  ReLU & $\max(0,u)$ & $[0,\infty)$ & 计算简单；负半轴输出为 0 \\
+  Sigmoid & $1/(1+e^{-u})$ & $(0,1)$ & 平滑、可微；大 $|u|$ 区域容易 saturation（饱和） \\
+  Tanh & $(e^u-e^{-u})/(e^u+e^{-u})$ & $(-1,1)$ & 与 sigmoid 类似，但以 0 为中心 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+若每一层都使用 linear activation（线性激活），多层 affine maps（仿射映射）的复合仍是单个 affine map；hidden-layer nonlinearity（隐藏层非线性）才使网络能表示更复杂的函数。
+
+讲义把 sigmoid unit（Sigmoid 单元）列为 perceptron；现代用法通常把 perceptron 特指 threshold unit（阈值单元）。复习时应识别课程术语，同时避免在一般语境中混用。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L01-E02}{Discrete Perceptron 与 Odd Parity}。
+
+\lecturetopic{SC4001-L01-T04}{Tensor 与 Computational Graph}
+
+Tensor（张量）是 multidimensional array（多维数组）。Rank（阶数）是 axis（轴）的数量，shape（形状）记录每个轴的长度；例如 vector（向量）的 rank 为 1，$2\times3$ matrix（矩阵）的 rank 为 2、shape 为 $(2,3)$。
+
+Computational graph（计算图）把
+\[
+  (\bm x,\bm w,b)\longrightarrow
+  u=\bm w^{\mathsf T}\bm x+b\longrightarrow y=f(u)
+\]
+表示为有依赖关系的 tensor operations（张量运算）。PyTorch 依据这张图完成 forward evaluation（前向求值），并在后续课程中通过 autograd（自动微分）计算 gradients（梯度）。本讲 notebook 只实现该流程，不引入新的数学结论。
+
+\lecturetopic{SC4001-L01-T05}{Learning Objective 与 Gradient Descent}
+
+Supervised learning（监督学习）使用 input--target pairs（输入--目标对）$(\bm x_p,d_p)$；unsupervised learning（无监督学习）没有给定 target，模型从 input structure（输入结构）中学习表示或聚类。
+
+Training 的目标是寻找使 cost/loss function（代价/损失函数）最小的参数：
+\[
+  \boxed{\bm W^*,\bm b^*
+    =\arg\min_{\bm W,\bm b}J(\bm W,\bm b)}.
+\]
+Negative gradient 给出局部 steepest descent direction（最速下降方向），因此
+\[
+  \boxed{\bm W\leftarrow\bm W-\alpha\nabla_{\bm W}J},
+  \qquad
+  \boxed{\bm b\leftarrow\bm b-\alpha\nabla_{\bm b}J},
+\]
+其中 $\alpha>0$ 是 learning rate（学习率）。$\alpha$ 太小会收敛缓慢；太大可能越过 minimum（极小值），导致 oscillation（振荡）或 divergence（发散）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.78\textwidth}{!}{\input{figures/gradient-descent}}
+  \caption{一维 loss curve（损失曲线）上的 gradient descent（梯度下降）：参数沿 gradient 的反方向移动。}
+  \label{fig:sc4001-l01-gradient-descent}
+\end{figure}
+
+Local minimum（局部极小值）与 global minimum（全局极小值）的图示只是一维直觉；真实 deep-network loss landscape（深度网络损失地形）是高维且通常 non-convex（非凸）的。
+
+\lecturetopic{SC4001-L01-T06}{Training Dataset、Epoch 与 Batch Size}
+
+含 $P$ 个 samples（样本）的 supervised dataset（监督数据集）写作
+\[
+  \mathcal D=\{(\bm x_p,d_p)\}_{p=1}^{P},
+  \qquad \bm x_p\in\mathbb R^n.
+\]
+按行堆叠 inputs 得 data matrix（数据矩阵）$\bm X\in\mathbb R^{P\times n}$。一个 epoch（轮次）表示全部 $P$ 个样本被处理一次；parameter update（参数更新）次数由 batch size（批大小）$B$ 决定。
+
+\begin{center}
+\small
+\begin{tabularx}{0.92\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{2.6cm}X@{}}
+  \toprule
+  Method & Batch size & 每个 epoch 的更新次数 \\
+  \midrule
+  SGD（课程定义） & $B=1$ & $P$ \\
+  Mini-batch GD（补充） & $1<B<P$ & $\lceil P/B\rceil$ \\
+  Full-batch GD & $B=P$ & $1$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+SGD 使用单个 sample loss（单样本损失）$J_p$ 立即更新；full-batch GD 先用全体样本计算 $J$ 再更新一次。现代训练通常使用位于两者之间的 mini-batch gradient descent（小批量梯度下降）。
+
+\subsection{一分钟回顾}
+
+Artificial neuron 依次计算 $u=\bm w^{\mathsf T}\bm x+b$ 与 $y=f(u)$；nonlinear activation（非线性激活）让多层网络超越单个线性映射。Training 通过最小化 loss 学习 weights 与 biases，gradient descent 沿 negative gradient 更新参数。Dataset 的 batch size 决定一个 epoch 内的更新次数：SGD 每个样本更新，full-batch GD 每轮只更新一次。

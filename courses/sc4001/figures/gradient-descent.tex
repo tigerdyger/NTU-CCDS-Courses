@@ -1,0 +1,14 @@
+\begin{tikzpicture}[>=Latex,every node/.style={font=\small}]
+  \draw[->] (-0.3,0) -- (8.2,0) node[right] {$w$};
+  \draw[->] (0,-0.2) -- (0,4.5) node[above] {$J(w)$};
+  \draw[very thick,noteBlue,smooth] plot coordinates {
+    (0.3,3.7) (1.1,2.4) (2.0,1.2) (3.0,0.7)
+    (4.0,1.0) (5.1,2.1) (6.2,3.4) (7.5,4.0)
+  };
+  \fill[ntuRed] (6.2,3.4) circle (2.5pt) node[above right] {$w_t$};
+  \draw[ntuRed,thick] (5.4,2.65) -- (7.0,4.15)
+    node[right] {slope $>0$};
+  \draw[->,very thick,ntuRed] (6.1,2.75) -- (5.0,2.0)
+    node[midway,below,sloped] {$-\alpha\,\nabla J$};
+  \fill[noteBlue] (3.0,0.7) circle (2.5pt) node[below] {minimum};
+\end{tikzpicture}

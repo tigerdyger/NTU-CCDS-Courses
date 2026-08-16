@@ -1,0 +1,21 @@
+\begin{tikzpicture}[
+  >=Latex,
+  every node/.style={font=\small},
+  block/.style={draw=noteBlue,rounded corners,thick,align=center,minimum height=10mm},
+  gate/.style={draw=ntuRed,rounded corners,thick,align=center,minimum width=23mm,minimum height=10mm}
+]
+  \node[block] (input) {$x_1,x_2,x_3$};
+  \node[block,right=1.4cm of input] (sum) {$s=x_1+x_2+x_3$};
+  \node[gate,right=1.6cm of sum,yshift=1.3cm] (y1) {$y_1=\mathbf 1(s>\tfrac12)$};
+  \node[gate,right=1.6cm of sum] (y2) {$y_2=\mathbf 1(s>\tfrac32)$};
+  \node[gate,right=1.6cm of sum,yshift=-1.3cm] (y3) {$y_3=\mathbf 1(s>\tfrac52)$};
+  \node[block,right=1.8cm of y2] (out) {$y=\mathbf 1\!\left(y_1-y_2+y_3>\tfrac12\right)$};
+
+  \draw[->,thick] (input) -- (sum);
+  \draw[->] (sum) -- (y1);
+  \draw[->] (sum) -- (y2);
+  \draw[->] (sum) -- (y3);
+  \draw[->] (y1) -- node[above,sloped] {$+1$} (out);
+  \draw[->] (y2) -- node[above] {$-1$} (out);
+  \draw[->] (y3) -- node[below,sloped] {$+1$} (out);
+\end{tikzpicture}
