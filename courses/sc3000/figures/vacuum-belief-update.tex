@@ -1,0 +1,16 @@
+\begin{tikzpicture}[
+  >=Latex,
+  every node/.style={font=\small},
+  state/.style={draw=noteBlue,rounded corners,thick,minimum width=24mm,minimum height=10mm,align=center}
+]
+  \node[state] (b0) {$B_0$\\$\{1,2,3,4,5,6,7,8\}$};
+  \node[state,right=1.45cm of b0] (b1) {$B_1$\\$\{2,4,6,8\}$};
+  \node[state,right=1.45cm of b1] (b2) {$B_2$\\$\{4,8\}$};
+  \node[state,right=1.45cm of b2] (b3) {$B_3$\\$\{3,7\}$};
+  \node[state,right=1.45cm of b3] (b4) {$B_4$\\$\{7\}$};
+
+  \draw[->,thick] (b0) -- node[above] {right} (b1);
+  \draw[->,thick] (b1) -- node[above] {suck} (b2);
+  \draw[->,thick] (b2) -- node[above] {left} (b3);
+  \draw[->,thick] (b3) -- node[above] {suck} (b4);
+\end{tikzpicture}

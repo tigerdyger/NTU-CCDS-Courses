@@ -1,0 +1,116 @@
+% Actual class: 01
+% Slide decks: CZ3005 Module 1_Introduction; CZ3005 Module 2_Intelligent Agents and Search
+% Exact scope: Module 1 pp. 1--18; Module 2 pp. 1--28, inferred from Week 2 schedule
+% NTULearn supplement: None
+% Human verified: Concepts discussed and checks completed; exact classroom endpoint unconfirmed
+
+\section{第 01 节课：Intelligent Agents 与 Problem Formulation}
+\label{lecture:SC3000-L01}
+
+\lecturemeta
+  {SC3000-L01}
+  {2026-08-17}
+  {CZ3005 Module 1；CZ3005 Module 2}
+  {Module 1 pp.~1--18；Module 2 pp.~1--28（按 Week 2 schedule 推定）}
+  {无}
+  {知识内容已讨论并通过检查题；实际课堂终点待核对}
+
+\subsection{本讲主线}
+
+Artificial intelligence（人工智能）在本课程中被落实为可操作的问题：agent（智能体）如何感知 environment（环境）、依据 performance measure（性能指标）选择 rational action（理性动作），并把目标形式化为可搜索的 state space（状态空间）。历史与前沿案例只作背景，本讲的核心是 agent、task environment 与 problem formulation。
+
+\textbf{课程提示：}Tutorial 从 Week 3 开始；两次 Lab 从 Week 6 起安排，具体信息以 NTULearn 公告为准。当前考核为 programming/lab assignment（40\%）和 final exam（60\%）。
+
+\lecturetopic{SC3000-L01-T01}{AI 的课程视角}
+
+\keyidea{“由机器表现出的 intelligence（智能）”只是宽泛描述；本课程用 rational agent（理性智能体）框架把 AI 转化为可定义、可计算、可评价的问题。}
+
+AlphaGo、large language model（大语言模型）、diffusion model（扩散模型）和 scientific discovery（科学发现）展示了 AI 在特定任务上的能力，但不自动等价于 general intelligence（通用智能）或 causal understanding（因果理解）。后续课程主线是
+\[
+  \text{agent}\longrightarrow\text{search}\longrightarrow
+  \text{decision making}\longrightarrow\text{learning}.
+\]
+
+\lecturetopic{SC3000-L01-T02}{Agent 与 Rationality}
+
+Agent 通过 sensors（传感器）接收 percepts（感知结果），再通过 effectors / actuators（执行器）向 environment 输出 actions（动作）。Percept sequence（感知序列）是截至当前的全部感知历史。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.82\textwidth}{!}{\input{figures/agent-environment-loop}}
+  \caption{Agent--environment loop（智能体--环境循环）：感知流入 agent，动作反过来改变环境。}
+  \label{fig:sc3000-l01-agent-loop}
+\end{figure}
+
+Rational action 是在当前 percept sequence、built-in knowledge（内置知识）和 available actions（可用动作）下，使 objective performance measure 的 expected value（期望值）最大的动作。按课件定义可形式化补充为
+\[
+  \boxed{a_t^*=\arg\max_{a\in\mathcal A}
+  \mathbb E\!\left[M\mid p_{1:t},K,a\right]}.
+\]
+Rational 不等于 omniscient（全知）、必然成功或符合人类道德；判断时必须同时检查 performance measure 和 agent 当时掌握的信息。若目标函数只奖励速度，违法捷径仍可能在该错误目标下“理性”。
+
+\textbf{对应例题：}\relatedexercise{SC3000-L01-E01}{Driverless Taxi 的任务描述与环境分类}。
+
+\lecturetopic{SC3000-L01-T03}{Task Environment 的五组性质}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.5cm}X>{\raggedright\arraybackslash}p{4.0cm}@{}}
+  \toprule
+  维度 & 判断问题 & 典型例子 \\
+  \midrule
+  Fully / partially observable（完全/部分可观测） & Sensors 能否获得完整 state？ & Chess 完全可观测；驾驶部分可观测 \\
+  Deterministic / stochastic（确定性/随机性） & 给定当前 state 与 action，下一 state 是否唯一？ & 棋规确定；真实交通含不确定性 \\
+  Episodic / sequential（情节式/序列式） & 当前 action 是否影响后续决策？ & 单图分类情节式；下棋序列式 \\
+  Static / dynamic（静态/动态） & Agent 思考时环境是否继续变化？ & 无计时棋局静态；驾驶动态 \\
+  Discrete / continuous（离散/连续） & States、percepts 或 actions 是否连续取值？ & 棋盘离散；速度与距离连续 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+各维度彼此独立：partially observable 不等于 stochastic。Chess with a clock（带计时器的国际象棋）通常归为 fully observable、deterministic、sequential、semidynamic（半动态）和 discrete；棋盘不自行变化，但剩余时间持续减少。
+
+\lecturetopic{SC3000-L01-T04}{Well-defined Problem Formulation}
+
+Problem-solving agent（问题求解智能体）依次进行 goal formulation（目标制定）、problem formulation（问题形式化）、search（搜索）与 execution（执行）。一个 well-defined problem（良定义问题）可写成
+\[
+  \boxed{\mathcal P=(S,A,T,s_0,G,c)},
+\]
+其中 $S$ 是 state space，$A$ 是 action set，$T$ 是 transition model（状态转移模型），$s_0$ 是 initial state，$G$ 是 goal test，$c$ 是 step cost（单步代价）。一条路径的 path cost 为
+\[
+  \boxed{g(n)=\sum_{i=0}^{k-1}c(s_i,a_i,s_{i+1})}.
+\]
+Solution（解）是一串合法 actions，使 $s_0$ 到达满足 $G$ 的状态。评价方案时需区分 search cost（离线搜索成本）与 execution cost（在线执行成本），两者之和才是实际问题求解成本。
+
+\textbf{严格性补充：}8-puzzle（八数码）的全部排列有 $9!$ 个，但从固定 initial state 可达的状态因 permutation parity（排列奇偶性）只有 $9!/2=181\,440$ 个。
+
+\lecturetopic{SC3000-L01-T05}{Single-state、Belief State 与 Multiple-state Problem}
+
+在 fully observable 且 deterministic 的模型中，agent 知道唯一 current state，这是 single-state problem（单状态问题）。若真实状态不可完全观测，agent 用 belief state（信念状态）
+\[
+  B_t\subseteq S
+\]
+表示根据当前 action--percept history 仍不能排除的 states。真实世界并非同时处于多个状态；不确定性位于 agent 的知识中。
+
+在 deterministic 且没有新 observation 的情况下，belief update（信念更新）为
+\[
+  B_{t+1}=\{T(s,a_t):s\in B_t\}.
+\]
+Simple Vacuum World（简单吸尘器世界）有 $2\times2\times2=8$ 个 states。初始状态完全未知时，动作序列
+\[
+  \texttt{right},\ \texttt{suck},\ \texttt{left},\ \texttt{suck}
+\]
+能保证两侧都干净，其 belief states 如\cref{fig:sc3000-l01-belief-update}。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.97\textwidth}{!}{\input{figures/vacuum-belief-update}}
+  \caption{Vacuum World 的 belief-state update：动作逐步排除不可能状态，最终确定处于干净的状态 7。}
+  \label{fig:sc3000-l01-belief-update}
+\end{figure}
+
+\textbf{对应例题：}\relatedexercise{SC3000-L01-E02}{Vacuum World 的保证清洁方案}。
+
+\subsection{一分钟回顾}
+
+Agent 在 perception--action loop（感知--行动循环）中工作；rationality 由 performance measure、已有信息与可用动作共同决定。Task environment 的五组性质必须分别判断。Problem formulation 把现实任务写成 states、actions、transition、goal test 与 cost；状态不完全可知时，以会随动作和观察更新的 belief state 表示不确定性。

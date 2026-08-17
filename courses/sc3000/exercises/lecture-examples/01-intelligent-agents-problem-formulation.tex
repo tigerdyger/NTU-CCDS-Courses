@@ -1,0 +1,63 @@
+% Lecture example set: SC3000-L01
+% Source: CZ3005 Module 2 pp. 5--8 and pp. 15--17
+% Human verified: Yes
+
+\exercisemeta
+  {SC3000-L01-EX}
+  {2026-08-17}
+  {CZ3005 Module 2 pp.~5--8、15--17}
+  {答案已根据讲义与讨论核对}
+  {已确认（2026-08-17）}
+
+\exercisequestion{SC3000-L01-E01}{Driverless Taxi 的任务描述与环境分类}
+
+\textbf{对应知识点：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L01-T02}{Agent 与 Rationality}
+  \item \relatedtopic{SC3000-L01-T03}{Task Environment 的五组性质}
+\end{itemize}
+
+\subsubsection*{题目}
+
+依据讲义中的 driverless taxi（无人驾驶出租车），列出其 percepts、actions、performance measure 与 environment，并判断 task environment 的五组性质。
+
+\begin{checkedsolution}
+Percepts 包括 video、speed、acceleration、engine status、GPS 与 radar；actions 包括 steer、accelerate、brake、horn 与 display。Performance measure 可包含 safety、到达目的地、遵守法律、乘客舒适度与利润；environment 包括道路、交通参与者、天气与乘客。
+
+按讲义模型，该环境是 partially observable、nondeterministic、sequential、dynamic 与 continuous。分类取决于建模边界；例如把速度离散化不会改变现实物理量本身连续这一事实。
+\end{checkedsolution}
+
+\textbf{检查点：}五个维度分别回答“看得全吗、转移唯一吗、动作影响未来吗、思考时会变化吗、变量连续吗”，不可由一个维度推出另一个维度。
+
+\clearpage
+\exercisequestion{SC3000-L01-E02}{Vacuum World 的保证清洁方案}
+
+\textbf{对应知识点：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L01-T04}{Well-defined Problem Formulation}
+  \item \relatedtopic{SC3000-L01-T05}{Single-state、Belief State 与 Multiple-state Problem}
+\end{itemize}
+
+\subsubsection*{题目}
+
+Simple Vacuum World 有左右两个位置，每处可能干净或有灰尘，agent 可能位于任一侧。动作是 \texttt{left}、\texttt{right} 和 \texttt{suck}。若初始状态完全未知、动作结果确定且没有新 observation，给出保证清洁的动作序列并跟踪 belief state。
+
+\begin{checkedsolution}
+状态数为 $2\times2\times2=8$，初始 belief state 为
+\[
+  B_0=\{1,2,3,4,5,6,7,8\}.
+\]
+执行序列 \texttt{right, suck, left, suck}：
+\[
+  \begin{aligned}
+    B_0&=\{1,2,3,4,5,6,7,8\}
+      \xrightarrow{\texttt{right}} B_1=\{2,4,6,8\},\\
+    B_1&\xrightarrow{\texttt{suck}} B_2=\{4,8\}
+      \xrightarrow{\texttt{left}} B_3=\{3,7\}
+      \xrightarrow{\texttt{suck}} B_4=\{7\}.
+  \end{aligned}
+\]
+因此无论真实 initial state 是哪一个，左右两侧最终都干净，且 agent 确定自己位于左侧的状态 7。
+\end{checkedsolution}
+
+\textbf{检查点：}Belief state 是“当前仍不能排除的状态集合”，不是多个真实状态同时存在，也不只记录 initial states。

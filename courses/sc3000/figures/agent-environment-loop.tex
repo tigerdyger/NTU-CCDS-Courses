@@ -1,0 +1,16 @@
+\begin{tikzpicture}[
+  >=Latex,
+  every node/.style={font=\small},
+  block/.style={draw=noteBlue,rounded corners,thick,minimum width=32mm,minimum height=14mm,align=center},
+  channel/.style={draw=ntuRed,rounded corners,thick,minimum width=26mm,minimum height=10mm,align=center}
+]
+  \node[block] (env) {Environment\\（环境）};
+  \node[channel,right=2.2cm of env,yshift=1.1cm] (sensor) {Sensors\\（传感器）};
+  \node[block,right=2.2cm of sensor,yshift=-1.1cm] (agent) {Agent\\（智能体）};
+  \node[channel,left=2.2cm of agent,yshift=-1.1cm] (actuator) {Actuators\\（执行器）};
+
+  \draw[->,thick] (env) -- node[above,sloped] {percepts} (sensor);
+  \draw[->,thick] (sensor) -- node[above,sloped] {$p_t$} (agent);
+  \draw[->,thick] (agent) -- node[below,sloped] {$a_t$} (actuator);
+  \draw[->,thick] (actuator) -- node[below,sloped] {actions} (env);
+\end{tikzpicture}
