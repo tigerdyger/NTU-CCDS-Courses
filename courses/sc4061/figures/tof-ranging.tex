@@ -1,0 +1,20 @@
+\begin{tikzpicture}[>=Latex,font=\small]
+  \node[draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum width=2.5cm,minimum height=1.6cm,align=center] (sensor)
+    {emitter + receiver\\（发射器与接收器）};
+  \node[draw=ntuRed,very thick,minimum width=0.25cm,minimum height=3.0cm,
+    right=8.6cm of sensor] (target) {};
+  \node[right=0.2cm of target,align=left] {object surface\\（物体表面）};
+
+  \draw[->,very thick,draw=ntuRed]
+    ([yshift=0.42cm]sensor.east) -- node[above]{emitted pulse（发射脉冲）} ([yshift=0.42cm]target.west);
+  \draw[->,very thick,draw=noteBlue]
+    ([yshift=-0.42cm]target.west) -- node[below]{returned pulse（返回脉冲）} ([yshift=-0.42cm]sensor.east);
+
+  \draw[<->,draw=gray,thick]
+    ([yshift=-1.45cm]sensor.east) -- node[fill=white,inner sep=2pt] {$d$} ([yshift=-1.45cm]target.west);
+  \node[below=0.72cm of sensor,align=center]
+    {$t_0$：send\\$t_0+\Delta t$：receive};
+  \node[below=1.0cm of target,anchor=east,align=right]
+    {$2d=c\Delta t$\\$d=c\Delta t/2$};
+\end{tikzpicture}

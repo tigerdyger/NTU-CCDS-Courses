@@ -1,0 +1,18 @@
+\begin{tikzpicture}[
+  >=Latex,
+  stage/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum width=3.0cm,minimum height=1.35cm,align=center},
+  flow/.style={->,thick,draw=noteBlue}
+]
+  \node[stage] (rgb) {RGB array\\$A\in\mathbb{R}^{H\times W\times3}$};
+  \node[stage,right=0.65cm of rgb] (score) {brightness score\\$S=A_R+A_G+A_B$};
+  \node[stage,right=0.65cm of score] (mask) {logical mask\\$M=(S>300)$};
+  \node[stage,right=0.65cm of mask] (output) {output image\\$B_c=A_c(1-M)+60M$};
+
+  \draw[flow] (rgb) -- (score);
+  \draw[flow] (score) -- (mask);
+  \draw[flow] (mask) -- (output);
+
+  \node[below=0.48cm of mask,align=center]
+    {$M(i,j)=1$: replace pixel\\$M(i,j)=0$: keep original};
+\end{tikzpicture}

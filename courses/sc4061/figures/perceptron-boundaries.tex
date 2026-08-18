@@ -1,0 +1,25 @@
+\begin{tikzpicture}[>=Latex,font=\small]
+  \begin{scope}
+    \draw[->] (-0.25,0) -- (4.0,0) node[right] {$x_1$};
+    \draw[->] (0,-0.25) -- (0,4.0) node[above] {$x_2$};
+    \draw[very thick,draw=noteBlue] (0,3) -- (3,0)
+      node[pos=0.58,above right,rotate=-45] {$x_1+x_2-3=0$};
+    \fill[ntuRed] (3,3) circle (3pt) node[above right] {$C_1$};
+    \draw[very thick,draw=noteBlue,fill=white] (1,1) circle (3pt) node[below left] {$C_2$};
+    \node[align=center] at (1.9,-0.75) {linearly separable\\（线性可分）};
+  \end{scope}
+
+  \begin{scope}[xshift=7.0cm,scale=2.15]
+    \draw[->] (-0.15,0) -- (1.55,0) node[right] {$x_1$};
+    \draw[->] (0,-0.15) -- (0,1.55) node[above] {$x_2$};
+    \fill[ntuRed] (0,1) circle (1.5pt);
+    \fill[ntuRed] (1,0) circle (1.5pt);
+    \draw[very thick,draw=noteBlue,fill=white] (0,0) circle (1.5pt);
+    \draw[very thick,draw=noteBlue,fill=white] (1,1) circle (1.5pt);
+    \draw[dashed,draw=gray] (-0.05,0.55) -- (1.2,0.55);
+    \draw[dashed,draw=gray] (0.55,-0.05) -- (0.55,1.2);
+    \node[scale=0.48,align=center] at (0.62,-0.38) {XOR: no single line works\\（不存在单一直线分隔）};
+    \node[scale=0.48,text=ntuRed,anchor=west] at (1.18,1.18) {$C_1$: output 1};
+    \node[scale=0.48,text=noteBlue,anchor=west] at (1.18,0.96) {$C_2$: output 0};
+  \end{scope}
+\end{tikzpicture}

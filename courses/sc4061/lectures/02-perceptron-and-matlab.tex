@@ -1,0 +1,165 @@
+% Actual class: 02
+% Slide deck: L1 Imaging v1 full
+% Exact scope: pp. 25--40; L1_MATLAB.m, all sections
+% NTULearn supplement: L1 Part 3 and MATLAB Demo transcripts
+% Human verified: Yes
+
+\section{第 02 节课：Extended Imaging、Perceptron 与 MATLAB Image Operations}
+\label{lecture:SC4061-L02}
+
+\lecturemeta
+  {SC4061-L02}
+  {2026-08-18}
+  {L1 Imaging v1 full；L1\_MATLAB.m}
+  {L1 pp.~25--40；MATLAB 示例全部内容}
+  {课程视频 L1 Part 3 与 MATLAB Demo（字幕核对）}
+  {已确认（2026-08-18）}
+
+\subsection{本讲主线}
+
+本讲从 traditional camera（传统相机）扩展到 computational imaging（计算成像）与其他 sensing modalities（传感模态），随后用 Perceptron（感知机）说明如何从 labelled samples（带标签样本）学习 decision boundary（决策边界）。MATLAB 部分把 image（图像）视为数组，并用 subsampling（下采样）和 logical mask（逻辑掩膜）完成最基本的图像操作。
+
+\lecturetopic{SC4061-L02-T01}{Beyond a Conventional 2D Camera}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.5cm}>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}X@{}}
+  \toprule
+  Imaging method（成像方式） & Measurement（测量量） & 关键结论 \\
+  \midrule
+  Light-field camera（光场相机） & lenslet array（微透镜阵列）采样光线的位置与方向 & 可进行 post-capture refocusing（拍摄后重聚焦），代价是数据量与空间分辨率折衷 \\
+  LiDAR（激光雷达） & laser pulse（激光脉冲）的 round-trip time of flight（往返飞行时间） & 估计 depth（深度），常得到 sparse point cloud（稀疏点云） \\
+  Ultrasound（超声） & 声波回波 & 不依赖可见光，可用于体内结构成像 \\
+  X-ray / CT（X 射线/计算机断层成像） & X 射线穿透后的 attenuation（衰减） & radiograph（投影片）给出二维投影；CT 由多角度投影重建截面或三维体数据 \\
+  MRI（磁共振成像） & magnetic resonance signal（磁共振信号） & 形成体数据，不使用 ionizing X-ray（电离 X 射线） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+LiDAR 的理想 range equation（测距公式）为
+\[
+  \boxed{d=\frac{c\,\Delta t}{2}},
+\]
+其中 $c$ 是光速，$\Delta t$ 是 round-trip time（往返时间）。除以 $2$ 是因为脉冲走过的总路程是 $2d$。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.82\textwidth}{!}{\input{figures/tof-ranging}}
+  \caption{Time-of-Flight（飞行时间）测距：同一个传感器记录 pulse（脉冲）的发射与返回时刻。}
+  \label{fig:sc4061-l02-tof}
+\end{figure}
+
+\textbf{对应例题：}\relatedexercise{SC4061-L02-E02}{LiDAR Time-of-Flight 测距}。
+
+\lecturetopic{SC4061-L02-T02}{Perceptron as a Linear Classifier}
+
+将 bias（偏置）吸收到增广向量中：
+\[
+  \tilde{\bm x}=\begin{bmatrix}\bm x\\1\end{bmatrix},
+  \qquad
+  \tilde{\bm w}=\begin{bmatrix}\bm w\\b\end{bmatrix},
+  \qquad
+  s=\tilde{\bm w}^{\mathsf T}\tilde{\bm x}.
+\]
+Perceptron 使用 weighted sum（加权和）与 threshold（阈值）分类：$s>0$ 判为 $C_1$，$s<0$ 判为 $C_2$；$s=0$ 构成 decision boundary：
+\[
+  \boxed{\tilde{\bm w}^{\mathsf T}\tilde{\bm x}=0}.
+\]
+二维时它是一条直线，高维时是 hyperplane（超平面）。Weights（权重）改变边界的方向，bias 改变边界的位置。
+
+\lecturetopic{SC4061-L02-T03}{Perceptron Learning Rule}
+
+给定 learning rate（学习率）$\alpha>0$，仅在样本被误分类或恰好落在边界上时更新：
+\[
+\tilde{\bm w}(k+1)=
+\begin{cases}
+\tilde{\bm w}(k)+\alpha\tilde{\bm x}(k),
+  & \tilde{\bm x}(k)\in C_1,\ s(k)\le 0,\\
+\tilde{\bm w}(k)-\alpha\tilde{\bm x}(k),
+  & \tilde{\bm x}(k)\in C_2,\ s(k)\ge 0,\\
+\tilde{\bm w}(k), & \text{otherwise}.
+\end{cases}
+\]
+每次更新都会提高当前误分类样本在正确方向上的 score（得分）。但 convergence（收敛）只在 linearly-separable（线性可分）数据上有保证；即使收敛，得到的分界线也不一定具有最大 margin（间隔）。
+
+\textbf{对应例题：}\relatedexercise{SC4061-L02-E01}{Perceptron 权重更新}。
+
+\newpage
+\lecturetopic{SC4061-L02-T04}{From Perceptron to Multi-layer Neural Networks}
+
+Single perceptron（单个感知机）只能产生一个 linear decision boundary（线性决策边界），因此不能表示 XOR：移动或旋转一条直线都无法把对角分布的两类点完全分开。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.9\textwidth}{!}{\input{figures/perceptron-boundaries}}
+  \caption{左：线性可分样本可由一个 Perceptron 分类；右：XOR 不存在单一直线分隔。}
+  \label{fig:sc4061-l02-perceptron-xor}
+\end{figure}
+
+另一种训练思路是显式最小化 squared-error loss（平方误差损失）：
+\[
+  E(\bm w)=\frac12\left(r-\bm w^{\mathsf T}\bm x\right)^2,
+  \qquad
+  \boxed{\bm w(k+1)=\bm w(k)+\alpha
+  \left[r(k)-\bm w^{\mathsf T}(k)\bm x(k)\right]\bm x(k)}.
+\]
+这来自 gradient descent（梯度下降）$\bm w\leftarrow\bm w-\alpha\nabla E$。与基于“是否分错”的第一种规则相比，它直接根据 prediction error（预测误差）的大小更新权重。
+
+Multi-layer neural network（多层神经网络）把多个 neurons（神经元）分层连接，并在层间加入 nonlinear activation（非线性激活），从而组合出非线性边界。若各层之间没有非线性激活，多层线性变换仍等价于单个线性变换，不能解决 XOR。Training（训练）通常包括：
+\[
+\begin{aligned}
+  \text{forward pass（前向传播）}
+  &\longrightarrow \text{loss（损失）}\\
+  &\longrightarrow \text{backpropagation（反向传播）}
+  \longrightarrow \text{weight update（权重更新）}.
+\end{aligned}
+\]
+Backpropagation 本质上用 chain rule（链式法则）高效计算各层参数的 gradient（梯度）。本课程在此只建立概念联系，不要求从零搭建完整神经网络。
+
+\lecturetopic{SC4061-L02-T05}{MATLAB: Images Are Arrays}
+
+MATLAB 默认以 radians（弧度）解释三角函数参数，因此
+\[
+  \texttt{sin(30)}\ne 0.5,
+  \qquad
+  \texttt{sin(30/180*pi)}=0.5.
+\]
+在 script（脚本）中，分号抑制命令行输出，\texttt{\%} 开始注释，\texttt{\%\%} 划分可单独运行的 section（代码节）。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+  \toprule
+  MATLAB expression（表达式） & 含义 \\
+  \midrule
+  \texttt{a=imread('Singapore.jpg')} & 读取本地 RGB image；本次示例得到 $600\times1280\times3$ 的 \texttt{uint8} array（数组） \\
+  \texttt{a(i,j,c)} & 第 $i$ 行、第 $j$ 列、第 $c$ 个 channel（通道）；索引顺序是 row, column, channel \\
+  \texttt{a(i,j,:)} & 取一个 pixel（像素）的全部 RGB 分量 \\
+  \texttt{a(1:s:end,1:s:end,:)} & 两个空间方向每隔 $s$ 个像素取样，保留全部通道 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+若两个方向都采用 stride（步长）$s$，高度和宽度约缩为原来的 $1/s$，pixel count（像素数）约缩为 $1/s^2$。这是 lossy downsampling（有损下采样），并不等同于一般的 image compression（图像压缩）；只有把结果重新编码保存后，文件大小才会相应变化。
+
+\lecturetopic{SC4061-L02-T06}{Logical Mask 与 Vectorized Operation}
+
+课程示例把满足 $R+G+B>300$ 的 bright pixels（亮像素）置为 $(60,60,60)$。先把 \texttt{uint8} image 转为 \texttt{double} 可避免整数运算的范围限制：
+\[
+  M(i,j)=\mathbf 1\!\left[R(i,j)+G(i,j)+B(i,j)>300\right].
+\]
+然后对每个 channel $c$ 统一更新：
+\[
+  B_c=A_c(1-M)+60M.
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/matlab-mask-pipeline}}
+  \caption{Logical mask（逻辑掩膜）把 pixel-wise condition（逐像素条件）与批量赋值分开。}
+  \label{fig:sc4061-l02-matlab-mask}
+\end{figure}
+
+Vectorized operation（向量化运算）把循环交给 MATLAB 的底层数组实现，通常比解释执行的双重 \texttt{for} loop 更快，也更接近公式表达；具体加速倍数取决于 MATLAB 版本、硬件和数组大小，不能把单次计时当作固定结论。
+
+\textbf{对应例题：}\relatedexercise{SC4061-L02-E03}{RGB Threshold 与 Logical Mask}。
