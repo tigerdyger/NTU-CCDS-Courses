@@ -1,0 +1,152 @@
+% Actual class: 02
+% Slide decks: M1-L3 DLL-Flow Control (2026); M1-L4 DLL-Error Control (2026)
+% Exact scope: L3 pp. 1--32; L4 pp. 1--28
+% NTULearn supplement: classroom recording transcript, used only to verify emphasis
+% Human verified: Yes
+
+\section{第 02 节课：Data Link Layer 的 Flow Control 与 Error Control}
+\label{lecture:SC2008-L02}
+
+\lecturemeta
+  {SC2008-L02}
+  {2026-08-18}
+  {M1-L3 DLL-Flow Control (2026)；M1-L4 DLL-Error Control (2026)}
+  {L3 pp.~1--32；L4 pp.~1--28}
+  {课堂录像字幕（仅用于核对教师强调；原文未入库）}
+  {已确认（2026-08-18）}
+
+\subsection{本讲主线}
+
+Flow Control（流量控制）防止 sender（发送方）过快发送而造成 receiver buffer overflow（接收缓冲区溢出）；Error Control（差错控制）处理 lost/damaged frame（丢失/损坏帧）和 lost ACK（确认丢失）。前者先假设传输无差错，后者通过 sequence number（序列号）、ACK/NAK 与 timeout（超时）把可靠性加入同一套机制。
+
+\lecturetopic{SC2008-L02-T01}{ACK 与 Data Link Layer 的控制目标}
+
+ACK（Acknowledgement，确认）是 receiver 根据接收状态新生成的 link-layer control message（链路层控制消息），不是 data frame（数据帧）解封装后剩余的内容。独立 ACK 通常具有自己的 link-layer framing（链路层成帧）和 error-detection field（差错检测字段），但一般不需要 Network Layer header（网络层首部）；也可 piggyback（捎带）在反向 data frame 中。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.92\textwidth}{!}{\input{figures/ack-generation}}
+  \caption{Receiver 对 data frame 解封装，并另外生成 ACK control frame；两者不是同一份数据。}
+  \label{fig:sc2008-l02-ack-generation}
+\end{figure}
+
+本讲用 $ACK_n$ 表示 receiver 已累计确认当前编号范围内截至 $F_{n-1}$ 的 frames，下一步期待 $F_n$。例如 $ACK_3$ 表示 $F_0,F_1,F_2$ 已确认，下一帧期待 $F_3$。
+
+\lecturetopic{SC2008-L02-T02}{Stop-and-Wait 与 Sliding Window Flow Control}
+
+Stop-and-Wait（停止等待）每次只允许一个 outstanding frame（已发送但未确认的帧）。设
+\[
+  T_{\mathrm{frame}}=\frac{L}{R},\qquad
+  T_{\mathrm{prop}}=\frac{d}{v},\qquad
+  a=\frac{T_{\mathrm{prop}}}{T_{\mathrm{frame}}},
+\]
+其中 $L$ 为 frame length（帧长），$R$ 为 transmission rate（传输速率），$d$ 为距离，$v$ 为 signal propagation velocity（信号传播速度）。在 saturated input（持续有数据可发）、无差错并忽略 ACK transmission time 与 processing time 的条件下，
+\[
+  \boxed{U_{\mathrm{Stop-and-Wait}}=\frac{1}{1+2a}},
+  \qquad
+  \text{Throughput}=R\,U.
+\]
+
+Sliding Window（滑动窗口）允许最多 $N$ 个 outstanding frames 同时存在。Sequence number 使用 $k$ bits 并按 modulo $2^k$（模 $2^k$）循环；在本讲的无差错模型中 $N\leq 2^k$。其利用率为
+\[
+  \boxed{U_{\mathrm{Sliding\ Window}}
+    =\min\!\left(1,\frac{N}{1+2a}\right)}.
+\]
+当 $N\geq 1+2a$ 时，sender 在首个 ACK 返回前仍有 frame 可发，链路可连续工作。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/flow-control-timing}}
+  \caption{Stop-and-Wait 与 Sliding Window 的时序差异。斜线表示 propagation delay（传播时延），不是额外的 frame transmission time。}
+  \label{fig:sc2008-l02-flow-timing}
+\end{figure}
+
+Receiver 可用 RNR（Receive Not Ready，接收方未准备好）暂时停止新传输；piggybacking（捎带确认）则把 ACK 放入反向 data frame，减少独立 ACK overhead（开销）。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L02-E01}{Stop-and-Wait link utilization}。
+
+\lecturetopic{SC2008-L02-T03}{Error Detection、FEC 与 ARQ}
+
+Lost frame（丢失帧）表示 receiver 未获得可识别的 frame；damaged frame（损坏帧）表示 frame 到达但部分 bits 出错。Parity check（奇偶校验）能检测任意奇数个 bit flips（比特翻转），但可能漏掉偶数个；CRC（Cyclic Redundancy Check，循环冗余校验）主要用于 error detection（差错检测），不能直接等同于 error correction（纠错）。本讲将这部分标为不可考。
+
+FEC（Forward Error Correction，前向纠错）用冗余信息直接纠正一定范围内的错误；ARQ（Automatic Repeat Request，自动重传请求）则在检测到失败后请求重传。后续可考内容集中在 Stop-and-Wait、Go-Back-N 与 Selective Reject/Repeat 三种 ARQ。
+
+\lecturetopic{SC2008-L02-T04}{Stop-and-Wait ARQ}
+
+Stop-and-Wait ARQ 使用交替的 sequence numbers $0,1$：frame 丢失时 sender timeout 后重传；damaged frame 可被丢弃并触发 NAK；ACK 丢失时 sender 会重传相同 frame，receiver 利用 sequence number 识别 duplicate（重复帧），丢弃重复数据并再次返回 ACK。
+
+若 $P$ 表示一次 transmission attempt（传输尝试）未产生有效交付的概率，则
+\[
+  \boxed{U_{\mathrm{Stop-and-Wait\ ARQ}}
+    =\frac{1-P}{1+2a}}.
+\]
+因 retransmission（重传）本身也可能再次失败，每成功交付一个 frame 的期望尝试次数为
+\[
+  1+P+P^2+\cdots=\frac{1}{1-P},
+\]
+所以有效 attempts 的长期比例是 $1-P$，而不是 $1/(1+P)$。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L02-E02}{Stop-and-Wait ARQ with frame loss}。
+
+\lecturetopic{SC2008-L02-T05}{Go-Back-N 与 Selective Reject ARQ}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.4cm}XX@{}}
+  \toprule
+  特征 & Go-Back-N（GBN） & Selective Reject/Repeat（SR） \\
+  \midrule
+  Out-of-order frame & 丢弃 & 缓存 \\
+  出错后的重传 & 错误帧及全部后续帧 & 只重传错误帧 \\
+  Receiver complexity & 较低 & 较高 \\
+  $k$-bit 最大窗口 & $2^k-1$ & $2^{k-1}$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+若 $F_1$ 丢失而 $F_2,F_3$ 到达，GBN receiver 丢弃 $F_2,F_3$，sender 重传 $F_1,F_2,F_3$；SR receiver 缓存 $F_2,F_3$，sender 只重传 $F_1$，随后 receiver 重排并交付 $F_1,F_2,F_3$。
+
+Window-size restriction（窗口限制）防止旧 frame 与编号回绕后的新 frame 混淆。GBN receiver window size 为 1，因此
+\[
+  W_S+1\leq 2^k
+  \quad\Longrightarrow\quad
+  \boxed{W_S\leq 2^k-1}.
+\]
+当 SR 的 sender/receiver windows 都为 $N$ 时，需要旧 sender window 与下一 receiver window 不重叠：
+\[
+  2N\leq 2^k
+  \quad\Longrightarrow\quad
+  \boxed{N\leq 2^{k-1}}.
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/sequence-window-ambiguity}}
+  \caption{ACK 全部丢失时 sender 仍停留在旧窗口，而 receiver 已进入下一窗口；安全性取决于两组 sequence numbers 是否重叠。}
+  \label{fig:sc2008-l02-window-ambiguity}
+\end{figure}
+
+重复丢失只延长等待时间：未收到 ACK 时 sender 不能进入第三个编号世代，receiver 也不会因窗口外的 duplicate frame 再次前移。
+
+Selective Reject 的课程性能模型为
+\[
+  \boxed{U_{\mathrm{SR}}
+    =(1-P)\min\!\left(1,\frac{N}{1+2a}\right)}.
+\]
+Go-Back-N 的精确公式不要求记忆；本课程要求相关数值计算使用 SR 公式。这是 course-specific simplification（课程特定简化），不代表两种协议的实际性能完全相同。
+
+\subsection{一分钟回顾}
+
+\[
+\begin{aligned}
+  U_{\mathrm{Stop-and-Wait}}&=\frac{1}{1+2a},
+  &U_{\mathrm{Sliding\ Window}}&=\min\!\left(1,\frac{N}{1+2a}\right),\\
+  U_{\mathrm{Stop-and-Wait\ ARQ}}&=\frac{1-P}{1+2a},
+  &U_{\mathrm{SR}}&=(1-P)\min\!\left(1,\frac{N}{1+2a}\right).
+\end{aligned}
+\]
+\[
+  \boxed{N_{\max}^{\mathrm{Flow}}=2^k,\qquad
+  N_{\max}^{\mathrm{GBN}}=2^k-1,\qquad
+  N_{\max}^{\mathrm{SR}}=2^{k-1}}.
+\]

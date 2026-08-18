@@ -1,0 +1,21 @@
+\begin{tikzpicture}[
+  >=Latex,
+  box/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum height=1.05cm,align=center,text width=3.4cm},
+  smallbox/.style={draw=noteBlue,rounded corners=2pt,fill=white,
+    minimum height=0.9cm,align=center,text width=2.8cm},
+  flow/.style={->,thick,draw=noteBlue}
+]
+  \node[smallbox] (frame) at (0,0)
+    {$H_L\mid$ IP datagram $\mid T_L$\\data frame（数据帧）};
+  \node[box] (dll) at (4.9,0)
+    {Receiver Data Link Layer\\检查 FCS 与 sequence number};
+  \node[smallbox] (network) at (9.7,1.5)
+    {IP datagram\\交给 Network Layer};
+  \node[smallbox] (ack) at (9.7,-1.5)
+    {$ACK_n$ control frame\\下一步期待 $F_n$};
+
+  \draw[flow] (frame) -- node[above]{接收并解析} (dll);
+  \draw[flow] (dll) -- node[above,sloped,font=\small]{解封装} (network);
+  \draw[flow] (dll) -- node[below,sloped,font=\small]{生成 ACK} (ack);
+\end{tikzpicture}

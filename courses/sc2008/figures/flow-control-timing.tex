@@ -1,0 +1,39 @@
+\begin{tikzpicture}[
+  >=Latex,
+  lifeline/.style={draw=black!55,thick},
+  data/.style={->,very thick,draw=noteBlue},
+  ack/.style={->,thick,draw=ntuRed},
+  labelbox/.style={align=center,font=\small}
+]
+  \node[labelbox,font=\bfseries] at (2.5,0.75) {Stop-and-Wait};
+  \node[labelbox] at (0,0) {Sender};
+  \node[labelbox] at (5,0) {Receiver};
+  \draw[lifeline] (0,-0.25) -- (0,-5.2);
+  \draw[lifeline] (5,-0.25) -- (5,-5.2);
+  \draw[data] (0,-0.65) -- (5,-1.65);
+  \node[font=\scriptsize,anchor=south west,text=noteBlue] at (0.35,-0.65) {$F_0$};
+  \draw[ack] (5,-2.05) -- (0,-3.05);
+  \node[font=\scriptsize,text=ntuRed] at (2.5,-2.35) {$ACK_1$};
+  \draw[data] (0,-3.55) -- (5,-4.55);
+  \node[font=\scriptsize,anchor=south west,text=noteBlue] at (0.35,-3.55) {$F_1$};
+  \draw[<->,draw=black!65] (-0.65,-0.5) -- node[left,align=right]
+    {$T_{\mathrm{frame}}$\\$+2T_{\mathrm{prop}}$} (-0.65,-3.05);
+
+  \node[labelbox,font=\bfseries] at (11.5,0.75) {Sliding Window（$N\ge 3$）};
+  \node[labelbox] at (8,0) {Sender};
+  \node[labelbox] at (15,0) {Receiver};
+  \draw[lifeline] (8,-0.25) -- (8,-5.2);
+  \draw[lifeline] (15,-0.25) -- (15,-5.2);
+  \draw[data] (8,-0.65) -- (15,-1.65);
+  \node[font=\scriptsize,anchor=south west,text=noteBlue] at (8.35,-0.65) {$F_0$};
+  \draw[data] (8,-1.25) -- (15,-2.25);
+  \node[font=\scriptsize,anchor=south west,text=noteBlue] at (8.35,-1.25) {$F_1$};
+  \draw[data] (8,-1.85) -- (15,-2.85);
+  \node[font=\scriptsize,anchor=south west,text=noteBlue] at (8.35,-1.85) {$F_2$};
+  \draw[ack] (15,-2.15) -- (8,-3.15);
+  \node[font=\scriptsize,text=ntuRed,fill=white,inner sep=1pt] at (11.5,-2.65) {$ACK_1$};
+  \draw[data] (8,-3.65) -- (15,-4.65);
+  \node[font=\scriptsize,anchor=south west,text=noteBlue] at (8.35,-3.65) {$F_3$};
+  \node[labelbox,text=noteBlue] at (11.5,-5.45)
+    {等待 ACK 时仍可发送，窗口足够大则没有 idle gap（空闲间隔）};
+\end{tikzpicture}

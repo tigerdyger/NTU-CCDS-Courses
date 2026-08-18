@@ -1,0 +1,67 @@
+% Lecture example set: SC2008-L02
+% Source: M1-L3 p. 17; M1-L4 p. 16
+% Human verified: Yes
+
+\exercisemeta
+  {SC2008-L02-EX}
+  {2026-08-18}
+  {M1-L3 p.~17；M1-L4 p.~16}
+  {两道 lecture examples 的答案已完成并核对}
+  {已确认（2026-08-18）}
+
+\exercisequestion{SC2008-L02-E01}{Stop-and-Wait Link Utilization}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L02-T02}{Stop-and-Wait 与 Sliding Window Flow Control}
+
+\subsubsection*{题目}
+
+一条 point-to-point link（点到点链路）的 transmission rate 为 $2.4$ Mbps，距离为 $50$ km，signal propagation velocity 为 $2\times10^8$ m/s，frame length 为 $300$ bytes。忽略 frame error、ACK transmission time 与 processing time，求 Stop-and-Wait link utilization（链路利用率）。
+
+\begin{workedsolution}
+先统一单位：$L=300\times8=2400$ bits。于是
+\begin{align*}
+  T_{\mathrm{frame}}
+    &=\frac{2400}{2.4\times10^6}
+      =1000\ \mu\mathrm{s},\\
+  T_{\mathrm{prop}}
+    &=\frac{50\times10^3}{2\times10^8}
+      =250\ \mu\mathrm{s},\\
+  a&=\frac{250}{1000}=0.25.
+\end{align*}
+因此
+\[
+  U=\frac{1}{1+2(0.25)}=\frac{2}{3}\approx66.7\%.
+\]
+若进一步计算实际 throughput，则
+\[
+  2.4\times\frac{2}{3}=1.6\ \mathrm{Mbps}.
+\]
+\end{workedsolution}
+
+\textbf{检查点：}$T_{\mathrm{frame}}=L/R$ 描述把整个 frame 推入链路的时间；$T_{\mathrm{prop}}=d/v$ 描述信号跨越链路的时间，二者不能混用。
+
+\exercisequestion{SC2008-L02-E02}{Stop-and-Wait ARQ with Frame Loss}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L02-T04}{Stop-and-Wait ARQ}
+
+\subsubsection*{题目}
+
+沿用 E01 的 link parameters（链路参数），并令一次 frame transmission 的 loss probability（丢失概率）为 $P=0.1$。求 Stop-and-Wait ARQ 的 link utilization。
+
+\begin{workedsolution}
+由 E01 得 $a=0.25$。因此
+\[
+  U_{\mathrm{Stop-and-Wait\ ARQ}}
+  =\frac{1-P}{1+2a}
+  =\frac{0.9}{1.5}
+  =0.6.
+\]
+若进一步计算实际 throughput，则
+\[
+  2.4\times0.6=1.44\ \mathrm{Mbps}.
+\]
+\end{workedsolution}
+
+\textbf{检查点：}$1-P$ 是每次独立 transmission attempt 成功的长期比例；若 retransmission 仍可能失败，就不能用 $1/(1+P)$ 替代。
