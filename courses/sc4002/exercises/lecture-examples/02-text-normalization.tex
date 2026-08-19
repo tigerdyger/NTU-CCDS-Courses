@@ -1,0 +1,50 @@
+% Lecture example set: SC4002-L02
+% Source: Week2.2 Tokenization & Text Normalization
+% Question classification: E01 lecture worked example; E02 self-contained check
+% Human verified: Answers checked in discussion
+
+\exercisemeta
+  {SC4002-L02-EX}
+  {2026-08-19}
+  {Week2.2 Text Normalization；E01 改编自讲义 BPE worked example，E02 为自编检验例}
+  {两题答案已完成并核对}
+  {已确认（2026-08-19）}
+
+\exercisequestion{SC4002-L02-E01}{BPE Merge Rule 与 Test-time Tokenization}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4002-L02-T03}{Byte-Pair Encoding：学习 Subword Vocabulary}
+
+\subsubsection*{题目（讲义 worked example 改编）}
+
+训练语料包含 \texttt{newer\_} 6 次、\texttt{wider\_} 3 次。初始 symbols（符号）均为单字符。求最先学习的两条 BPE merge rules（BPE 合并规则）及其频数，并说明处理 test word（测试单词）时是否重新统计测试集频率。
+
+\begin{workedsolution}
+\texttt{newer\_} 与 \texttt{wider\_} 都含相邻字符 \texttt{e r}，所以
+\[
+  \operatorname{count}(e,r)=6+3=9,
+  \qquad e+r\rightarrow er.
+\]
+第一次合并后，两类词中的 \texttt{er} 都紧接词尾符号，故
+\[
+  \operatorname{count}(er,\_)=6+3=9,
+  \qquad er+\_\rightarrow er\_.
+\]
+Test-time tokenization（测试时分词）按训练时学到的顺序应用 merge rules，不根据测试文本重新统计并选择最高频字符对；否则相当于在测试数据上重新训练 tokenizer。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L02-E02}{Type、Lemma 与 Case Folding}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4002-L02-T01}{Corpus、Type、Token、Lemma 与 Wordform}；
+\relatedtopic{SC4002-L02-T04}{Word Normalization：统一形式与信息损失}
+
+\subsubsection*{题目（自编检验例）}
+
+对 \texttt{cats chase cats}，忽略标点和大小写，求 word token、word type 的数量及对应 lemmas。再解释为什么 named entity recognition（命名实体识别）不宜无条件进行 case folding（大小写折叠）。
+
+\begin{workedsolution}
+该句共有 3 次词语出现，故有 3 个 word tokens；不同表面形式为 \texttt{cats} 与 \texttt{chase}，故有 2 个 word types；对应 lemmas 为 \texttt{cat} 与 \texttt{chase}。
+
+Case folding 会造成 irreversible information loss（不可逆信息损失），例如 \texttt{US/us}、\texttt{Apple/apple} 被映射到相同小写形式。Named entity recognition 可能依赖大写字母识别国家、机构或名称，因此无条件折叠可能降低准确率。
+\end{workedsolution}

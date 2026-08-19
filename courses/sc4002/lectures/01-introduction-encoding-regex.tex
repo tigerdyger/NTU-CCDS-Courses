@@ -100,6 +100,10 @@ Regular Expression（正则表达式，RegEx）是描述 a set of strings（字�
 
 Precedence（优先级）可概括为 parentheses（括号）$>$ quantifiers（量词）$>$ concatenation/anchors（连接/锚点）$>$ alternation（选择）。不确定时应主动加括号。常见 backtracking engine（回溯型引擎）通常先找 leftmost match（最左匹配）；默认量词多为 greedy（贪婪），但“RegEx 总匹配全局最长字符串”不是无条件规则。
 
+\subsubsection{Shorthand Character Classes}
+
+常见 shorthand classes（简写字符类）包括 \texttt{\detokenize{\d}}/\texttt{\detokenize{\D}}（数字/非数字）、\texttt{\detokenize{\w}}/\texttt{\detokenize{\W}}（单词/非单词字符）和 \texttt{\detokenize{\s}}/\texttt{\detokenize{\S}}（空白/非空白字符）。其 ASCII/Unicode 范围依 regex dialect（正则方言）与运行模式而异；\texttt{\detokenize{{n,}}} 表示前一项至少重复 $n$ 次。
+
 \subsubsection{Pattern Refinement 与 Error Analysis}
 
 查找英文冠词 \texttt{the} 时，\texttt{\detokenize{the}} 会误匹配 \texttt{there}，也会漏掉 \texttt{The}。可改为 \texttt{\detokenize{\b[tT]he\b}}；若引擎支持 case-insensitive flag（大小写不敏感标志），也可使用相应 flag。规则选择取决于应用和 regex dialect（正则方言）。

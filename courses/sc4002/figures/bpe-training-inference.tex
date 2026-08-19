@@ -1,0 +1,26 @@
+\begin{tikzpicture}[
+  >=Latex,
+  stage/.style={draw=noteBlue,rounded corners=2pt,fill=blue!5,
+    minimum width=3.2cm,minimum height=1.15cm,align=center},
+  rule/.style={draw=ntuRed,rounded corners=2pt,fill=red!5,
+    minimum width=3.5cm,minimum height=1.15cm,align=center},
+  flow/.style={->,thick,draw=noteBlue}
+]
+  \node[stage] (train) {Training corpus\\（带词频的训练语料）};
+  \node[stage,right=0.8cm of train] (count) {Count adjacent pairs\\（统计相邻符号对）};
+  \node[rule,right=0.8cm of count] (rules) {Ordered merge rules\\$e+r\!\to er$，$er+\_\!\to er\_$，$\ldots$};
+
+  \draw[flow] (train) -- (count);
+  \draw[flow] (count) -- (rules);
+
+  \node[stage,below=1.2cm of train] (test) {New word\\$l\ o\ w\ e\ r\ \_$};
+  \node[stage,right=0.8cm of test] (apply) {Apply learned rules\\（按既定顺序应用）};
+  \node[rule,right=0.8cm of apply] (tokens) {Subword tokens\\$\texttt{low}+\texttt{er}$};
+
+  \draw[flow] (test) -- (apply);
+  \draw[flow] (apply) -- (tokens);
+  \draw[flow,dashed] (rules.south) -- ++(0,-0.35) -| (apply.north);
+
+  \node[below=0.35cm of apply,align=center,text=verifyOrange]
+    {No test-frequency recounting\\（不按测试频率重新学习）};
+\end{tikzpicture}

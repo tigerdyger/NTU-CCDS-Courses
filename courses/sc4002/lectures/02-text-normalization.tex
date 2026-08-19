@@ -1,0 +1,116 @@
+% Actual class: 02
+% Released materials: Week2.2 Tokenization & Text Normalization
+% Exact released scope: Week2.2 pp. 1--35
+% Actual live coverage: Text Normalization completed; RegEx is organized under L01
+% Video supplement: Two lecture transcripts checked locally; not included in repository
+% Human verified: Coverage and check answers confirmed in discussion
+
+\section{第 02 节课：Tokenization 与 Text Normalization}
+\label{lecture:SC4002-L02}
+
+\lecturemeta
+  {SC4002-L02}
+  {2026-08-19}
+  {Week2.2 Tokenization \& Text Normalization (2026)}
+  {pp.~1--35；Text Normalization 部分讲完}
+  {两段课堂视频字幕已作本地核对，未收入仓库}
+  {课堂范围及检查题答案已确认（2026-08-19）}
+
+\subsection{本讲主线}
+
+本讲从 corpus（语料库）中的文字出发：Tokenization（分词）确定模型处理的 tokens（词元），Byte-Pair Encoding（字节对编码，BPE）学习可复用的 subwords（子词），Word Normalization（词规范化）统一表面形式，Sentence Segmentation（句子切分）确定句界。每一步都会改变后续模型可见的信息。
+
+\textit{编排说明：本次课堂同时覆盖的 Regular Expressions（正则表达式）已归入第 01 节，避免本节过长。}
+
+\lecturetopic{SC4002-L02-T01}{Corpus、Type、Token、Lemma 与 Wordform}
+
+Corpus（语料库，复数 corpora）是 computer-readable collection of text or speech（计算机可读的文本或语音集合）。模型学到的是特定 corpus 的规律，因此 corpus datasheet（语料库说明表）应记录 language variety（语言变体）、genre（体裁）、speaker demographics（说话者特征）、collection/annotation process（收集/标注过程）、consent（同意）与 distribution restrictions（分发限制）。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}X>{\raggedright\arraybackslash}p{4.1cm}@{}}
+  \toprule
+  概念 & 定义 & 例子 \\
+  \midrule
+  Word token（词元实例） & 每一次实际出现 & \texttt{cats chase cats} 有 3 个 tokens \\
+  Word type（不同词型） & distinct surface forms（不同表面形式） & 上句有 \texttt{cats}、\texttt{chase} 两个 types \\
+  Lemma（基本词形） & 共享词干、主要词性与词义的基本形式 & \texttt{breaks/broke/broken} $\rightarrow$ \texttt{break} \\
+  Wordform（完整词形） & 文本中实际出现的 inflected/derived form（屈折/派生形式） & \texttt{cat/cats}，\texttt{care/careless} \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Token count（词元数）统计出现次数；type count（词型数）统计 vocabulary（词表）中的不同形式。现代模型中的 token 不一定是完整 word（单词），也可能是 subword（子词）或符号。
+
+\lecturetopic{SC4002-L02-T02}{Tokenization：处理单元由任务决定}
+
+Tokenization（分词）把 running text（连续文本）切成 words, subwords or symbols（单词、子词或符号）。空格不能解决 \texttt{positive."}、\texttt{can't}、\texttt{Hewlett-Packard}、URL、hashtag（标签）或中文等无显式空格词界的文本。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.7cm}XX@{}}
+  \toprule
+  方法 & 核心做法 & 特点 \\
+  \midrule
+  Top-down tokenization（自顶向下分词） & 先规定标准，再用 RegEx、词典或其他 deterministic rules（确定性规则）实现 & 可解释，但需人工处理语言与任务差异 \\
+  Bottom-up tokenization（自底向上分词） & 从训练数据统计 character sequences（字符序列），自动学习 subword vocabulary（子词词表） & 能处理 unknown words（未知词），现代深度学习更常用 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+中文 Maximum Matching（最大匹配）从当前位置选择词典中最长的匹配词，是 greedy dictionary method（贪心词典法）；局部最长不保证全局语义正确。不同 tokenizer 会产生不同 token sequence 和 vocabulary，从而改变后续模型输入。
+
+\lecturetopic{SC4002-L02-T03}{Byte-Pair Encoding：学习 Subword Vocabulary}
+
+\keyidea{Byte-Pair Encoding（字节对编码，BPE）先在 training corpus（训练语料）中学习有序 merge rules（合并规则），再在 test text（测试文本）上按同一顺序应用；测试阶段不重新统计最高频字符对。}
+
+BPE 包含 token learner（词元学习器）和 token segmenter（词元切分器）。按本讲的 character-level presentation（字符级表述），初始 vocabulary 含所有单字符及 end-of-word symbol（词尾符号）\texttt{\_}；每轮把频率最高的相邻 symbol pair 合为新 token，完成 $k$ 轮即新增 $k$ 个 merged tokens。
+
+讲义语料中 \texttt{newer\_} 出现 6 次、\texttt{wider\_} 出现 3 次，因此
+\[
+  \operatorname{count}(e,r)=6+3=9,
+  \qquad e+r\rightarrow er.
+\]
+合并后 \texttt{er} 均位于词尾，故下一条规则为
+\[
+  \operatorname{count}(er,\_)=9,
+  \qquad er+\_\rightarrow er\_.
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/bpe-training-inference}}
+  \caption{BPE 的 training（训练）与 inference（推理）分工。Inference 只应用已学习规则，不利用测试集频率重新训练。}
+  \label{fig:sc4002-l02-bpe}
+\end{figure}
+
+已学到 \texttt{low} 与 \texttt{er} 后，未见过的 \texttt{lower} 仍可表示为 \texttt{low + er}，从而缓解 out-of-vocabulary（词表外词）问题。较小 vocabulary 会产生较长序列；较大 vocabulary 则增大 embedding matrix（嵌入矩阵）。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L02-E01}{BPE Merge Rule 与 Test-time Tokenization}。
+
+\lecturetopic{SC4002-L02-T04}{Word Normalization：统一形式与信息损失}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{4.2cm}XX@{}}
+  \toprule
+  方法 & 做法 & 优点 & 风险 \\
+  \midrule
+  Case folding（大小写折叠） & \texttt{The}$\rightarrow$\texttt{the} & 减少表面变体、利于检索 & \texttt{US/us} 等信息不可逆丢失 \\
+  Lemmatization（词形还原） & 结合 morphology/POS（形态/词性）求合法 lemma & 语言学意义较准确 & 方法更复杂、更慢 \\
+  Stemming（词干提取） & 级联规则粗略删除 affix（词缀） & 快、可不依赖词典 & 输出可能不是合法单词 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Porter Stemmer（波特词干提取器）使用 cascade of rewrite rules（级联重写规则），目标是把相关 wordforms 映射到相近形式，而非保证输出为正确 lemma。Normalization（规范化）并非越多越好：information retrieval（信息检索）常受益于 case folding，但 named entity recognition（命名实体识别）可能依赖大小写信息。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L02-E02}{Type、Lemma 与 Case Folding}。
+
+\lecturetopic{SC4002-L02-T05}{Sentence Segmentation}
+
+Sentence segmentation（句子切分）常利用 period、question mark、exclamation mark（句点、问号、感叹号），但 \texttt{Mr.}、\texttt{U.S.A.}、\texttt{Yahoo!} 与小数中的标点未必表示句界。因此 sentence segmentation 与 word tokenization 往往联合判断，可由 deterministic rules（确定性规则）或 machine-learning models（机器学习模型）完成。
+
+\subsection{一分钟回顾}
+
+Tokenization 决定模型的基本处理单元；BPE 在训练集学习有序合并规则并在测试集复用；Case folding、lemmatization 与 stemming 以不同精度统一词形，但都必须评估信息损失。最终原则是：preprocessing（预处理）由 language、corpus 与 downstream task（语言、语料和下游任务）共同决定。
