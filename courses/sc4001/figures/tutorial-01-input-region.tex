@@ -1,0 +1,27 @@
+% Original redraw for SC4001 Tutorial 01 Q3; based on the three hidden-unit inequalities.
+\begin{tikzpicture}[x=1.35cm,y=1.15cm,>=Latex,font=\small]
+  \coordinate (a) at (-3,2);
+  \coordinate (b) at (0.5,-1.5);
+  \coordinate (c) at (1.6667,-0.3333);
+
+  \fill[noteBlue!16] (a)--(b)--(c)--cycle;
+
+  \draw[->] (-3.65,0)--(2.35,0) node[right] {$x_1$};
+  \draw[->] (0,-2.05)--(0,2.65) node[above] {$x_2$};
+  \foreach \x in {-3,-2,-1,1,2}
+    \draw (\x,0.06)--(\x,-0.06) node[below=2pt] {$\x$};
+  \foreach \y in {-2,-1,1,2}
+    \draw (0.05,\y)--(-0.05,\y) node[left=2pt] {$\y$};
+
+  \draw[dashed,thick,ntuRed] (-3.5,2.5)--(1,-2)
+    node[pos=0.12,below right] {$x_2=-x_1-1$};
+  \draw[thick,noteBlue] (-3.6,2.3)--(2.3,-0.65)
+    node[pos=0.78,above right] {$x_2=-\tfrac12x_1+\tfrac12$};
+  \draw[dashed,thick,ntuRed] (-0.05,-2.05)--(2.3,0.3)
+    node[pos=0.74,below right] {$x_2=x_1-2$};
+
+  \draw[fill=white,thick] (a) circle[radius=1.6pt];
+  \draw[fill=white,thick] (b) circle[radius=1.6pt];
+  \draw[fill=white,thick] (c) circle[radius=1.6pt];
+  \node[noteBlue] at (-0.7,0.2) {$y=1$};
+\end{tikzpicture}

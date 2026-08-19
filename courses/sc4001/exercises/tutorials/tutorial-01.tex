@@ -1,0 +1,174 @@
+% Tutorial set: 01
+% Source: Tutorial 1, Foundations of NN, Questions 1--3
+% Session date: 2026-08-19
+% Human verified: Yes
+
+\subsection{Tutorial 01：Perceptron、Forward Propagation 与 Decision Region}
+\label{tutorial:SC4001-TUT01}
+
+\exercisemeta
+  {SC4001-TUT01}
+  {2026-08-19}
+  {Tutorial 1：Foundations of NN，Questions 1--3；官方解答用于核对}
+  {三题均已独立作答、讨论并与官方解答核对}
+  {已确认（2026-08-19）}
+
+\exercisequestion{SC4001-TUT01-Q01}{由 Training Samples 反求 Weight Space}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4001-L01-T02}{Artificial Neuron 与 Forward Computation}；
+\relatedtopic{SC4001-L01-T03}{Activation Functions 与 Nonlinearity}
+
+\subsubsection*{题目与思路}
+
+一个 two-input discrete perceptron（双输入离散感知机）采用
+\[
+  u=\bm w^{\mathsf T}\bm x+b,\qquad
+  y=\mathbf 1(u>0),\qquad
+  \bm w=(\alpha,\beta)^{\mathsf T},\quad b=0.5.
+\]
+已知它对 $(1,1)$ 和 $(0.5,-1)$ 输出 1，对 $(2,-0.5)$ 输出 0。每个 labeled sample（带标签样本）都会在 $(\alpha,\beta)$ 平面中给出一个 half-plane constraint（半平面约束）；可行 weight space（权重空间）是三个半平面的交集。
+
+\begin{checkedsolution}
+逐个代入 $u=\alpha x_1+\beta x_2+0.5$：
+\begin{align*}
+  (1,1),\ y=1
+  &\Rightarrow \alpha+\beta+0.5>0
+   \Rightarrow \beta>-\alpha-0.5,\\
+  (0.5,-1),\ y=1
+  &\Rightarrow 0.5\alpha-\beta+0.5>0
+   \Rightarrow \beta<0.5\alpha+0.5,\\
+  (2,-0.5),\ y=0
+  &\Rightarrow 2\alpha-0.5\beta+0.5\le0
+   \Rightarrow \beta\ge4\alpha+1.
+\end{align*}
+因此
+\[
+  \boxed{\beta>-\alpha-0.5,\qquad
+         \beta<0.5\alpha+0.5,\qquad
+         \beta\ge4\alpha+1.}
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.78\textwidth}{!}{\input{figures/tutorial-01-weight-space}}
+  \caption{Q1 的 feasible weight space（可行权重空间）。虚线边界对应 strict inequality（严格不等式），实线边界属于可行域。}
+  \label{fig:sc4001-tut01-weight-space}
+\end{figure}
+
+对 $(\alpha,\beta)=(-0.2,0.2)$，三个 pre-activations（激活前值）依次为
+\[
+  u_1=0.5>0,\qquad u_2=0.2>0,\qquad u_3=0\le0.
+\]
+故该点满足全部条件；它恰好位于第三条可取的 boundary（边界）上。
+\end{checkedsolution}
+
+\textbf{检查点：}课程约定是 $u>0$ 才输出 1，所以 $y=0$ 对应 $u\le0$。这决定了第三条边界必须保留，而前两条边界不保留。
+
+\exercisequestion{SC4001-TUT01-Q02}{Two-layer Network 的 Forward Propagation}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4001-L01-T02}{Artificial Neuron 与 Forward Computation}；
+\relatedtopic{SC4001-L01-T03}{Activation Functions 与 Nonlinearity}；
+\relatedtopic{SC4001-L01-T04}{Tensor 与 Computational Graph}
+
+\subsubsection*{题目与思路}
+
+Two-layer feedforward network（两层前馈网络）的参数为
+\[
+  \bm w_1=\begin{bmatrix}1\\-0.5\\-1\end{bmatrix},\ b_1=0,
+  \qquad
+  \bm w_2=\begin{bmatrix}0\\2\\0.6\end{bmatrix},\ b_2=0.5,
+  \qquad
+  \bm w_3=\begin{bmatrix}-0.5\\0.6\end{bmatrix},\ b_3=0.05.
+\]
+Hidden neurons（隐藏神经元）使用 $g(u)=1/(1+e^{-0.5u})$，output neuron（输出神经元）使用 ReLU：$f(u)=\max(0,u)$。按“hidden affine map（隐藏层仿射变换）$\to$ hidden activation（隐藏层激活）$\to$ output affine map（输出层仿射变换）$\to$ ReLU”的顺序计算。
+
+\begin{checkedsolution}
+把 hidden weights（隐藏层权重）按列排列：
+\[
+  \bm W=
+  \begin{bmatrix}
+    1&0\\
+    -0.5&2\\
+    -1&0.6
+  \end{bmatrix}\in\mathbb R^{3\times2},
+  \qquad
+  \bm b=\begin{bmatrix}0\\0.5\end{bmatrix}.
+\]
+对 column-vector input（列向量输入）$\bm x$，
+\[
+  \bm u_h=\bm W^{\mathsf T}\bm x+\bm b,\qquad
+  \bm z=g(\bm u_h),\qquad
+  u_3=\bm w_3^{\mathsf T}\bm z+b_3,\qquad
+  y=\max(0,u_3).
+\]
+计算结果为：
+\begin{center}
+\small
+\begin{tabular}{@{}c@{\quad}rrrrr@{}}
+  \toprule
+  $\bm x^{\mathsf T}$ & $u_1$ & $z_1$ & $u_2$ & $z_2$ & $u_3\;\Rightarrow\;y$ \\
+  \midrule
+  $(1,-0.5,1)$ & $0.250$ & $0.531$ & $0.100$ & $0.512$ & $0.092\Rightarrow0.092$ \\
+  $(-1,0,-2)$  & $1.000$ & $0.622$ & $-0.700$ & $0.413$ & $-0.013\Rightarrow0$ \\
+  $(2,0.5,-1)$ & $2.750$ & $0.798$ & $0.900$ & $0.611$ & $0.017\Rightarrow0.017$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+\end{checkedsolution}
+
+\textbf{检查点：}$\bm W\in\mathbb R^{3\times2}$，故 $\bm W^{\mathsf T}\bm x\in\mathbb R^2$。也可用 row-vector convention（行向量约定）$\bm x^{\mathsf T}\bm W+\bm b^{\mathsf T}$，但不能在同一次计算中混用两种约定。ReLU 只在最后作用于 $u_3$。
+
+\exercisequestion{SC4001-TUT01-Q03}{Hidden Perceptrons 构造 Nonlinear Decision Region}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4001-L01-T02}{Artificial Neuron 与 Forward Computation}；
+\relatedtopic{SC4001-L01-T03}{Activation Functions 与 Nonlinearity}
+
+\subsubsection*{题目与思路}
+
+三个 hidden perceptrons（隐藏感知机）与 output perceptron（输出感知机）均采用 $\mathbf 1(u>0)$：
+\begin{align*}
+  u_1&=x_1+x_2+1,      & y_1&=\mathbf 1(u_1>0),\\
+  u_2&=x_1+2x_2-1,     & y_2&=\mathbf 1(u_2>0),\\
+  u_3&=-x_1+x_2+2,     & y_3&=\mathbf 1(u_3>0),\\
+  u&=y_1-y_2+y_3-1.5, & y&=\mathbf 1(u>0).
+\end{align*}
+先在 Boolean space（布尔空间）中找出使 output 为 1 的 $(y_1,y_2,y_3)$，再把每个 hidden condition（隐藏层条件）翻译回 input space（输入空间）。
+
+\begin{checkedsolution}
+因为 $y_i\in\{0,1\}$，只有
+\[
+  (y_1,y_2,y_3)=(1,0,1)
+\]
+能使 $u>0$。因此 network（网络）实现
+\[
+  \boxed{y=y_1\land\neg y_2\land y_3}.
+\]
+把这三个条件写回 $(x_1,x_2)$ 平面：
+\[
+  \boxed{x_2>-x_1-1,\qquad
+         x_2\le-\tfrac12x_1+\tfrac12,\qquad
+         x_2>x_1-2.}
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.78\textwidth}{!}{\input{figures/tutorial-01-input-region}}
+  \caption{Q3 中 $y=1$ 的 input region（输入区域）：$y_1=1$、$y_2=0$ 与 $y_3=1$ 三个 half-planes 的交集。}
+  \label{fig:sc4001-tut01-input-region}
+\end{figure}
+
+三个指定 inputs（输入）的结果为
+\[
+  \boxed{y(0,0)=1,\qquad y(2,2)=0,\qquad y(-1,1)=1.}
+\]
+特别地，在 $(-1,1)$ 处 $u_2=0$，按 $u>0$ 才输出 1 的约定有 $y_2=0$，所以该点仍满足 output condition（输出条件）。
+\end{checkedsolution}
+
+\textbf{检查点：}单个 perceptron 只能给出一个 linear half-plane（线性半平面）；hidden layer（隐藏层）把多个半平面组合成 bounded polygon（有界多边形），从而形成更复杂的 decision region（决策区域）。边界是否属于区域必须逐条由 $>$ 或 $\le$ 决定。
+
+\subsubsection*{本次 Tutorial 收口}
+
+三题分别训练了同一条主线的三个方向：由 samples 反推 parameter constraints（参数约束）、按矩阵维度完成 forward propagation（前向传播），以及用 hidden binary features（隐藏布尔特征）组合复杂 decision region。最关键的统一检查是：先写清 activation boundary convention（激活边界约定），再判断不等号与边界开闭。

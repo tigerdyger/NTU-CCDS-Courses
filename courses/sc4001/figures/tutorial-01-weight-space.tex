@@ -1,0 +1,29 @@
+% Original redraw for SC4001 Tutorial 01 Q1; based on the stated inequalities.
+\begin{tikzpicture}[x=7.2cm,y=4.8cm,>=Latex,font=\small]
+  \coordinate (a) at (-0.6667,0.1667);
+  \coordinate (b) at (-0.3,-0.2);
+  \coordinate (c) at (-0.1429,0.4286);
+
+  \fill[noteBlue!16] (a)--(b)--(c)--cycle;
+
+  \draw[->] (-0.82,0) -- (0.02,0) node[right] {$\alpha$};
+  \draw[->] (0,-0.31) -- (0,0.61) node[above] {$\beta$};
+  \foreach \x/\lab in {-0.6/{-0.6},-0.4/{-0.4},-0.2/{-0.2}}
+    \draw (\x,0.012)--(\x,-0.012) node[below=2pt] {$\lab$};
+  \foreach \y/\lab in {-0.2/{-0.2},0.2/{0.2},0.4/{0.4}}
+    \draw (0.008,\y)--(-0.008,\y) node[right=3pt] {$\lab$};
+
+  \draw[dashed,thick,ntuRed] (-0.78,0.28)--(-0.17,-0.33)
+    node[pos=0.10,above right] {$\beta=-\alpha-0.5$};
+  \draw[dashed,thick,ntuRed] (-0.82,0.09)--(0.02,0.51)
+    node[pos=0.66,above left] {$\beta=0.5\alpha+0.5$};
+  \draw[thick,noteBlue] (-0.32,-0.28)--(-0.09,0.64)
+    node[pos=0.76,right] {$\beta=4\alpha+1$};
+
+  \draw[fill=white,thick] (a) circle[radius=1.2pt];
+  \draw[fill=white,thick] (b) circle[radius=1.2pt];
+  \draw[fill=white,thick] (c) circle[radius=1.2pt];
+  \fill[ntuRed] (-0.2,0.2) circle[radius=1.5pt]
+    node[left=3pt] {$(-0.2,0.2)$};
+  \node[noteBlue] at (-0.37,0.16) {feasible};
+\end{tikzpicture}
