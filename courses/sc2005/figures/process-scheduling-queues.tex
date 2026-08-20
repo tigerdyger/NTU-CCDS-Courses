@@ -1,0 +1,18 @@
+\begin{tikzpicture}[
+  >=Latex,
+  queue/.style={draw=noteBlue,very thick,rounded corners=3pt,fill=blue!6,minimum width=3.0cm,minimum height=1.15cm,align=center},
+  cpu/.style={draw=ntuRed,very thick,rounded corners=3pt,fill=red!6,minimum width=2.3cm,minimum height=1.15cm,align=center},
+  flow/.style={->,thick,draw=noteBlue},
+  event/.style={font=\scriptsize,align=center,fill=white,inner sep=1.5pt}
+]
+  \node[queue] (ready) at (0,0) {Ready queue\\$PCB_A\;PCB_B\;PCB_C$};
+  \node[cpu] (cpu) at (4.6,0) {CPU\\Running};
+  \node[queue] (device) at (4.6,-2.35) {Device queue\\waiting PCBs};
+  \node[queue] (done) at (9.2,0) {Terminated};
+
+  \draw[flow] (ready) -- node[event,above]{short-term\\scheduler} (cpu);
+  \draw[flow] (cpu) to[bend left=30] node[event,above]{timer expires} (ready);
+  \draw[flow] (cpu) -- node[event,right]{request I/O} (device);
+  \draw[flow] (device) to[bend left=18] node[event,below]{I/O completes} (ready);
+  \draw[flow,draw=ntuRed] (cpu) -- node[event,above]{exit} (done);
+\end{tikzpicture}

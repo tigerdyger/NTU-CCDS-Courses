@@ -1,0 +1,145 @@
+% Note unit: 03 (user-confirmed study split; exact live-class boundary unavailable)
+% Slide deck: Part 2 (Processes and Threads)
+% Exact scope: pp. 1--16; knowledge content pp. 3--16
+% Video supplement: Part 2.1 (Concept of a Process, Scheduling Overview), complete
+% Human verified: Yes
+
+\section{第 03 节课：Process Concept 与 Scheduling Overview}
+\label{lecture:SC2005-L03}
+
+\lecturemeta
+  {SC2005-L03}
+  {2026-08-20}
+  {Part 2 (Processes and Threads)}
+  {pp.~1--16（知识内容 pp.~3--16）}
+  {Part 2.1 (Concept of a Process, Scheduling Overview)，完整视频}
+  {已确认（2026-08-20；按学习进度划分）}
+
+\subsection{本讲主线}
+
+Program（程序）是存放在 disk（磁盘）上的被动代码；process（进程）则是 program in execution（正在执行的程序），还包含 execution state（执行状态）、memory image（内存映像）与 OS resources（操作系统资源）。OS 用 PCB（Process Control Block，进程控制块）保存 process context（进程上下文），让 processes 在 Ready、Running 与 Waiting 等状态和 queues（队列）之间迁移，并由不同 schedulers（调度器）管理进入 memory、占用 CPU 与 swapping（换入换出）。
+
+\lecturetopic{SC2005-L03-T01}{Process、Memory Image 与 Base--Limit Protection}
+
+\keyidea{同一个 program 可以产生多个 processes；它们可以执行相同 code，但具有不同的 program counter、registers、stack、heap、open files 与状态。}
+
+在 batch system（批处理系统）中，待执行工作常称为 job（作业）；在 time-sharing system（分时系统）中，运行的是 user programs 与 commands。本讲义在当前语境中基本混用 job 与 process。
+
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}X@{}}
+  \toprule
+  Memory region（内存区域） & 主要内容 \\
+  \midrule
+  Text / code section & program instructions（程序指令） \\
+  Data section & global variables 与 static variables（全局与静态变量） \\
+  Heap & dynamic allocation（动态分配），如 \texttt{new}、\texttt{malloc} \\
+  Stack & function parameters、local variables 与 return addresses（函数参数、局部变量与返回地址） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.82\textwidth}{!}{\input{figures/process-address-space}}
+  \caption{课程简化模型中的 process memory image（进程内存映像）与 base--limit boundary（基址--界限边界）。}
+  \label{fig:sc2005-l03-address-space}
+\end{figure}
+
+把 CPU 产生的 logical address（逻辑地址）视为相对 process 起点的 offset（偏移）$x$ 时，访问合法当且仅当
+\[
+  0\leq x<\text{limit},
+\]
+并被定位为
+\[
+  \text{physical address}=\text{base}+x.
+\]
+等价地，process 的合法 physical-address range（物理地址范围）为
+\[
+  [\text{base},\,\text{base}+\text{limit}).
+\]
+右端点不包含在内；越界访问产生 trap（陷阱），不能继续完成 memory access（内存访问）。
+
+\textbf{对应例题：}\relatedexercise{SC2005-L03-E01}{Base--Limit 地址判断}。
+
+\lecturetopic{SC2005-L03-T02}{Process States 与 State Transitions}
+
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}>{\raggedright\arraybackslash}p{2.8cm}X@{}}
+  \toprule
+  State（状态） & 判断标准 \\
+  \midrule
+  New（新建） & OS 正在创建 process \\
+  Ready（就绪） & 除 CPU 外已具备运行条件；现在获得 CPU 即可执行 \\
+  Running（运行） & instructions 正在 CPU 上执行 \\
+  Waiting / Blocked（等待/阻塞） & 正在等待 I/O 或 event；即使获得 CPU 也不能继续 \\
+  Terminated（终止） & process 已完成或已被终止 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/process-state-transitions}}
+  \caption{Process state transitions（进程状态迁移）。I/O completion 只消除阻塞原因，因此 Waiting 先回到 Ready，并不保证立即 Running。}
+  \label{fig:sc2005-l03-state-transitions}
+\end{figure}
+
+Ready 与 Waiting 的差异是本讲最重要的判断标准。Timer interrupt（时钟中断）可把当前 process 从 Running 变回 Ready，使 OS 重新获得控制权并在多个 ready processes 间切换；I/O completion interrupt（I/O 完成中断）则把对应 process 从 Waiting 移回 Ready queue。
+
+讲义所说 process execution progresses sequentially（进程按顺序推进）适用于传统 single-threaded process（单线程进程）。更严格地说，后续的 multithreaded process（多线程进程）包含多条 execution streams，但每个 thread 自身仍有顺序推进的 program counter。
+
+\textbf{对应例题：}\relatedexercise{SC2005-L03-E02}{Timer、Blocking I/O 与状态链}。
+
+\lecturetopic{SC2005-L03-T03}{PCB 与 Context Switch}
+
+PCB 保存 OS 恢复 process 所需的最小状态，并保存在 kernel space（内核空间）。其典型字段包括：queue/list pointer、process state、PID、program counter、CPU registers、priority、memory-management information（如 base/limit）以及 open-file information。
+
+Process A 切换到 Process B 时，OS 先把 A 的 program counter 与 registers 保存到 $PCB_A$，再从 $PCB_B$ 恢复 B 的 context。Context-switch time（上下文切换时间）属于 overhead（额外开销），因为 CPU 此时没有推进任何 user process 的任务。
+
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}>{\raggedright\arraybackslash}p{3.4cm}X@{}}
+  \toprule
+  概念 & 判断标准 \\
+  \midrule
+  Mode switch（模式切换） & user mode 与 kernel mode 之间改变 privilege level（特权级） \\
+  Context switch（上下文切换） & 保存一个 process/thread 的 context，并恢复另一个 execution context \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+一次快速 system call 可以只有 mode switch，完成后仍返回同一 process；若 blocking system call 使 A 等待而 OS 改运行 B，则同时发生 mode switch 与 process context switch。这一区分是严格性补充，并非讲义逐字表述。
+
+\textbf{对应例题：}\relatedexercise{SC2005-L03-E03}{Mode Switch 与 Context Switch}。
+
+\lecturetopic{SC2005-L03-T04}{Scheduling Queues 与三类 Schedulers}
+
+Ready queue 保存等待 CPU 的 processes；各 device queue 保存等待对应 I/O device 的 processes。Process state 改变时，OS 实际上移动或重新链接其 PCB，而不是复制整个 process memory。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/process-scheduling-queues}}
+  \caption{Process 在 Ready queue、CPU 与 device queue 之间迁移。}
+  \label{fig:sc2005-l03-scheduling-queues}
+\end{figure}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{4.2cm}X@{}}
+  \toprule
+  Scheduler & 决策 & 调用特点 \\
+  \midrule
+  Long-term / job scheduler（长期/作业调度器） & 从 disk 选择 processes 装入 main memory & 低频；初步控制 degree of multiprogramming（多道程序程度） \\
+  Short-term / CPU scheduler（短期/CPU 调度器） & 从 Ready queue 选择下一个占用 CPU 的 process & 高频；讲义示例约每 $100\,\mathrm{ms}$ 调用一次 \\
+  Medium-term scheduler（中期调度器） & 根据 load（负载）把部分 process swap out 或 swap in & 在运行中继续调节 memory pressure 与 multiprogramming degree \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+本讲只建立 scheduling overview（调度概览）；FCFS、SJF、Priority Scheduling 与 Round Robin 等 CPU-scheduling algorithms 属于后续内容。
+
+\subsection{一分钟回顾}
+
+Process 是带有执行状态和资源的运行实例；其 text、data、heap 与 stack 位于受保护的 address space 中。Ready 表示只等 CPU，Waiting 表示还缺 I/O 或 event。PCB 让 OS 能保存和恢复 process context；context switch 不等于任意一次 mode switch。Ready/device queues 记录状态归属，long-term、short-term 与 medium-term schedulers 分别管理进入 memory、获得 CPU 和 swapping。

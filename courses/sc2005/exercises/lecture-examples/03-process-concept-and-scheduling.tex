@@ -1,0 +1,67 @@
+% Related lecture: SC2005-L03
+% Source: Part 2 (Processes and Threads), pp. 4--16; self-contained checks derived from lecture diagrams
+% Human verified: Yes
+
+\exercisemeta
+  {SC2005-L03-EX}
+  {2026-08-20}
+  {Part 2 pp.~4--16 的概念图；以下均为独立检验例，非讲义原题}
+  {答案已完成并经问答核对}
+  {已确认（2026-08-20）}
+
+\exercisequestion{SC2005-L03-E01}{Base--Limit 地址判断}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2005-L03-T01}{Process、Memory Image 与 Base--Limit Protection}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+某 process 的 $\text{base}=\texttt{0x5000}$、$\text{limit}=\texttt{0x1200}$。判断 logical addresses \texttt{0x11FF} 和 \texttt{0x1200} 是否合法；若合法，计算 physical address。
+
+\begin{checkedsolution}
+合法 offset 必须满足 $0\leq x<\texttt{0x1200}$，所以上界不包含在内：\texttt{0x11FF} 合法，而 \texttt{0x1200} 非法。前者对应
+\[
+  \texttt{0x5000}+\texttt{0x11FF}=\boxed{\texttt{0x61FF}}.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}先比较 offset 与 limit，再执行 base 加法；不要把等于 limit 的地址误判为合法。
+
+\exercisequestion{SC2005-L03-E02}{Timer、Blocking I/O 与状态链}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2005-L03-T02}{Process States 与 State Transitions}；
+\relatedtopic{SC2005-L03-T04}{Scheduling Queues 与三类 Schedulers}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+A 正在 Running，B、C 位于 Ready queue。A 的 time quantum（时间片）到期；随后 B 被选中运行，但 B 又调用 blocking keyboard input。写出 A、B 的状态变化，并说明下一步最可能运行谁。
+
+\begin{checkedsolution}
+Timer interrupt 使 A 从 Running 变为 Ready；CPU scheduler 选择 B，使 B 从 Ready 变为 Running。B 请求 blocking input 后从 Running 变为 Waiting。此时 A 与 C 都在 Ready queue；若题意给定 scheduler 接着选择 C，则 C 进入 Running。若未给出 scheduling policy，仅能确定下一位来自 $\{A,C\}$，不能仅凭状态断言一定是 C。
+\end{checkedsolution}
+
+\textbf{检查点：}state transition 与“scheduler 最终选中谁”是两层问题；没有 policy 或 queue order 时不要补造唯一结果。
+
+\exercisequestion{SC2005-L03-E03}{Mode Switch 与 Context Switch}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2005-L03-T03}{PCB 与 Context Switch}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+判断下列情形是否只有 mode switch，或同时还有 process context switch。
+
+\begin{enumerate}[label=(\alph*)]
+  \item A 调用 \texttt{getpid()}，kernel 立即返回，随后仍由 A 继续执行。
+  \item A 调用 blocking disk read，OS 随后调度 B。
+\end{enumerate}
+
+\begin{checkedsolution}
+\begin{enumerate}[label=(\alph*)]
+  \item 只有 mode switch：A 从 user mode 进入 kernel mode，再返回 A 的 user mode；execution context 未换成另一个 process。
+  \item 两者都有：system call 产生 mode switch；A 进入 Waiting 后，OS 保存 $PCB_A$ 并恢复 $PCB_B$，又产生 process context switch。
+\end{enumerate}
+\end{checkedsolution}
+
+\textbf{检查点：}进入 kernel 不等于更换 process；必须观察返回后执行的是否仍是原 execution context。

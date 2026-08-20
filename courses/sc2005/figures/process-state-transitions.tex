@@ -1,0 +1,20 @@
+\begin{tikzpicture}[
+  >=Latex,
+  state/.style={draw=noteBlue,very thick,rounded corners=3pt,fill=blue!7,minimum width=2.15cm,minimum height=0.85cm,align=center},
+  terminal/.style={draw=ntuRed,very thick,rounded corners=3pt,fill=red!6,minimum width=2.15cm,minimum height=0.85cm,align=center},
+  flow/.style={->,thick,draw=noteBlue},
+  event/.style={font=\scriptsize,align=center,fill=white,inner sep=1.5pt}
+]
+  \node[state] (new) at (0,0) {New};
+  \node[state] (ready) at (3.3,0) {Ready};
+  \node[state] (running) at (6.6,0) {Running};
+  \node[state] (waiting) at (6.6,-2.25) {Waiting};
+  \node[terminal] (terminated) at (10.0,0) {Terminated};
+
+  \draw[flow] (new) -- node[event,above]{admitted} (ready);
+  \draw[flow] (ready) -- node[event,above]{scheduler\\dispatch} (running);
+  \draw[flow] (running) to[bend left=35] node[event,above]{timer interrupt} (ready);
+  \draw[flow] (running) -- node[event,right]{I/O or\\event wait} (waiting);
+  \draw[flow] (waiting) to[bend left=18] node[event,below left]{I/O or event completion} (ready);
+  \draw[flow,draw=ntuRed] (running) -- node[event,above]{exit} (terminated);
+\end{tikzpicture}
