@@ -1,0 +1,136 @@
+% Lecture example set: SC4001-L02
+% Source: 2_regression_classification pp. 20--29 and pp. 47--56
+% Human verified: Yes
+
+\exercisemeta
+  {SC4001-L02-EX}
+  {2026-08-21}
+  {2\_regression\_classification：Example 1（pp.~20--29）与 Example 2（pp.~47--56）}
+  {答案已根据讲义、数值复算与问答核对}
+  {已确认（2026-08-21）}
+
+\exercisequestion{SC4001-L02-E01}{Lecture Example 1：Scaled Sigmoid Regression}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4001-L02-T02}{Square-error Gradient、SGD 与 GD}；
+\relatedtopic{SC4001-L02-T03}{Linear 与 Sigmoid Regression}
+
+\subsubsection*{题目（Lecture Example）}
+
+使用 full-batch GD 训练一个 two-input perceptron（双输入连续 Sigmoid 单元）：
+\begin{center}
+\small
+\begin{tabular}{@{}rrr@{}}
+  \toprule
+  $x_1$ & $x_2$ & $d$ \\
+  \midrule
+  0.77 & 0.02 & 2.91 \\
+  0.63 & 0.75 & 0.55 \\
+  0.50 & 0.22 & 1.28 \\
+  0.20 & 0.76 & $-0.74$ \\
+  0.17 & 0.09 & 0.88 \\
+  0.69 & 0.95 & 0.30 \\
+  0.00 & 0.51 & $-0.28$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+初始 $\bm w=(0.81,0.61)^{\mathsf T}$、$b=0$、$\alpha=0.01$。确定 activation function，说明第一轮更新，并写出收敛后的 mapping（映射）。
+
+\begin{checkedsolution}
+Targets 位于 $[-0.74,2.91]$，普通 sigmoid 的 $(0,1)$ 值域不够，因此课程选用
+\[
+  y=f(u)=4\sigma(u)-1=\frac{4}{1+e^{-u}}-1,
+  \qquad f'(u)=4\sigma(u)[1-\sigma(u)].
+\]
+第一轮 forward computation 给出（按课件舍入）
+\[
+  \bm u\approx
+  \begin{bmatrix}0.64&0.97&0.54&0.63&0.19&1.14&0.32\end{bmatrix}^{\mathsf T},
+\]
+\[
+  \bm y\approx
+  \begin{bmatrix}1.61&1.90&1.53&1.61&1.19&2.03&1.31\end{bmatrix}^{\mathsf T}.
+\]
+代入 batch update 后，第一轮末
+\[
+  \bm w\approx
+  \begin{bmatrix}0.80\\0.57\end{bmatrix},
+  \qquad b\approx-0.05.
+\]
+课件报告收敛参数
+\[
+  \bm w=
+  \begin{bmatrix}3.35\\-2.80\end{bmatrix},
+  \qquad b=-0.47,
+\]
+故最终 mapping 为
+\[
+  \boxed{y=\frac{4}{1+\exp(-3.35x_1+2.80x_2+0.47)}-1}.
+\]
+课件最终报告 mean square error（均方误差）约为 $0.01$。
+\end{checkedsolution}
+
+\textbf{检查点：}Activation range 必须覆盖 targets；缩放 sigmoid 后，应对完整的 $4\sigma(u)-1$ 求导。
+
+\exercisequestion{SC4001-L02-E02}{Lecture Example 2：GD for Logistic Regression}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4001-L02-T04}{Decision Boundary 与 Logistic Regression}；
+\relatedtopic{SC4001-L02-T05}{Binary Cross-Entropy 与 Logistic Gradient}
+
+\subsubsection*{题目（Lecture Example）}
+
+使用 full-batch GD 训练 logistic regression neuron，将以下数据分为 class A 与 class B：
+\begin{center}
+\small
+\begin{tabular}{@{}rrc@{}}
+  \toprule
+  $x_1$ & $x_2$ & Class \\
+  \midrule
+   1.33 &  0.72 & B \\
+  $-1.55$ & $-0.01$ & A \\
+   0.62 & $-0.72$ & A \\
+   0.27 &  0.11 & A \\
+   0.00 & $-0.17$ & A \\
+   0.43 &  1.20 & B \\
+  $-0.97$ &  1.03 & B \\
+   0.23 &  0.45 & B \\
+  \bottomrule
+\end{tabular}
+\end{center}
+令 class A 为 $1$、class B 为 $0$，初始 $\bm w=(0.77,0.02)^{\mathsf T}$、$b=0$，使用 $\alpha=0.04$。计算第一轮 prediction 与 update，并写出最终 decision boundary。
+
+\begin{checkedsolution}
+第一轮得到（按课件舍入）
+\[
+  \sigma(\bm u)\approx
+  \begin{bmatrix}0.74&0.23&0.61&0.55&0.50&0.59&0.33&0.55\end{bmatrix}^{\mathsf T}.
+\]
+采用 $\hat y=\mathbf 1(p>0.5)$ 时，初始 classification error 为 $5$，BCE 约为 $6.65$。利用
+\[
+  \bm w\leftarrow\bm w+\alpha\bm X^{\mathsf T}[\bm d-\sigma(\bm u)],
+  \qquad
+  b\leftarrow b+\alpha\bm 1^{\mathsf T}[\bm d-\sigma(\bm u)],
+\]
+第一轮更新为
+\[
+  \bm w\approx
+  \begin{bmatrix}0.69\\-0.06\end{bmatrix},
+  \qquad b\approx-0.003.
+\]
+课件报告收敛参数
+\[
+  \bm w=
+  \begin{bmatrix}-1.13\\-6.65\end{bmatrix},
+  \qquad b=2.09,
+\]
+因此 decision boundary 为
+\[
+  \boxed{-1.13x_1-6.65x_2+2.09=0}.
+\]
+将八个 training points 代入 $u$ 后，class A 的 $u>0$、class B 的 $u<0$，实现正确分类。
+
+\textbf{课件核对：}题目页和实际更新使用 $\alpha=0.04$；初始化页出现的 $0.4$ 与计算不一致，不应采用。
+\end{checkedsolution}
+
+\textbf{检查点：}先计算 scalar residual（标量残差）$d-p$，再乘 $\alpha\bm x$；probability $p$ 与离散 label $\hat y$ 不可混用。

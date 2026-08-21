@@ -1,0 +1,34 @@
+% Original conceptual curves; not fitted to the lecture's experimental data.
+\begin{tikzpicture}[>=Latex,
+  axis/.style={->,thick},
+  curve/.style={very thick},
+  title/.style={font=\small\bfseries},
+  note/.style={font=\scriptsize,align=center}
+]
+  \begin{scope}[xshift=0cm]
+    \node[title] at (1.8,3.0) {$\alpha$ too small};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {iteration};
+    \draw[axis] (0,0) -- (0,2.6) node[above] {$J$};
+    \draw[curve,draw=noteBlue]
+      plot[smooth] coordinates {(0.2,2.2)(0.8,1.85)(1.4,1.55)(2.0,1.30)(2.6,1.10)(3.3,0.93)};
+    \node[note] at (1.8,-0.45) {stable but slow};
+  \end{scope}
+
+  \begin{scope}[xshift=4.5cm]
+    \node[title] at (1.8,3.0) {stable $\alpha$};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {iteration};
+    \draw[axis] (0,0) -- (0,2.6) node[above] {$J$};
+    \draw[curve,draw=noteBlue]
+      plot[smooth] coordinates {(0.2,2.2)(0.7,1.25)(1.2,0.68)(1.8,0.36)(2.5,0.21)(3.3,0.16)};
+    \node[note] at (1.8,-0.45) {fast, monotone decrease};
+  \end{scope}
+
+  \begin{scope}[xshift=9.0cm]
+    \node[title] at (1.8,3.0) {$\alpha$ too large};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {iteration};
+    \draw[axis] (0,0) -- (0,2.6) node[above] {$J$};
+    \draw[curve,draw=ntuRed]
+      plot[smooth] coordinates {(0.2,2.1)(0.6,0.55)(1.0,2.25)(1.4,0.40)(1.8,2.35)(2.2,0.32)(2.6,2.45)(3.2,0.25)};
+    \node[note] at (1.8,-0.45) {oscillation or divergence};
+  \end{scope}
+\end{tikzpicture}

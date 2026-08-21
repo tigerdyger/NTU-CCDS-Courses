@@ -1,0 +1,20 @@
+% Original geometric illustration; coordinates are illustrative.
+\begin{tikzpicture}[>=Latex,scale=1.0]
+  \draw[->,thick] (-3.2,0) -- (3.3,0) node[right] {$x_1$};
+  \draw[->,thick] (0,-2.2) -- (0,3.0) node[above] {$x_2$};
+  \draw[very thick,draw=ntuRed] (-3,2.6) -- (3,-2.2)
+    node[above right,font=\small] {$g(\bm x)=0$};
+
+  \foreach \p in {(-2.4,0.5),(-1.9,0.0),(-1.4,0.8),(-0.9,-0.3),(-0.4,0.1)}
+    \fill[noteBlue] \p circle (2.8pt);
+  \foreach \p in {(0.5,1.6),(1.0,2.1),(1.5,1.3),(2.0,2.4),(2.5,1.7)}
+    \draw[ntuRed,very thick] \p ++(-0.11,-0.11) -- ++(0.22,0.22)
+      \p ++(-0.11,0.11) -- ++(0.22,-0.22);
+
+  \node[noteBlue,font=\small] at (-2.0,-1.15) {$g(\bm x)<0$};
+  \node[ntuRed,font=\small] at (1.9,0.65) {$g(\bm x)>0$};
+  \coordinate (q) at (0,0.2);
+  \draw[->,very thick,draw=verifyOrange] (q) -- (0.8,1.2)
+    node[right,font=\small] {$\bm w$};
+  \fill[verifyOrange] (q) circle (2pt);
+\end{tikzpicture}

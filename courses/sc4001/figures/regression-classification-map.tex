@@ -1,0 +1,16 @@
+% Original diagram based on the relationships in Lecture 2; no slide artwork copied.
+\begin{tikzpicture}[
+  >=Latex,
+  block/.style={draw=noteBlue,very thick,rounded corners=3pt,fill=blue!7,minimum width=2.65cm,minimum height=0.85cm,align=center},
+  output/.style={draw=ntuRed,very thick,rounded corners=3pt,fill=red!6,minimum width=3.5cm,minimum height=0.95cm,align=center},
+  flow/.style={->,thick,draw=noteBlue},
+  label/.style={font=\scriptsize,align=center,fill=white,inner sep=1.5pt}
+]
+  \node[block] (x) at (0,0) {Features $\bm x$};
+  \node[block] (u) at (4.0,0) {$u=\bm w^{\mathsf T}\bm x+b$};
+  \node[output] (reg) at (8.5,1.25) {Regression\\$y=f(u)\in\mathbb R$};
+  \node[output] (cls) at (8.5,-1.25) {Classification\\$p=\sigma(u)$，$\hat y=\mathbf 1(p>0.5)$};
+  \draw[flow] (x) -- node[label,above]{affine computation} (u);
+  \draw[flow] (u) -- node[label,above,sloped]{continuous target} (reg);
+  \draw[flow] (u) -- node[label,below,sloped]{binary target} (cls);
+\end{tikzpicture}

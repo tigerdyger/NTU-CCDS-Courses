@@ -1,0 +1,186 @@
+% Actual class: 02
+% Slide decks: 2_regression_classification; L2_summary
+% Exact scope: 2_regression_classification pp. 1--65; L2_summary pp. 1--23
+% Video supplement: Lecture2_Part1 and Lecture2_Part2, complete visual scope checked
+% Human verified: Yes
+
+\section{第 02 节课：Regression 与 Classification}
+\label{lecture:SC4001-L02}
+
+\lecturemeta
+  {SC4001-L02}
+  {2026-08-21}
+  {2\_regression\_classification；L2\_summary}
+  {主讲义 pp.~1--65；Summary pp.~1--23}
+  {Lecture2\_Part1（40:39）与 Lecture2\_Part2（35:37）；关键画面与讲义进度已核对}
+  {已确认（2026-08-21；检查题完成并订正）}
+
+\subsection{本讲主线}
+
+Predictive AI（预测式人工智能）从 features（特征）$\bm x$ 预测 labels（标签）$y$。Continuous labels（连续标签）对应 regression（回归），discrete labels（离散标签）对应 classification（分类）；二者共享 affine score（仿射得分）$u=\bm w^{\mathsf T}\bm x+b$，但使用不同的 output interpretation（输出含义）与 loss function（损失函数）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/regression-classification-map}}
+  \caption{Regression 与 binary classification（二分类）共享 affine computation（仿射计算），但输出与损失的含义不同。}
+  \label{fig:sc4001-l02-task-map}
+\end{figure}
+
+\lecturetopic{SC4001-L02-T01}{Regression、Classification 与课程术语}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{3.2cm}X@{}}
+  \toprule
+  Task & Target & 典型 output unit & 本讲 objective（目标函数） \\
+  \midrule
+  Regression（回归） & $d\in\mathbb R$ & Linear neuron；continuous sigmoid unit & Square error（平方误差） \\
+  Binary classification（二分类） & $d\in\{0,1\}$ & Discrete perceptron；logistic regression neuron & Binary cross-entropy（二元交叉熵） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+课程把使用 sigmoid activation（Sigmoid 激活）的连续 unit 也称为 perceptron；一般文献常把 perceptron 专指 threshold unit（阈值单元）。本笔记沿用课程术语，并用 discrete perceptron（离散感知机）明确指 threshold classifier（阈值分类器）。
+
+\lecturetopic{SC4001-L02-T02}{Square-error Gradient、SGD 与 GD}
+
+对一个 training sample（训练样本）$(\bm x,d)$，令
+\[
+  u=\bm w^{\mathsf T}\bm x+b,\qquad y=f(u),\qquad
+  J=\frac12(d-y)^2.
+\]
+Chain rule（链式法则）给出
+\[
+  \frac{\partial J}{\partial u}=-(d-y)f'(u),\qquad
+  \boxed{\nabla_{\bm w}J=-(d-y)f'(u)\bm x},\qquad
+  \boxed{\frac{\partial J}{\partial b}=-(d-y)f'(u)}.
+\]
+因此课程定义的 SGD（每个 sample 更新一次）为
+\[
+  \boxed{\bm w\leftarrow\bm w+\alpha(d-y)f'(u)\bm x},\qquad
+  \boxed{b\leftarrow b+\alpha(d-y)f'(u)}.
+\]
+
+若 $P$ 个 samples 按行组成 $\bm X\in\mathbb R^{P\times n}$，且
+\[
+  \bm u=\bm X\bm w+b\bm 1_P,\qquad \bm y=f(\bm u),
+\]
+则 full-batch GD（全批量梯度下降）的更新是
+\[
+  \boxed{\bm w\leftarrow\bm w+
+    \alpha\bm X^{\mathsf T}\!\left[(\bm d-\bm y)\odot f'(\bm u)\right]},
+  \qquad
+  \boxed{b\leftarrow b+
+    \alpha\bm 1_P^{\mathsf T}\!\left[(\bm d-\bm y)\odot f'(\bm u)\right]}.
+\]
+$\odot$ 表示 element-wise product（逐元素乘法）。讲义使用 sum loss（求和损失）；若实现改用 mean loss（平均损失），gradient scale（梯度尺度）和适用的 learning rate（学习率）也会改变。
+
+\lecturetopic{SC4001-L02-T03}{Linear 与 Sigmoid Regression}
+
+Linear neuron（线性神经元）使用 $f(u)=u$、$f'(u)=1$：
+\[
+  y=\bm w^{\mathsf T}\bm x+b,\qquad
+  \bm w\leftarrow\bm w+\alpha(d-y)\bm x,\qquad
+  b\leftarrow b+\alpha(d-y).
+\]
+它学习 feature space（特征空间）中的 best-fit hyperplane（最佳拟合超平面）；只有数据可被精确线性拟合时，该超平面才通过所有 training points（训练点）。
+
+Continuous sigmoid unit（连续 Sigmoid 单元）使用
+\[
+  \sigma(u)=\frac{1}{1+e^{-u}},\qquad
+  \sigma'(u)=\sigma(u)[1-\sigma(u)].
+\]
+若 target range（目标值域）不是 $(0,1)$，应使用 scaled activation（缩放激活）并重新求导。例如 $f(u)=4\sigma(u)-1$ 的值域为 $(-1,3)$，且
+\[
+  f'(u)=4\sigma(u)[1-\sigma(u)],
+\]
+不能把 transformed output（变换后的输出）直接代入 $y(1-y)$。单个 sigmoid unit 虽为 nonlinear mapping（非线性映射），但只能表示 $f(\bm w^{\mathsf T}\bm x+b)$ 这一受限函数族。
+
+常用 derivative（导数）还包括
+\[
+  \frac{d}{du}\tanh u=1-\tanh^2u.
+\]
+
+\textbf{对应例题：}\relatedexercise{SC4001-L02-E01}{Lecture Example 1：Scaled Sigmoid Regression}。
+
+\lecturetopic{SC4001-L02-T04}{Decision Boundary 与 Logistic Regression}
+
+Linear discriminant function（线性判别函数）为
+\[
+  g(\bm x)=\bm w^{\mathsf T}\bm x+b.
+\]
+Decision boundary（决策边界）满足 $g(\bm x)=0$；$\bm w$ 是 boundary 的 normal vector（法向量），$b$ 控制位置。可约定 $g(\bm x)>0$ 为 class 1，$g(\bm x)\le0$ 为 class 0。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.78\textwidth}{!}{\input{figures/decision-boundary-geometry}}
+  \caption{Linear decision boundary（线性决策边界）：边界两侧由 $g(\bm x)$ 的符号区分，$\bm w$ 与边界垂直。}
+  \label{fig:sc4001-l02-decision-boundary}
+\end{figure}
+
+Logistic regression neuron（逻辑回归神经元）令
+\[
+  p=f(u)=\sigma(u)=P(y=1\mid\bm x),\qquad
+  \hat y=\mathbf 1(p>0.5).
+\]
+必须区分 probability（概率）$p$ 与 predicted label（预测标签）$\hat y$。因为 sigmoid strictly increasing（严格递增）且 $\sigma(0)=0.5$，
+\[
+  p>0.5\iff u>0,
+\]
+所以其 decision boundary 仍是 $\bm w^{\mathsf T}\bm x+b=0$。课程采用 strict threshold（严格阈值），故 $u=0$ 时 $p=0.5$、$\hat y=0$。
+
+\FloatBarrier
+\lecturetopic{SC4001-L02-T05}{Binary Cross-Entropy 与 Logistic Gradient}
+
+对 $d\in\{0,1\}$，binary cross-entropy（BCE）为
+\[
+  J=-d\ln p-(1-d)\ln(1-p),\qquad p=\sigma(u).
+\]
+利用
+\[
+  \frac{\partial J}{\partial p}=\frac{p-d}{p(1-p)},\qquad
+  \frac{\partial p}{\partial u}=p(1-p),
+\]
+可得简洁的 logit gradient（对激活前值的梯度）：
+\[
+  \boxed{\frac{\partial J}{\partial u}=p-d}.
+\]
+于是 single-sample update（单样本更新）为
+\[
+  \boxed{\bm w\leftarrow\bm w+\alpha(d-p)\bm x},\qquad
+  \boxed{b\leftarrow b+\alpha(d-p)},
+\]
+batch update（批量更新）为
+\[
+  \boxed{\bm w\leftarrow\bm w+\alpha\bm X^{\mathsf T}[\bm d-\sigma(\bm u)]},
+  \qquad
+  \boxed{b\leftarrow b+\alpha\bm 1_P^{\mathsf T}[\bm d-\sigma(\bm u)]}.
+\]
+BCE 是 differentiable training objective（可微训练目标）；classification error（分类错误数）$\sum_p\mathbf 1(d_p\ne\hat y_p)$ 适合 evaluation（评估），但不适合直接做 gradient-based optimization（基于梯度的优化）。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L02-E02}{Lecture Example 2：GD for Logistic Regression}。
+
+\lecturetopic{SC4001-L02-T06}{Linear Separability、Learning Rate 与 Autograd}
+
+Single logistic neuron 的 nonlinearity（非线性）改变 probability 随 $u$ 的变化，却不改变 threshold condition（阈值条件）$u=0$；因此它只能处理 linearly separable patterns（线性可分模式），不能直接解决 XOR。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.86\textwidth}{!}{\input{figures/linear-separability}}
+  \caption{Linearly separable（线性可分）数据与 XOR：后者不存在一条直线同时正确分开两类。}
+  \label{fig:sc4001-l02-linear-separability}
+\end{figure}
+
+Learning rate $\alpha$ 太小会收敛缓慢，合适时稳定下降，太大则可能 oscillate（振荡）或 diverge（发散）。不存在对所有问题都最优的固定 $\alpha$；此外，讲义 GD 对 gradients 求和而 SGD 使用单样本 gradient，二者不能脱离 loss normalization（损失归一化）直接比较数值大小。SGD 的 stochasticity（随机性）有时有助于 non-convex optimization（非凸优化），但不保证得到更低 error。实践通常使用 mini-batch mean gradient（小批量平均梯度）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.84\textwidth}{!}{\input{figures/learning-rate-behavior}}
+  \caption{Learning rate 的典型影响：步长过小、稳定下降与过大振荡。曲线为概念示意，不复刻讲义实验数值。}
+  \label{fig:sc4001-l02-learning-rate}
+\end{figure}
+
+PyTorch autograd（自动微分）的基本顺序是：parameters 设置 \texttt{requires\_grad=True}，调用 \texttt{loss.backward()}，在 \texttt{torch.no\_grad()} 内更新参数，再将 gradients 清为 \texttt{None}，避免默认的 gradient accumulation（梯度累积）。这只是上述 chain rule 的程序化实现。
+
+\textbf{一分钟回顾。}
+Regression 与 classification 共享 $u=\bm w^{\mathsf T}\bm x+b$，但前者预测连续值并常用 square error，后者用 sigmoid probability 与 BCE。Sigmoid--BCE 组合使 $\partial J/\partial u=p-d$；最终 label 由 $p>0.5\iff u>0$ 决定，所以 single logistic neuron 的 decision boundary 仍是 linear hyperplane。GD、SGD 与 mini-batch GD 的差异在于每次更新使用的 samples 及 gradient normalization，而不只是名称。
