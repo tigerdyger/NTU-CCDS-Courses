@@ -1,0 +1,31 @@
+\begin{tikzpicture}[
+  >=Latex,
+  proc/.style={draw=noteBlue,very thick,rounded corners=3pt,fill=blue!7,minimum width=2.1cm,minimum height=0.75cm,align=center},
+  wait/.style={draw=ntuRed,very thick,rounded corners=3pt,fill=red!6,minimum width=2.1cm,minimum height=0.75cm,align=center},
+  flow/.style={->,thick,draw=noteBlue},
+  event/.style={font=\scriptsize,align=center,fill=white,inner sep=1.5pt}
+]
+  \node[font=\bfseries] at (2.8,2.0) {Process tree};
+  \node[proc] (root) at (2.8,1.2) {Root};
+  \node[proc] (p1) at (0.8,-0.1) {Console 1};
+  \node[proc] (p2) at (3.1,-0.1) {Console 2};
+  \node[proc] (p3) at (5.4,-0.1) {Background};
+  \node[proc] (c1) at (0.8,-1.45) {Unzip};
+  \node[proc] (c2) at (3.1,-1.45) {Search};
+  \draw[flow] (root) -- (p1);
+  \draw[flow] (root) -- (p2);
+  \draw[flow] (root) -- (p3);
+  \draw[flow] (p1) -- (c1);
+  \draw[flow] (p2) -- (c2);
+
+  \draw[dashed,gray] (6.8,-1.9) -- (6.8,2.25);
+  \node[font=\bfseries] at (10.4,2.0) {Parent waits for child};
+  \node[font=\scriptsize\bfseries] at (10.6,1.55) {Parent P};
+  \node[proc,minimum width=1.8cm] (prun) at (8.0,0.75) {Running};
+  \node[wait,minimum width=1.8cm] (pwait) at (10.6,0.75) {Waiting};
+  \node[proc,minimum width=1.8cm] (pready) at (13.2,0.75) {Ready};
+  \node[proc] (crun) at (10.6,-0.9) {C: Running};
+  \draw[flow] (prun) -- node[event,above]{\texttt{wait()}} (pwait);
+  \draw[flow] (pwait) -- node[event,above]{child exits} (pready);
+  \draw[flow,draw=ntuRed] (crun) to[bend right=24] node[event,right]{\texttt{exit(status)}} (pready.south);
+\end{tikzpicture}

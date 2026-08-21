@@ -1,0 +1,65 @@
+% Related lecture: SC2005-L04
+% Source: Part 2 (Processes and Threads), pp. 18--39; self-contained checks derived from lecture scenarios
+% Human verified: Yes
+
+\exercisemeta
+  {SC2005-L04-EX}
+  {2026-08-21}
+  {Part 2 pp.~18--39 的情境与示意图；以下均为独立检验例，非讲义原题}
+  {答案已完成并经问答核对}
+  {已确认（2026-08-21）}
+
+\exercisequestion{SC2005-L04-E01}{Parent Wait 与 Child Exit}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2005-L04-T01}{Process Creation 与 Termination}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+Parent P 创建 Child C 后立即调用 \texttt{wait()}。C 运行一段时间后调用 \texttt{exit(7)}。写出 P 的主要状态变化，并判断 C 结束后 P 是否一定立即 Running。
+
+\begin{checkedsolution}
+P 在调用 \texttt{wait()}前为 Running，随后进入 Waiting。C 调用 \texttt{exit(7)}后，OS 保存其 exit status、回收相应资源并唤醒 P：
+\[
+  P:\quad \text{Running}\rightarrow\text{Waiting}\rightarrow\text{Ready}.
+\]
+P 不一定立即 Running，仍需等待 CPU scheduler；status $7$可由 parent 的 wait 操作取得。
+\end{checkedsolution}
+
+\textbf{检查点：}Event completion 只令 blocked process 进入 Ready，不绕过 scheduler。
+
+\exercisequestion{SC2005-L04-E02}{Bounded Mailbox 与 Producer State}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2005-L04-T03}{Direct/Indirect Messaging 与 Producer--Consumer}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+容量为 $2$ 的 mailbox 已包含 $m_1,m_2$。Producer 尝试发送 $m_3$，随后 Consumer 接收一个 message。说明 Producer 的状态变化，并判断通信类型。
+
+\begin{checkedsolution}
+Mailbox 已满，按讲义的 blocking-wait 模型，Producer 从 Running 进入 Waiting。Consumer 取走一个 message 后释放 slot 并唤醒 Producer，使其进入 Ready；Producer 获得 CPU 后才能发送 $m_3$。接口显式命名 mailbox 而非另一个 process，因此属于
+\[
+  \boxed{\text{Indirect message passing（间接消息传递）}}.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}被唤醒等于 Waiting $\rightarrow$ Ready，不等于立即完成尚未执行的 \texttt{send()}。
+
+\exercisequestion{SC2005-L04-E03}{Blocking Thread 与 Resource Ownership}
+
+\textbf{对应知识点：}\par
+\relatedtopic{SC2005-L04-T04}{Thread Resources 与 Multithreaded Server}；
+\relatedtopic{SC2005-L04-T05}{User/Kernel Threads 与 Mapping Models}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+同一 process 中有 $T_1,T_2,T_3$。$T_1$执行 blocking disk I/O。比较 Many-to-One 与 One-to-One 下其他 threads 的可执行性，并判断 program counters、stacks、heap 和 open files 是否共享。
+
+\begin{checkedsolution}
+Many-to-One 只有一个 kernel thread；它被 $T_1$的 blocking operation 阻塞后，$T_2,T_3$也失去执行载体。One-to-One 中只有 $T_1$对应的 kernel thread 被阻塞，$T_2,T_3$仍可被调度；是否立即运行还取决于 CPU cores、scheduler 及 synchronization conditions。
+
+Program counters、registers 与 stacks 属于每个 thread 的独立 execution context；code、data、heap、open files 与其他 process resources 在同一 process 内共享。
+\end{checkedsolution}
+
+\textbf{检查点：}Thread 独享执行现场，process 共享资源空间；“仍可调度”不等于“必然立即运行”。

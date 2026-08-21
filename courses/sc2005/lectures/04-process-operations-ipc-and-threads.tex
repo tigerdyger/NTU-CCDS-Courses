@@ -1,0 +1,166 @@
+% Note unit: 04 (user-confirmed study split; exact live-class boundary unavailable)
+% Slide deck: Part 2 (Processes and Threads)
+% Exact scope: pp. 17--40; knowledge content pp. 18--39
+% Video supplement: Part 2.2 (Process System Calls, IPC) and Part 2.3 (Threads), complete
+% Human verified: Yes
+
+\section{第 04 节课：Process Operations、IPC 与 Threads}
+\label{lecture:SC2005-L04}
+
+\lecturemeta
+  {SC2005-L04}
+  {2026-08-21}
+  {Part 2 (Processes and Threads)}
+  {pp.~17--40（知识内容 pp.~18--39）}
+  {Part 2.2 (Process System Calls, IPC)；Part 2.3 (Threads)，完整视频}
+  {已确认（2026-08-21；按学习进度划分）}
+
+\subsection{本讲主线}
+
+Parent process（父进程）可以创建 child processes（子进程）并选择并发执行或等待其结束；cooperating processes（协作进程）通过 message passing（消息传递）或 shared memory（共享内存）交换数据。Thread（线程）把 execution stream（执行流）与 process resources（进程资源）分开：同一 process 内的 threads 共享 code、data、heap 与 open files，但各自保留 program counter、registers 与 stack。User-to-kernel mapping（用户线程到内核线程映射）进一步决定 blocking behavior（阻塞行为）与 multicore parallelism（多核并行能力）。
+
+\lecturetopic{SC2005-L04-T01}{Process Creation 与 Termination}
+
+\keyidea{Process creation 形成 parent--child tree；create/fork 产生新的 execution entity，wait 约束执行顺序，exit 表示自行结束，abort 表示有权限的外部主体提前终止。}
+
+Parent 创建 child 后有两种典型 execution orders（执行顺序）：
+\begin{enumerate}
+  \item Concurrent execution（并发执行）：parent 与 child 都可被 scheduler 调度，先后顺序不确定；单核也可并发，多核才可能真正并行。
+  \item Parent waits（父进程等待）：parent 调用 \texttt{wait()} 一类操作后进入 Waiting；child 结束时 parent 变为 Ready，但仍需等待 CPU scheduler。
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/process-tree-and-wait}}
+  \caption{Process tree（进程树）与 parent wait（父进程等待）。Child completion 只把 parent 唤醒到 Ready。}
+  \label{fig:sc2005-l04-process-tree}
+\end{figure}
+
+讲义把 wait 概括为等待所有 children；实际 API 可能等待某个或指定 child，等待全部 children 通常需要重复调用或相应高级接口。Modern OS 还可能用 copy-on-write（写时复制）减少 fork 时的 physical-page copying（物理页复制）；这不改变 parent 与 child 逻辑地址空间彼此独立的抽象。
+
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{2.7cm}X@{}}
+  \toprule
+  Termination & 含义 \\
+  \midrule
+  Exit（退出） & Process 完成并向 OS 请求结束；可返回 status/data，OS 回收 memory、files 等资源并通知等待者 \\
+  Abort（强制终止） & Parent 或有权限的 OS component 提前终止 child；原因可包括资源超限、任务取消或 parent 退出 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+普通 process 不能任意 abort 无关 process；实际系统仍会执行 permission checks（权限检查）。
+
+\textbf{对应例题：}\relatedexercise{SC2005-L04-E01}{Parent Wait 与 Child Exit}。
+
+\lecturetopic{SC2005-L04-T02}{IPC：Message Passing 与 Shared Memory}
+
+Independent process（独立进程）不影响其他 processes；cooperating process 则需要交换 data 或协调 actions，因此需要 IPC（Inter-Process Communication，进程间通信）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/ipc-models-and-buffer}}
+  \caption{Message passing、shared memory，以及用 bounded mailbox 实现的 producer--consumer。}
+  \label{fig:sc2005-l04-ipc-models}
+\end{figure}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}XX@{}}
+  \toprule
+  & Message passing（消息传递） & Shared memory（共享内存） \\
+  \midrule
+  Interface & \texttt{send(message)}、\texttt{receive(message)}；message size 可固定或可变 & Processes 直接读写共同映射的 memory region \\
+  Kernel role & 通常参与每次 queueing/delivery（排队/递送） & 主要负责建立 mapping 与 protection；建立后可直接访问 \\
+  Trade-off & Isolation 较清楚，也易扩展到跨机器通信；可能有 system-call 与 copying overhead & 大量数据交换通常更快；必须另外解决 synchronization 与 race condition \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Shared memory 只解决“双方怎样看到同一份 data”，不自动解决“谁先修改”。多个 processes 同时写入时必须使用 lock、semaphore 或其他 synchronization mechanism；这些属于后续课程内容。
+
+\lecturetopic{SC2005-L04-T03}{Direct/Indirect Messaging 与 Producer--Consumer}
+
+Direct communication（直接通信）显式指定通信对象：
+\[
+  \texttt{send(P,message)},\qquad \texttt{receive(Q,message)}.
+\]
+Indirect communication（间接通信）通过 mailbox/port（邮箱/端口）：
+\[
+  \texttt{send(A,message)},\qquad \texttt{receive(A,message)}.
+\]
+Mailbox 像 queue，可解耦 sender 与 receiver，并支持多个 producers 或 consumers。
+
+Producer--consumer paradigm（生产者--消费者范式）用 buffer 暂存 producer 生成而 consumer 尚未处理的 information。Unbounded buffer（无界缓冲区）只是假定没有实际容量限制；consumer 仍可能因空而等待。Bounded buffer（有界缓冲区）容量固定为 $B$：满时 producer 等待，空时 consumer 等待。
+
+讲义 p.~27 使用 mailbox，因此该具体实现属于 indirect message passing，而不是 shared-memory IPC。若容量 $B=2$，已有 $m_1,m_2$ 时 producer 发送 $m_3$：
+\[
+  \text{Producer: Running}\rightarrow\text{Waiting}.
+\]
+Consumer 取走一项后释放 slot（空位），producer 被唤醒到 Ready；它仍需获得 CPU 后才能真正发送 $m_3$。
+
+课件中的 \texttt{while(full) wait} 是概念伪代码。若实现为反复检查会形成 busy waiting（忙等）；真实 blocking primitive 可令 process 进入 Waiting。多个 producers 下，“检查未满”和“插入”还必须具有正确 synchronization semantics（同步语义）。
+
+\textbf{对应例题：}\relatedexercise{SC2005-L04-E02}{Bounded Mailbox 与 Producer State}。
+
+\lecturetopic{SC2005-L04-T04}{Thread Resources 与 Multithreaded Server}
+
+\keyidea{Process 是 resource container（资源容器），thread 是 basic unit of CPU utilization（CPU 使用的基本单位）与 execution stream。}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/thread-resources-and-server}}
+  \caption{同一 process 内的 shared resources（共享资源）、per-thread context（每线程上下文）与 multithreaded server flow（多线程服务器流程）。}
+  \label{fig:sc2005-l04-thread-resources}
+\end{figure}
+
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{3.4cm}X@{}}
+  \toprule
+  Ownership & 内容 \\
+  \midrule
+  Per-thread（线程独立） & Thread ID、program counter、register set、stack \\
+  Per-process（同进程线程共享） & Code、data、heap、open files 与其他 OS resources \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Stack 必须独立，因为每个 thread 可能处于不同 function call，具有不同 local variables 与 return addresses。Heap 共享使 communication 方便，但也会产生 data race（数据竞争）。
+
+Multithreaded server 中，main thread 接收 client request，创建 worker thread 后立即恢复 listening；某个 worker 因 I/O 阻塞时，其他 workers 仍可能处理 requests，从而改善 responsiveness 与 throughput。能否继续执行还取决于下面的 user-to-kernel mapping。
+
+\lecturetopic{SC2005-L04-T05}{User/Kernel Threads 与 Mapping Models}
+
+User threads（用户线程）是 user-space logical entities（用户态逻辑实体），创建和切换通常较轻；kernel threads（内核线程）由 OS kernel 管理，是 kernel scheduler 能直接调度到 CPU 的 physical entities（物理执行实体）。Kernel resources 有限，因此需要在二者之间进行 mapping。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/thread-mapping-models}}
+  \caption{Many-to-One、One-to-One 与 Many-to-Many thread mappings。}
+  \label{fig:sc2005-l04-thread-mappings}
+\end{figure}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.5cm}X@{}}
+  \toprule
+  Model & Blocking 与 parallelism & 主要代价 \\
+  \midrule
+  Many-to-One（多对一） & 唯一 kernel thread 阻塞时，同组 user threads 均失去执行载体；不能多核并行 & 实现轻量但受单一 kernel thread 限制 \\
+  One-to-One（一对一） & 一个 thread 阻塞不妨碍其他 kernel-backed threads；多核上可并行 & 每个 user thread 都消耗 kernel resources，数量过多形成负担 \\
+  Many-to-Many（多对多） & 多个 kernel threads 提供并行与 blocking isolation，同时承载更多 logical threads & Mapping、user/kernel scheduling 与 debugging 更复杂 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Many-to-Many 缓解 Many-to-One 的全体阻塞和 One-to-One 的 kernel-thread 膨胀，但并非“没有任何缺点”。讲义将 Go goroutines 与 C++20 coroutines 作为例子；严格来说，Go runtime 常采用 many-to-many 思路，而 C++20 coroutine 本身不规定 OS-thread mapping，具体取决于 runtime/framework。
+
+One-to-Many（一个 user thread 对多个 kernel threads）缺少清晰语义：一个 logical thread 只有一套 program counter、registers 与 stack，不能同时位于多个 execution points；若拆成多条独立执行流，它们实际上已成为多个 logical threads。
+
+\textbf{对应例题：}\relatedexercise{SC2005-L04-E03}{Blocking Thread 与 Resource Ownership}。
+
+\subsection{一分钟回顾}
+
+Process tree 描述 parent--child ownership；wait 令 parent 阻塞，child exit 只把它唤醒到 Ready。IPC 可通过 kernel-mediated message passing 或显式同步的 shared memory 完成；mailbox 是 indirect communication，bounded buffer 会让 producer/consumer 在满或空时等待。Thread 独享执行现场、共享 process resources；Many-to-One、One-to-One 与 Many-to-Many 的核心差异是 blocking propagation（阻塞传播）、kernel overhead 与可用 parallelism。

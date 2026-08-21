@@ -1,0 +1,39 @@
+\begin{tikzpicture}[
+  >=Latex,
+  u/.style={draw=noteBlue,very thick,circle,fill=blue!7,minimum size=0.68cm,font=\small},
+  k/.style={draw=ntuRed,very thick,circle,fill=red!6,minimum size=0.75cm,font=\small\bfseries},
+  map/.style={->,thick,draw=noteBlue},
+  panel/.style={font=\bfseries,align=center}
+]
+  \node[panel] at (2.0,2.2) {Many-to-One};
+  \node[u] (m1u1) at (0.9,1.1) {$U_1$};
+  \node[u] (m1u2) at (2.0,1.1) {$U_2$};
+  \node[u] (m1u3) at (3.1,1.1) {$U_3$};
+  \node[k] (m1k) at (2.0,-0.55) {$K_1$};
+  \draw[map] (m1u1) -- (m1k); \draw[map] (m1u2) -- (m1k); \draw[map] (m1u3) -- (m1k);
+
+  \draw[dashed,gray] (4.1,-1.25) -- (4.1,2.55);
+  \node[panel] at (6.4,2.2) {One-to-One};
+  \node[u] (o1u1) at (5.3,1.1) {$U_1$};
+  \node[u] (o1u2) at (6.4,1.1) {$U_2$};
+  \node[u] (o1u3) at (7.5,1.1) {$U_3$};
+  \node[k] (o1k1) at (5.3,-0.55) {$K_1$};
+  \node[k] (o1k2) at (6.4,-0.55) {$K_2$};
+  \node[k] (o1k3) at (7.5,-0.55) {$K_3$};
+  \draw[map] (o1u1) -- (o1k1); \draw[map] (o1u2) -- (o1k2); \draw[map] (o1u3) -- (o1k3);
+
+  \draw[dashed,gray] (8.5,-1.25) -- (8.5,2.55);
+  \node[panel] at (11.0,2.2) {Many-to-Many};
+  \node[u] (mmu1) at (9.35,1.1) {$U_1$};
+  \node[u] (mmu2) at (10.45,1.1) {$U_2$};
+  \node[u] (mmu3) at (11.55,1.1) {$U_3$};
+  \node[u] (mmu4) at (12.65,1.1) {$U_4$};
+  \node[k] (mmk1) at (10.25,-0.55) {$K_1$};
+  \node[k] (mmk2) at (11.75,-0.55) {$K_2$};
+  \draw[map] (mmu1) -- (mmk1); \draw[map] (mmu2) -- (mmk1);
+  \draw[map] (mmu3) -- (mmk2); \draw[map] (mmu4) -- (mmk2);
+
+  \node[font=\scriptsize,text=gray] at (2.0,-1.05) {one blocking $K$ affects all};
+  \node[font=\scriptsize,text=gray] at (6.4,-1.05) {parallel, higher kernel cost};
+  \node[font=\scriptsize,text=gray] at (11.0,-1.05) {balanced, mapping is complex};
+\end{tikzpicture}
