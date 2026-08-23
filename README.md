@@ -19,7 +19,12 @@
 
 ```text
 .
-├── assignments/                 # 编程作业索引
+├── assignments/                 # 独立的书面与编程作业
+│   └── scxxxx/
+│       ├── written-assignments/
+│       │   └── main.tex         # 该课程的书面作业册
+│       └── programming-assignments/
+│           └── lab-xx/          # Lab、PA 或课程项目
 ├── courses/
 │   └── scxxxx/
 │       ├── main.tex             # 课程 PDF 编译入口
@@ -27,8 +32,7 @@
 │       ├── lectures/            # 讲义笔记
 │       └── exercises/
 │           ├── lecture-examples/  # 讲义例题与解答
-│           ├── tutorials/       # 习题课
-│           └── written-assignments/  # 手写作业
+│           └── tutorials/       # 习题课
 ├── shared/preamble.tex          # 共享 LaTeX 配置
 └── templates/                   # 内容模板
 ```
@@ -50,10 +54,13 @@
 
 ```bash
 make sc2005       # 编译一门课程
+make sc2005-written  # 编译该课程的书面作业册
+make assignments  # 编译六门书面作业册
 make all          # 编译全部课程
 ```
 
-生成文件位于 `build/<course-code>/`，不纳入 Git。
+课程笔记生成在 `build/<course-code>/`，书面作业册生成在
+`build/assignments/<course-code>/`；两者均不纳入 Git。
 
 ## 内容规范
 

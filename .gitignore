@@ -20,8 +20,8 @@ courses/*/recordings/
 courses/*/lms-exports/
 
 # Active assessed code stays local until publication is explicitly approved
-/assignments/*/*/submission/
-/assignments/*/*/tests-local/
+/assignments/*/programming-assignments/*/submission/
+/assignments/*/programming-assignments/*/tests-local/
 
 # Large raw media should never be committed to this notes repository
 *.m4a

@@ -1,3 +1,4 @@
-# SC2005 操作系统编程作业
+# SC2005 Operating Systems 作业
 
-目前没有公开的编程作业。
+- 书面作业：[`written-assignments/main.tex`](written-assignments/main.tex)
+- 编程作业：[`programming-assignments/`](programming-assignments/)

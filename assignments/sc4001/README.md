@@ -1,3 +1,4 @@
-# SC4001 神经网络与深度学习编程作业
+# SC4001 Neural Network & Deep Learning 作业
 
-目前没有公开的编程作业。
+- 书面作业：[`written-assignments/main.tex`](written-assignments/main.tex)
+- 编程作业：[`programming-assignments/`](programming-assignments/)
