@@ -1,0 +1,21 @@
+\begin{tikzpicture}[
+  >=Latex,
+  every node/.style={font=\small},
+  source/.style={draw=noteBlue,rounded corners,thick,minimum width=53mm,minimum height=34mm,align=left,inner sep=3mm},
+  rule/.style={draw=ntuRed,rounded corners,thick,minimum width=48mm,minimum height=10mm,align=left}
+]
+  \node[source] (frontier) {\textbf{Frontier}\\[1mm]
+    $A:(d=2,g=5,h=1,f=6)$\\
+    $B:(d=3,g=3,h=5,f=8)$\\
+    $C:(d=1,g=7,h=0,f=7)$};
+
+  \node[rule,right=18mm of frontier,yshift=18mm] (bfs) {BFS: minimum $d\Rightarrow C$};
+  \node[rule,below=4mm of bfs] (ucs) {UCS: minimum $g\Rightarrow B$};
+  \node[rule,below=4mm of ucs] (greedy) {Greedy: minimum $h\Rightarrow C$};
+  \node[rule,below=4mm of greedy] (astar) {A*: minimum $g+h\Rightarrow A$};
+
+  \draw[->,thick] (frontier.east) -- (bfs.west);
+  \draw[->,thick] (frontier.east) -- (ucs.west);
+  \draw[->,thick] (frontier.east) -- (greedy.west);
+  \draw[->,thick] (frontier.east) -- (astar.west);
+\end{tikzpicture}

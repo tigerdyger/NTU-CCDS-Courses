@@ -1,0 +1,81 @@
+% Lecture example set: SC3000-L02
+% Sources: CZ3005 Module 2 pp. 50--62; CZ3005 Module 3 pp. 13--25
+% Human verified: Yes
+
+\exercisemeta
+  {SC3000-L02-EX}
+  {2026-08-24}
+  {Module 2 pp.~50--62；Module 3 pp.~13--25}
+  {答案已根据讲义与讨论核对}
+  {已确认（2026-08-24）}
+
+\exercisequestion{SC3000-L02-E01}{Romania Route Finding：Greedy 与 A*}
+
+\textbf{对应知识点：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L02-T02}{Uninformed Search Strategies}
+  \item \relatedtopic{SC3000-L02-T03}{Heuristic、Greedy 与 A*}
+\end{itemize}
+
+\subsubsection*{题目}
+
+从 Arad 前往 Bucharest。Greedy 使用 straight-line distance $h$，得到路径
+\[
+  \text{Arad}\to\text{Sibiu}\to\text{Fagaras}\to\text{Bucharest},
+\]
+cost 为 $140+99+211=450$。A* 在展开 Sibiu 后得到
+\[
+  f(\text{Rimnicu Vilcea})=220+193=413,
+  \qquad f(\text{Fagaras})=239+176=415.
+\]
+说明 A* 后续的关键展开顺序、为何不能在首次生成 cost-$450$ 的 Bucharest 时停止，并给出最终路径与 cost。
+
+\begin{checkedsolution}
+A* 先展开 Rimnicu Vilcea，并生成
+\[
+  f(\text{Pitesti})=317+98=415,
+  \qquad f(\text{Craiova})=366+160=526.
+\]
+Fagaras 与 Pitesti 的 $f$ 均为 $415$，平局时的次序可任意决定。
+
+按讲义顺序先展开 Fagaras，生成 Bucharest$(450)$；此时 Pitesti$(415)$ 仍在 frontier，故不能停止。展开 Pitesti 后生成 Bucharest$(418)$，它成为 frontier 中最小的 $f$，于是返回
+\[
+  \text{Arad}\to\text{Sibiu}\to\text{Rimnicu Vilcea}
+  \to\text{Pitesti}\to\text{Bucharest},
+  \qquad C^*=418.
+\]
+这也说明 A* 必须在 goal 被取出时终止，而不是在 goal 被生成时终止。
+\end{checkedsolution}
+
+\textbf{检查点：}Greedy 只比较 $h$，因此得到 $450$；A* 比较 $g+h$，并保留仍可能产生更低总代价的 frontier node。
+
+\clearpage
+\exercisequestion{SC3000-L02-E02}{4-Queens 的 CSP 约束与剪枝}
+
+\textbf{对应知识点：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L02-T04}{CSP Formulation 与 Backtracking}
+  \item \relatedtopic{SC3000-L02-T05}{CSP Heuristics 与 Min-Conflicts}
+\end{itemize}
+
+\subsubsection*{题目}
+
+令 $Q_i$ 表示 4-Queens 中第 $i$ 行皇后所在列。给出 variables、domains 与任意两行之间的 constraints；说明一次赋值怎样通过 constraint propagation 剪枝。再说明讲义中的 Most Constraining Variable 与 Least Constraining Value 分别决定什么。
+
+\begin{checkedsolution}
+取
+\[
+  X=\{Q_1,Q_2,Q_3,Q_4\},
+  \qquad D(Q_i)=\{1,2,3,4\}.
+\]
+对任意 $1\le i<j\le4$：
+\[
+  Q_i\ne Q_j,
+  \qquad |Q_i-Q_j|\ne |i-j|.
+\]
+前者排除同列，后者排除同对角线。若赋值 $Q_i=c$，则后续每个 $Q_j$ 的 domain 中可删除 $c$ 以及满足 $|q-c|=|j-i|$ 的列 $q$；任一 domain 变空即可立即 backtrack。
+
+Most Constraining Variable 选择与最多未赋值变量存在约束的 variable，用于尽早暴露冲突；Least Constraining Value 在该变量的合法 values 中选择排除邻居取值最少者，为后续赋值保留最大 flexibility。
+\end{checkedsolution}
+
+\textbf{检查点：}$i\ne j$ 只表示两行不同；真正排除同列的是 $Q_i\ne Q_j$。Variable heuristic 决定先选谁，value heuristic 决定先试什么。

@@ -1,0 +1,24 @@
+\begin{tikzpicture}[
+  >=Latex,
+  every node/.style={font=\small},
+  flowstep/.style={draw=noteBlue,rounded corners,thick,minimum width=29mm,minimum height=11mm,align=center},
+  decision/.style={draw=ntuRed,rounded corners,thick,minimum width=31mm,minimum height=11mm,align=center}
+]
+  \node[flowstep] (variable) {Select variable};
+  \node[flowstep,right=10mm of variable] (value) {Order values};
+  \node[flowstep,right=10mm of value] (assign) {Assign one value};
+  \node[flowstep,right=10mm of assign] (propagate) {Propagate\\constraints};
+  \node[decision,right=10mm of propagate] (check) {Consistent?\\Complete?};
+
+  \node[flowstep,above=11mm of check] (solution) {Return solution};
+  \node[flowstep,below=11mm of assign] (undo) {Undo assignment\\(backtrack)};
+
+  \draw[->,thick] (variable) -- (value);
+  \draw[->,thick] (value) -- (assign);
+  \draw[->,thick] (assign) -- (propagate);
+  \draw[->,thick] (propagate) -- (check);
+  \draw[->,thick] (check) -- node[right] {complete} (solution);
+  \draw[->,thick] (check.south) |- node[pos=0.2,right] {conflict / $D_i=\varnothing$} (undo.east);
+  \draw[->,thick] (undo.west) -| node[pos=0.25,below] {try next value} (value.south);
+  \draw[->,thick] (check.north west) |- node[pos=0.25,above] {consistent, incomplete} (variable.north);
+\end{tikzpicture}
