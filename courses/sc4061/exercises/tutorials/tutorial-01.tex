@@ -1,0 +1,208 @@
+% Tutorial set: 01
+% Source: T1.pdf, Tutorial 1 (Camera Systems), Questions 1--4
+% Reference: T1_Reference solutions.pptx, used only for answer checking
+% Session date: 2026-08-25
+% Human verified: Yes
+
+\subsection{Tutorial 01：Camera Systems 与 Perceptron}
+\label{tutorial:SC4061-TUT01}
+
+\exercisemeta
+  {SC4061-TUT01}
+  {2026-08-25}
+  {Tutorial 1 (Camera Systems)，Questions 1--4；reference solutions 仅用于核对}
+  {四题均已作答、讨论并完成订正}
+  {已确认（2026-08-25）}
+
+\exercisequestion{SC4061-TUT01-Q01}{Thin Lens 中光心射线的共线性}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L01-T03}{Thin Lens Model 与 Magnification}
+
+\subsubsection*{题目与思路}
+
+图中物体高度与像高的大小分别为 $Y$、$y$；物点和像点到 lens center（透镜中心）的距离分别为
+\[
+  \hat Z=Z+f,\qquad \hat z=z+f.
+\]
+不预先假设 $P$、$O$、$p$ 共线，先利用另外两条 principal rays（主光线）建立仅含 $Y,\hat Z,y,\hat z$ 的关系，再证明通过 optical center（光心）的光线不偏折。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.76\textwidth]{source/tutorial-01-q1-optical-geometry.png}
+  \caption{Q1 所用 thin-lens geometry（薄透镜几何）。来源：\textit{T1 Reference Solutions}，slide~2，裁切自原图。图中 $y$ 取倒立像高的正值。}
+  \label{fig:sc4061-tut01-thin-lens}
+\end{figure}
+
+\begin{checkedsolution}
+由穿过 left focal point（左焦点）并在折射后平行于光轴的光线，得到
+\[
+  \frac{Y}{Z}=\frac{y}{f}
+  \quad\Longrightarrow\quad
+  f=\frac{yZ}{Y}=\frac{y(\hat Z-f)}{Y}
+  \quad\Longrightarrow\quad
+  f=\frac{y\hat Z}{Y+y}.
+\]
+由入射时平行于光轴、折射后穿过 right focal point（右焦点）的光线，得到
+\[
+  \frac{Y}{f}=\frac{y}{z}
+  \quad\Longrightarrow\quad
+  f=\frac{Yz}{y}=\frac{Y(\hat z-f)}{y}
+  \quad\Longrightarrow\quad
+  f=\frac{Y\hat z}{Y+y}.
+\]
+两式相等，因此
+\[
+  \boxed{y\hat Z=Y\hat z}
+  \qquad\Longleftrightarrow\qquad
+  \boxed{\frac{Y}{\hat Z}=\frac{y}{\hat z}}.
+\]
+直角三角形 $PSO$ 与 $psO$ 的两条直角边成比例，故两三角形相似，对应的 $O$ 角相等；于是 $PO$ 与 $Op$ 是同一直线，证明 $P,O,p$ 共线。
+\end{checkedsolution}
+
+\textbf{检查点：}不能把“通过光心的光线不偏折”作为本题起点，否则会循环论证；必须先用另外两条主光线推出比例关系。
+
+\exercisequestion{SC4061-TUT01-Q02}{Infinity Focus、Blur Diameter 与 Pinhole Trade-off}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L01-T04}{Depth of Field 与 Aperture Trade-off}
+
+\subsubsection*{题目与思路}
+
+相机 focused at infinity（聚焦于无穷远），所以 sensor plane（传感器平面）位于距透镜 $f$ 处。对距离透镜 $\hat Z$ 的有限物点 $P$，画出穿过 aperture edges（光圈边缘）的两条 outermost rays（最外侧光线），推导 sensor 上 blur circle diameter（弥散圆直径）$b$，并解释 aperture size（光圈大小）对 depth of field（景深）的影响以及 pinhole camera（针孔相机）的利弊。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.88\textwidth]{source/tutorial-01-q2-infinity-focus.png}
+  \caption{Q2 的outermost-ray diagram（最外侧光线图）。来源：\textit{T1 Reference Solutions}，slide~5，裁切自原图。有限物点应在 $\hat z>f$ 处聚焦，但sensor固定在 $f$ 处，因此在聚焦之前截得直径为 $b$ 的光束截面。}
+  \label{fig:sc4061-tut01-infinity-focus}
+\end{figure}
+
+\begin{checkedsolution}
+设该有限物点的正确 image distance（像距）为 $\hat z$。由 converging cone（会聚光锥）中的 similar triangles（相似三角形），
+\[
+  \frac{b}{d}=\frac{\hat z-f}{\hat z},
+  \qquad
+  b=d\left(1-\frac{f}{\hat z}\right).
+\]
+再由 thin-lens equation（薄透镜公式）
+\[
+  \frac{1}{\hat Z}+\frac{1}{\hat z}=\frac{1}{f}
+  \quad\Longrightarrow\quad
+  1-\frac{f}{\hat z}=\frac{f}{\hat Z},
+\]
+得到
+\[
+  \boxed{b=\frac{df}{\hat Z}}.
+\]
+在 $f$ 和 $\hat Z$ 固定时，$b\propto d$：larger aperture（更大光圈）产生更大的blur circle，因而depth of field更小；smaller aperture（更小光圈）产生更大的depth of field。
+
+理想 pinhole camera 的优点是无需透镜且depth of field很大；缺点是 incoming light（进光量）很少，需要 longer exposure（更长曝光）或 higher ISO/gain（更高感光度/增益），分别容易造成 motion blur（运动模糊）或 noise（噪声）。针孔过小时还会受到 diffraction（衍射）限制，因此不能简单令孔径无限趋近于零。
+\end{checkedsolution}
+
+\textbf{检查点：}$b$ 与aperture diameter $d$ 成正比，而不是成反比；缩小光圈增加景深，但同时牺牲进光量。
+
+\exercisequestion{SC4061-TUT01-Q03}{Fixed Sensor 下的 Thin-lens Defocus}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L01-T03}{Thin Lens Model 与 Magnification}；
+\relatedtopic{SC4061-L01-T04}{Depth of Field 与 Aperture Trade-off}
+
+\subsubsection*{题目与思路}
+
+一台 thin-lens camera（薄透镜相机）的 focal length 为 $f=80\,\mathrm{mm}$，aperture diameter 为 $d=100\,\mathrm{mm}$。先对距离 $Z_1=1.5\,\mathrm{m}$ 的物体准确聚焦；随后不改变lens--sensor distance（透镜到传感器距离），拍摄距离 $Z_2=4\,\mathrm{m}$ 的第二个物体。求第一次聚焦时的sensor位置，以及第二个物点在sensor上的blur diameter。
+
+\begin{checkedsolution}
+统一使用毫米。第一次聚焦所需的像距为
+\[
+  z_1=\frac{fZ_1}{Z_1-f}
+  =\frac{80\times1500}{1500-80}
+  \approx\boxed{84.51\,\mathrm{mm}}.
+\]
+第二个物点真正的理想像距为
+\[
+  z_2=\frac{fZ_2}{Z_2-f}
+  =\frac{80\times4000}{4000-80}
+  \approx81.63\,\mathrm{mm}.
+\]
+由于camera is left untouched（相机保持不变），sensor仍位于 $z_1$，而第二个物点的光线已在 $z_2<z_1$ 处聚焦，随后再次发散到sensor。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.88\textwidth]{source/tutorial-01-q3-fixed-sensor.png}
+  \caption{Q3(b) 的fixed-sensor geometry（固定传感器几何）。来源：\textit{T1 Reference Solutions}，slide~9，裁切自原图。实际像点位于sensor之前，光线穿过它后再次发散，在sensor上形成blur circle。}
+  \label{fig:sc4061-tut01-fixed-sensor-defocus}
+\end{figure}
+
+由 actual focus（实际焦点）两侧的similar triangles，
+\[
+  \frac{b}{d}=\frac{z_1-z_2}{z_2}
+  \quad\Longrightarrow\quad
+  b=d\frac{z_1-z_2}{z_2}
+  \approx\boxed{3.52\,\mathrm{mm}}.
+\]
+Reference solution 中的 $3.53\,\mathrm{mm}$ 来自intermediate rounding（中间步骤取整）。
+\end{checkedsolution}
+
+\textbf{检查点：}“相机保持不变”固定的是sensor位置 $z_1$，不是第二个物点的理想像距；物体更远时 $z_2$ 更接近 $f$，所以本题中焦点位于sensor之前。
+
+\exercisequestion{SC4061-TUT01-Q04}{Perceptron 迭代直至收敛}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L02-T03}{Perceptron Learning Rule}
+
+\subsubsection*{题目与思路}
+
+对 augmented samples（增广样本）
+\[
+  \tilde{\bm x}_1=(3,3,1)^{\mathsf T}\in c_1,
+  \qquad
+  \tilde{\bm x}_2=(1,1,1)^{\mathsf T}\in c_2,
+\]
+采用 $\alpha=1$、$\bm w(1)=\bm0$，按 $\tilde{\bm x}_1,\tilde{\bm x}_2$ 的顺序循环训练。$c_1$ 要求 $\bm w^{\mathsf T}\tilde{\bm x}>0$；$c_2$ 要求 $\bm w^{\mathsf T}\tilde{\bm x}<0$。等于零不算正确分类。
+
+\begin{checkedsolution}
+Misclassified $c_1$ sample（被错分的$c_1$样本）令 $\bm w\leftarrow\bm w+\tilde{\bm x}$；misclassified $c_2$ sample 令 $\bm w\leftarrow\bm w-\tilde{\bm x}$。全部迭代如下：
+
+\begin{center}
+\small
+\begin{tabular}{@{}cclcl@{}}
+  \toprule
+  $k$ & 输入 & $\bm w(k)^{\mathsf T}\tilde{\bm x}$ & 操作 & $\bm w(k+1)^{\mathsf T}$ \\
+  \midrule
+  1  & $\tilde{\bm x}_1$ & $0$  & $+\tilde{\bm x}_1$ & $(3,3,1)$ \\
+  2  & $\tilde{\bm x}_2$ & $7$  & $-\tilde{\bm x}_2$ & $(2,2,0)$ \\
+  3  & $\tilde{\bm x}_1$ & $12$ & no update & $(2,2,0)$ \\
+  4  & $\tilde{\bm x}_2$ & $4$  & $-\tilde{\bm x}_2$ & $(1,1,-1)$ \\
+  5  & $\tilde{\bm x}_1$ & $5$  & no update & $(1,1,-1)$ \\
+  6  & $\tilde{\bm x}_2$ & $1$  & $-\tilde{\bm x}_2$ & $(0,0,-2)$ \\
+  7  & $\tilde{\bm x}_1$ & $-2$ & $+\tilde{\bm x}_1$ & $(3,3,-1)$ \\
+  8  & $\tilde{\bm x}_2$ & $5$  & $-\tilde{\bm x}_2$ & $(2,2,-2)$ \\
+  9  & $\tilde{\bm x}_1$ & $10$ & no update & $(2,2,-2)$ \\
+  10 & $\tilde{\bm x}_2$ & $2$  & $-\tilde{\bm x}_2$ & $(1,1,-3)$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+最终
+\[
+  \bm w(11)=\boxed{(1,1,-3)^{\mathsf T}},
+\]
+且
+\[
+  \bm w(11)^{\mathsf T}\tilde{\bm x}_1=3>0,
+  \qquad
+  \bm w(11)^{\mathsf T}\tilde{\bm x}_2=-1<0,
+\]
+所以已经收敛，decision boundary（决策边界）为
+\[
+  \boxed{x_1+x_2-3=0}.
+\]
+若程序必须额外扫描一个完整epoch（轮次）才能检测收敛，则会再得到 $\bm w(12)=\bm w(13)=\bm w(11)$，但不会产生新的权重。
+\end{checkedsolution}
+
+\textbf{检查点：}最后一个增广分量对应bias；判断$c_1/c_2$时必须使用严格的正号/负号条件，并记录分类正确时未发生变化的迭代。
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1--Q3沿同一条camera geometry（相机几何）主线，依次训练光心射线、infinity focus下的离焦，以及固定sensor下的blur diameter；Q4独立训练perceptron online update（感知机在线更新）。复习时应优先掌握三个判断：先确认sensor固定在哪个image plane，blur diameter来自哪一组similar triangles，以及perceptron的类别符号约定。
