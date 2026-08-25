@@ -1,0 +1,24 @@
+\begin{tikzpicture}[>=Latex,every node/.style={font=\small}]
+  \begin{scope}[xshift=0cm]
+    \draw[->] (0,0) -- (4.5,0) node[right] {$r$};
+    \draw[->] (0,0) -- (0,4.5) node[above] {$s$};
+    \draw[very thick,ntuRed] (0,0) -- (0.9,0) -- (3.2,4) -- (4.1,4);
+    \draw[densely dashed] (0.9,0) -- (0.9,-0.18) node[below] {$r_{\min}$};
+    \draw[densely dashed] (3.2,4) -- (3.2,-0.18) node[below] {$r_{\max}$};
+    \node[align=center] at (2.05,4.75) {contrast stretching\\（对比度拉伸）};
+  \end{scope}
+
+  \begin{scope}[xshift=6.2cm]
+    \draw[->] (0,0) -- (4.5,0) node[right] {$r$};
+    \draw[->] (0,0) -- (0,4.5) node[above] {$s$};
+    \draw[densely dashed,gray] (0,0) -- (4,4);
+    \draw[very thick,noteBlue,domain=0:4,samples=40]
+      plot (\x,{4*sqrt(\x/4)});
+    \draw[very thick,ntuRed,domain=0:4,samples=40]
+      plot (\x,{4*(\x/4)*(\x/4)});
+    \node[noteBlue,anchor=west] at (2.6,3.45) {$\gamma<1$};
+    \node[ntuRed,anchor=west] at (2.7,1.25) {$\gamma>1$};
+    \node[gray,anchor=west] at (2.7,2.55) {$\gamma=1$};
+    \node[align=center] at (2.05,4.75) {power-law mapping\\（幂律映射）};
+  \end{scope}
+\end{tikzpicture}

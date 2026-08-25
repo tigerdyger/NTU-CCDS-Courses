@@ -1,0 +1,188 @@
+% Actual class: 03
+% Slide deck: L2 (full) Spatial slides
+% Exact scope: pp. 1--40
+% NTULearn supplement: three L2 video transcripts, Parts 1--3
+% Human verified: Yes
+
+\section{第 03 节课：Spatial-domain Enhancement、Filtering 与 CNN}
+\label{lecture:SC4061-L03}
+
+\lecturemeta
+  {SC4061-L03}
+  {2026-08-25}
+  {L2 (full) Spatial slides}
+  {L2 pp.~1--40（Parts 1--3 全部）}
+  {课程视频 L2 Parts 1--3（字幕核对）}
+  {已确认（2026-08-25）}
+
+\subsection{本讲主线}
+
+Image enhancement（图像增强）不创造新的 scene information（场景信息），而是通过重新分配 intensity（灰度）或利用 neighbourhood（邻域）让已有结构更容易被人或算法识别。本讲先比较 point processing（点处理）与 spatial filtering（空间滤波），再说明 CNN（卷积神经网络）如何把人工设计 kernel（核）推广为从数据中学习 kernel。
+
+\lecturetopic{SC4061-L03-T01}{Point Processing 与 Spatial Filtering}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.2cm}X@{}}
+  \toprule
+  Method（方法） & Output dependency（输出依赖） & 典型用途 \\
+  \midrule
+  Point processing（点处理） & $g(x,y)=T(f(x,y))$；输出位置不直接读取邻域，但 $T$ 的参数可以来自整幅图像的 minimum、maximum 或 histogram（直方图） & contrast stretching（对比度拉伸）、power-law transformation（幂律变换）、histogram equalisation（直方图均衡化） \\
+  Spatial filtering（空间滤波） & 输出由当前位置及 neighbourhood 共同决定 & smoothing（平滑）、noise removal（去噪）、feature detection（特征检测） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/enhancement-operators}}
+  \caption{Point processing 只把当前 intensity 送入固定变换；spatial filtering 则让 kernel 与 neighbourhood 做逐元素运算。}
+  \label{fig:sc4061-l03-enhancement-operators}
+\end{figure}
+
+\keyidea{``Pixel-wise（逐像素）''描述输出的局部依赖关系，不代表变换参数一定不使用 global statistics（全局统计量）。}
+
+\lecturetopic{SC4061-L03-T02}{Contrast、Gamma 与 Histogram Equalisation}
+
+若主要灰度位于 $[r_{\min},r_{\max}]$，把它线性展开到 $[0,L-1]$：
+\[
+  s=
+  \begin{cases}
+    0, & r\le r_{\min},\\[2pt]
+    (L-1)\dfrac{r-r_{\min}}{r_{\max}-r_{\min}},
+      & r_{\min}<r<r_{\max},\\[7pt]
+    L-1, & r\ge r_{\max}.
+  \end{cases}
+\]
+Contrast stretching 扩大有用区域的 dynamic range（动态范围），但两端的 clipping（截断）会把不同输入合并为同一输出，因此可能丢失信息。
+
+Power-law transformation 写成
+\[
+  s=cr^\gamma.
+\]
+若要求 $r=L-1$ 仍映射到 $s=L-1$，则
+\[
+  \boxed{s=(L-1)\left(\frac{r}{L-1}\right)^\gamma},
+  \qquad c=(L-1)^{1-\gamma}.
+\]
+$\gamma<1$ 提升 dark pixels（暗像素），$\gamma>1$ 相对突出 bright region（亮部区域），$\gamma=1$ 为 identity mapping（恒等映射）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.9\textwidth}{!}{\input{figures/intensity-mappings}}
+  \caption{三类 intensity mapping（灰度映射）的形状。纵横轴均表示归一化后的输出/输入灰度。}
+  \label{fig:sc4061-l03-intensity-mappings}
+\end{figure}
+
+Histogram equalisation 用 cumulative distribution function, CDF（累积分布函数）自动构造单调映射。若图像大小为 $M\times N$、gray level（灰度级）数为 $L$，且 $n_j$ 个像素取值为 $r_j$，则
+\[
+  p_r(r_j)=\frac{n_j}{MN},
+  \qquad
+  \boxed{s_k=\operatorname{round}\!\left((L-1)\sum_{j=0}^{k}p_r(r_j)\right)}.
+\]
+最后一个 CDF 值为 $1$，故最大灰度映射到 $L-1$。离散情形下结果只会\emph{近似}均匀：一个 input bin（输入灰度箱）不能被确定性映射拆开，而多个 input bins 可以合并到同一个 output bin。CDF 单调不减，因此灰度顺序不会反转。
+
+\textbf{对应例题：}
+\begin{itemize}
+  \item \relatedexercise{SC4061-L03-E01}{Contrast Stretching 数值计算}；
+  \item \relatedexercise{SC4061-L03-E02}{Histogram Equalisation 映射}。
+\end{itemize}
+
+\lecturetopic{SC4061-L03-T03}{Correlation、Convolution 与 Padding}
+
+对大小为 $(2a+1)\times(2b+1)$ 的 kernel $w$，讲义采用的 correlation（相关）定义为
+\[
+  \boxed{g(x,y)=\sum_{u=-a}^{a}\sum_{v=-b}^{b}
+  f(x+u,y+v)w(u,v)}.
+\]
+它把 neighbourhood 与 kernel 做 element-wise multiplication（逐元素相乘）后求和。Convolution（卷积）先将 kernel 旋转 $180^\circ$：
+\[
+  h(u,v)=w(-u,-v),
+  \qquad
+  g(x,y)=\sum_{u=-a}^{a}\sum_{v=-b}^{b}f(x-u,y-v)h(u,v).
+\]
+一般 asymmetric kernel（非对称核）会使二者结果不同；若 $w(u,v)=w(-u,-v)$，则 kernel 旋转后不变，二者在相同 boundary handling（边界处理）下结果相同。
+
+Border pixels（边界像素）缺少完整邻域，需要 padding（填充）。Zero padding（零填充）简单但可能产生不自然的 dark border（暗边）；replication（边界复制）和 mirror padding（镜像填充）通常能更平滑地延续边界结构。
+
+\textbf{对应例题：}
+\relatedexercise{SC4061-L03-E03}{Correlation 与 Kernel Rotation}。
+
+\lecturetopic{SC4061-L03-T04}{Box、Gaussian 与 Median Filtering}
+
+\textbf{Box/Average filter（方框/均值滤波器）}对邻域等权平均。例如
+\[
+  w=\frac{1}{9}
+  \begin{bmatrix}
+    1&1&1\\1&1&1\\1&1&1
+  \end{bmatrix}.
+\]
+若 $X_i=S+N_i$，其中 $N_i$ 相互 independent（独立）、均值为 $0$、方差为 $\sigma^2$，对 $n$ 个观测平均后
+\[
+  E[\bar X]=S,
+  \qquad
+  \operatorname{Var}(\bar X)=\frac{\sigma^2}{n},
+  \qquad
+  \operatorname{Std}(\bar X)=\frac{\sigma}{\sqrt n}.
+\]
+若 noise（噪声）相关，则方差不能直接写成 $\sigma^2/n$；若相邻信号并不近似相同，平均还会模糊 edge（边缘）。
+
+\textbf{Gaussian filter（高斯滤波器）}让靠近中心的像素贡献更大：
+\[
+  h(x,y)=\frac{1}{2\pi\sigma^2}
+  \exp\!\left(-\frac{x^2+y^2}{2\sigma^2}\right),
+\]
+离散化后需归一化使 kernel weights（核权重）之和为 $1$。$\sigma$ 控制权重的空间扩散范围。
+
+\textbf{Median filter（中值滤波器）}把邻域值排序后取中位数，不是 weighted sum，因此是 non-linear filter（非线性滤波器）。它特别适合 impulse/salt-and-pepper noise（脉冲/椒盐噪声），通常比均值滤波更能保留 edge。
+
+\begin{remark}
+讲义把 speckle noise（散斑噪声）与 impulse/salt-and-pepper noise 并列为同义表述并不严谨。Speckle 通常是 coherent imaging（相干成像）中的 multiplicative granular noise（乘性颗粒噪声），不等同于离散的椒盐噪声。
+\end{remark}
+
+\textbf{对应例题：}
+\relatedexercise{SC4061-L03-E04}{Noise Averaging 与 Median Filtering}。
+
+\lecturetopic{SC4061-L03-T05}{从 Local Average 到 Similarity-based Denoising}
+
+Spatial averaging（空间平均）并不必须只使用几何上相邻的 pixels；更一般的策略是寻找 appearance 或 structure（结构）相似的区域：
+\begin{itemize}
+  \item Bilateral filter（双边滤波）同时考虑 spatial distance（空间距离）与 intensity similarity（灰度相似度）；
+  \item Non-local Means, NLM（非局部均值）在更大范围内搜索 similar patches（相似图像块）；
+  \item BM3D 把相似 patches 组成三维数组并进行 collaborative filtering（协同滤波）。
+\end{itemize}
+这些内容在本讲属于 extended reading（扩展阅读）；重点是理解``按相似性聚合''相较固定局部平均更可能保留重复结构。
+
+\lecturetopic{SC4061-L03-T06}{From Hand-crafted Kernels to Learned Kernels}
+
+Traditional image processing（传统图像处理）根据任务手工指定 kernel；复杂任务中，每个 weight 很难由人直接设计。CNN 预先规定 network structure（网络结构），再通过 training data（训练数据）、forward propagation（前向传播）、backpropagation（反向传播）和 optimization（优化）学习 kernel weights。
+
+同一 kernel 在不同位置重复使用称为 weight sharing（权重共享），使同一种 local feature（局部特征）可以在整幅图像上被检测，并大幅减少参数数量。严格来说，大多数 deep-learning frameworks 中名为 ``convolution'' 的运算不旋转 kernel，数学上是 cross-correlation（互相关）；由于 kernel 本身可学习，这一命名约定不削弱模型的表达能力，但考试中仍需区分两种定义。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/cnn-feature-pipeline}}
+  \caption{Classification CNN（上）把 spatial features 压缩为类别；U-Net 式 dense prediction（下）利用 decoder 与 skip connections 恢复逐像素输出。}
+  \label{fig:sc4061-l03-cnn-pipeline}
+\end{figure}
+
+\lecturetopic{SC4061-L03-T07}{LeNet、AlexNet 与 U-Net}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2cm}>{\raggedright\arraybackslash}p{3.5cm}X@{}}
+  \toprule
+  Network（网络） & Output/task（输出/任务） & 本讲应掌握的意义 \\
+  \midrule
+  LeNet & handwritten digit/document recognition（手写数字/文档识别） & 早期成功组合 learned convolution、subsampling 与 backpropagation \\
+  AlexNet & ImageNet classification（图像分类） & 2012 年以更深的网络显著推动 deep learning 在视觉任务中的应用 \\
+  U-Net & segmentation、denoising 等 image-to-image tasks（图像到图像任务） & Encoder（编码器）提取 context，decoder（解码器）恢复空间分辨率，skip connections（跳跃连接）传递高分辨率细节 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+普通 classification CNN 最终输出一个 class label 或 class probabilities（类别概率）；U-Net 输出与输入具有 spatial correspondence（空间对应关系）的 dense map（稠密图），适合 pixel-level prediction（逐像素预测）。这一性质适用于视觉中的 segmentation、denoising、depth estimation 等任务，不能直接等同于 natural-language sequence generation（自然语言序列生成）。
+
+\subsection{一分钟回顾}
+
+Point processing 通过 $s=T(r)$ 重新分配 intensity，其中 histogram equalisation 用 CDF 自动构造单调映射；spatial filtering 用 neighbourhood 与 kernel 进行 correlation 或 convolution。Box 与 Gaussian filter 是 linear smoothing（线性平滑），median filter 是适合 impulse noise 的 nonlinear filter。CNN 把人工 kernel 改为 learned kernel，并依靠 weight sharing 复用局部检测器；classification CNN 输出类别，而 U-Net 通过 encoder--decoder 与 skip connections 产生 dense spatial output。

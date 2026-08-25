@@ -1,0 +1,174 @@
+% Lecture example set: SC4061-L03
+% Source: L2 (full) Spatial slides pp. 7, 16, 19, 21, 26, 28
+% Human verified: Yes
+
+\exercisemeta
+  {SC4061-L03-EX}
+  {2026-08-25}
+  {L2 (full) Spatial slides pp.~7, 16, 19, 21, 26, 28；课堂讨论中的自编检验例}
+  {答案已完成并确认}
+  {已确认（2026-08-25）}
+
+\exercisequestion{SC4061-L03-E01}{Contrast Stretching 数值计算}
+
+\textbf{类型：}self-contained check example（自编检验例，基于讲义 p.~7 的变换）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L03-T02}{Contrast、Gamma 与 Histogram Equalisation}
+
+\subsubsection*{题目}
+
+8-bit image（8 位图像）采用 $r_{\min}=50$、$r_{\max}=200$ 的 contrast stretching。分别求 $r=30,100,220$ 的输出，并判断处理后是否增加了新的 scene information（场景信息）。
+
+\begin{checkedsolution}
+由分段线性映射，
+\[
+  r=30\longmapsto\boxed{0},
+  \qquad
+  r=100\longmapsto
+  255\frac{100-50}{200-50}=\boxed{85},
+  \qquad
+  r=220\longmapsto\boxed{255}.
+\]
+该操作扩大主要区域的 dynamic range（动态范围），只让已有结构更容易观察，不创造新的 scene information。两端 clipping（截断）还会把多个输入灰度合并，可能造成信息损失。
+\end{checkedsolution}
+
+\textbf{检查点：}``看起来更清楚''不等于``信息量增加''；还要检查变换是否可逆以及是否发生 clipping。
+
+\exercisequestion{SC4061-L03-E02}{Histogram Equalisation 映射}
+
+\textbf{类型：}lecture example（讲义例题，p.~16）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L03-T02}{Contrast、Gamma 与 Histogram Equalisation}
+
+\subsubsection*{题目}
+
+一幅 $L=8$ 的图像具有下列 normalized histogram（归一化直方图）：
+\[
+  \begin{array}{c|cccccccc}
+    r_k & r_0&r_1&r_2&r_3&r_4&r_5&r_6&r_7\\ \hline
+    p_r(r_k)&0.19&0.25&0.21&0.16&0.08&0.06&0.03&0.02
+  \end{array}
+\]
+使用 $s_k=\operatorname{round}\bigl(7\sum_{j=0}^{k}p_r(r_j)\bigr)$ 求全部映射及均衡后的 histogram。
+
+\begin{checkedsolution}
+CDF（累积分布）及映射为
+\[
+  \begin{array}{c|cccccccc}
+    r_k&r_0&r_1&r_2&r_3&r_4&r_5&r_6&r_7\\ \hline
+    \mathrm{CDF}&0.19&0.44&0.65&0.81&0.89&0.95&0.98&1.00\\
+    7\,\mathrm{CDF}&1.33&3.08&4.55&5.67&6.23&6.65&6.86&7.00\\
+    s_k&1&3&5&6&6&7&7&7
+  \end{array}
+\]
+因此
+\[
+  \boxed{[r_0,\ldots,r_7]\mapsto[1,3,5,6,6,7,7,7]}.
+\]
+合并落入同一输出灰度的概率，得到
+\[
+  p_s(1)=0.19,
+  \quad p_s(3)=0.25,
+  \quad p_s(5)=0.21,
+  \quad p_s(6)=0.24,
+  \quad p_s(7)=0.11,
+\]
+其余输出灰度概率为 $0$。
+\end{checkedsolution}
+
+\textbf{检查点：}先累加再乘 $L-1$，最后 round；不能对每一个 $p_r(r_k)$ 单独取整。离散 equalisation 也不保证 histogram 完全平坦。
+
+\exercisequestion{SC4061-L03-E03}{Correlation 与 Kernel Rotation}
+
+\textbf{类型：}lecture example（讲义例题，pp.~19, 21）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L03-T03}{Correlation、Convolution 与 Padding}
+
+\subsubsection*{题目}
+
+给定 image neighbourhood（图像邻域）和 correlation kernel：
+\[
+  F=
+  \begin{bmatrix}
+    0&8&0\\2&2&10\\6&9&2
+  \end{bmatrix},
+  \qquad
+  w=
+  \begin{bmatrix}
+    -0.3&-0.2&0.1\\
+    -0.3&-0.4&0.1\\
+    0.4&0.3&0.3
+  \end{bmatrix}.
+\]
+求 correlation 输出，并写出进行 convolution 时对应的 $180^\circ$ rotated kernel（旋转核）。
+
+\begin{checkedsolution}
+逐元素相乘并求和：
+\[
+\begin{aligned}
+g={}&0(-0.3)+8(-0.2)+0(0.1)
+  +2(-0.3)+2(-0.4)+10(0.1)\\
+ &+6(0.4)+9(0.3)+2(0.3)
+ =\boxed{3.7}.
+\end{aligned}
+\]
+将 $w$ 旋转 $180^\circ$ 得
+\[
+  \boxed{
+  h=
+  \begin{bmatrix}
+    0.3&0.3&0.4\\
+    0.1&-0.4&-0.3\\
+    0.1&-0.2&-0.3
+  \end{bmatrix}}.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}Convolution 要同时反转 row order（行顺序）和 column order（列顺序），即旋转 $180^\circ$，不是转置或只翻转一个方向。
+
+\clearpage
+\exercisequestion{SC4061-L03-E04}{Noise Averaging 与 Median Filtering}
+
+\textbf{类型：}lecture example / lecture quiz（讲义 pp.~26, 28）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L03-T04}{Box、Gaussian 与 Median Filtering}
+
+\subsubsection*{题目}
+
+（1）三个观测满足 $X_i=S+N_i$，其中 $N_i$ 相互独立、$E[N_i]=0$、$\operatorname{Var}(N_i)=\sigma^2$。求三者平均后的 expectation（期望）与 noise standard deviation（噪声标准差）。
+
+（2）对 neighbourhood
+\[
+  \begin{bmatrix}
+    3&0&5\\10&21&14\\17&6&0
+  \end{bmatrix}
+\]
+进行 median filtering，求输出。
+
+\begin{checkedsolution}
+（1）
+\[
+  \bar X=S+\frac{N_1+N_2+N_3}{3},
+  \qquad E[\bar X]=\boxed{S}.
+\]
+独立性使 covariance terms（协方差项）为零：
+\[
+  \operatorname{Var}(\bar X)
+  =\frac{\sigma^2+\sigma^2+\sigma^2}{9}
+  =\frac{\sigma^2}{3},
+  \qquad
+  \operatorname{Std}(\bar X)=\boxed{\frac{\sigma}{\sqrt3}}.
+\]
+
+（2）排序得到
+\[
+  0,0,3,5,\boxed{6},10,14,17,21,
+\]
+故 median filter 输出为 $\boxed{6}$。
+\end{checkedsolution}
+
+\textbf{检查点：}Independent（独立）决定平均后的 variance 如何相加；zero mean（零均值）决定平均是否保持 signal expectation。两项假设作用不同。

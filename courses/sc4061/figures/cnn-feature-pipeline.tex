@@ -1,0 +1,28 @@
+\begin{tikzpicture}[
+  >=Latex,
+  stage/.style={draw=noteBlue, rounded corners=2pt, minimum width=2.05cm,
+    minimum height=0.85cm, align=center, fill=blue!4},
+  dense/.style={draw=ntuRed, rounded corners=2pt, minimum width=2.05cm,
+    minimum height=0.85cm, align=center, fill=red!4},
+  every node/.style={font=\small}
+]
+  \node[stage] (im1) at (0,1.6) {image};
+  \node[stage] (conv1) at (2.8,1.6) {learned\\convolutions};
+  \node[stage] (pool1) at (5.6,1.6) {pool / flatten};
+  \node[dense] (class) at (8.4,1.6) {class\\probabilities};
+  \draw[->,thick] (im1)--(conv1);
+  \draw[->,thick] (conv1)--(pool1);
+  \draw[->,thick] (pool1)--(class);
+  \node[anchor=east] at (-1.35,1.6) {Classification CNN};
+
+  \node[stage] (im2) at (0,-1.25) {image};
+  \node[stage] (enc) at (2.8,-1.25) {encoder\\context};
+  \node[stage] (dec) at (5.6,-1.25) {decoder\\upsampling};
+  \node[dense] (map) at (8.4,-1.25) {dense spatial\\output map};
+  \draw[->,thick] (im2)--(enc);
+  \draw[->,thick] (enc)--(dec);
+  \draw[->,thick] (dec)--(map);
+  \draw[->,thick,noteBlue,bend left=28] (enc.north) to
+    node[above,fill=white,inner sep=1pt] {skip connection} (dec.north);
+  \node[anchor=east] at (-1.35,-1.25) {U-Net style};
+\end{tikzpicture}

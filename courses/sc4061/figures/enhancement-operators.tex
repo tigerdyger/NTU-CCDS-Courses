@@ -1,0 +1,22 @@
+\begin{tikzpicture}[
+  >=Latex,
+  box/.style={draw=noteBlue, rounded corners=2pt, minimum width=2.5cm,
+    minimum height=1.2cm, align=center, fill=blue!4},
+  op/.style={draw=ntuRed, rounded corners=2pt, minimum width=2.2cm,
+    minimum height=1.0cm, align=center, fill=red!4},
+  every node/.style={font=\small}
+]
+  \node[box] (pixel) at (0,1.6) {current pixel\\$r=f(x,y)$};
+  \node[op] (point) at (4.0,1.6) {point transform\\$s=T(r)$};
+  \node[box] (pointout) at (8.0,1.6) {output pixel\\$g(x,y)=s$};
+  \draw[->,thick] (pixel) -- (point);
+  \draw[->,thick] (point) -- (pointout);
+  \node[above=2pt of point] {Point processing（点处理）};
+
+  \node[box] (neigh) at (0,-1.2) {$3\times3$ neighbourhood\\around $f(x,y)$};
+  \node[op] (kernel) at (4.0,-1.2) {kernel $w$\\multiply and sum};
+  \node[box] (filterout) at (8.0,-1.2) {filtered pixel\\$g(x,y)$};
+  \draw[->,thick] (neigh) -- (kernel);
+  \draw[->,thick] (kernel) -- (filterout);
+  \node[above=2pt of kernel] {Spatial filtering（空间滤波）};
+\end{tikzpicture}
