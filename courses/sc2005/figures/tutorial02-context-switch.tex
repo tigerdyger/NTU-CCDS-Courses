@@ -1,0 +1,41 @@
+\begin{tikzpicture}[
+  >=Latex,
+  every node/.style={font=\small},
+  lane/.style={draw=black!45,thick},
+  process/.style={draw=noteBlue,very thick,rounded corners=2pt,fill=blue!7,minimum width=2.6cm,minimum height=0.75cm,align=center},
+  kernel/.style={draw=ntuRed,very thick,rounded corners=2pt,fill=red!6,minimum width=3.4cm,minimum height=0.75cm,align=center},
+  event/.style={->,thick,draw=black!75},
+  continuation/.style={dotted,very thick,draw=black!55}
+]
+  \node[font=\bfseries] at (0,0.45) {Process P0};
+  \node[font=\bfseries] at (5.0,0.45) {OS Kernel};
+  \node[font=\bfseries] at (10.0,0.45) {Process P1};
+  \draw[lane] (0,0) -- (0,-6.9);
+  \draw[lane] (5.0,0) -- (5.0,-6.9);
+  \draw[lane] (10.0,0) -- (10.0,-6.9);
+
+  \node[process] (p1first) at (10.0,-0.45) {P1: Running};
+  \node[kernel] (a) at (5.0,-1.35) {A};
+  \draw[event] (p1first.south west) -- (a.east);
+  \node[fill=white,inner sep=1pt,font=\scriptsize,align=center] at (7.55,-0.82)
+    {hardware\\interrupt};
+  \draw[continuation] (a.south) -- (5.0,-2.10);
+
+  \node[kernel] (b) at (5.0,-2.50) {B};
+  \node[process] (p0run) at (0,-3.35) {P0: Running};
+  \draw[event] (b.west) -- (p0run.north east);
+
+  \node[kernel] (c) at (5.0,-4.25) {C};
+  \draw[event] (p0run.south east) -- (c.west);
+  \node[fill=white,inner sep=1pt,font=\scriptsize,align=center] at (2.50,-3.73)
+    {blocking I/O\\system call};
+  \draw[continuation] (c.south) -- (5.0,-4.95);
+
+  \node[kernel] (d) at (5.0,-5.35) {D};
+  \node[process] (p1second) at (10.0,-6.25) {P1: Running};
+  \draw[event] (d.east) -- (p1second.north west);
+
+  \node[anchor=east,text=noteBlue] at (-0.25,-1.35) {P0: Ready};
+  \node[anchor=east,text=ntuRed] at (-0.25,-5.35) {P0: Waiting for I/O};
+  \node[anchor=west,text=noteBlue] at (10.25,-2.50) {P1: Ready};
+\end{tikzpicture}

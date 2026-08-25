@@ -1,0 +1,151 @@
+% Tutorial set: 02
+% Source: Tutorial Two, p. 2-1 (PDF p. 1), Questions 1--4
+% Session date: 2026-08-25
+% Human verified: Yes
+
+\subsection{Tutorial 02：Processes 与 Threads}
+\label{tutorial:SC2005-TUT02}
+
+\exercisemeta
+  {SC2005-TUT02}
+  {2026-08-25}
+  {Tutorial Two，p.~2-1（PDF p.~1），Questions 1--4}
+  {全部题目已作答并完成订正}
+  {已确认（2026-08-25）}
+
+\exercisequestion{SC2005-TUT02-Q01}{Process State、Interrupt、\texttt{wait()} 与 IPC 判断}
+
+\textbf{对应讲义：}
+\begin{itemize}[leftmargin=2em]
+  \item \relatedtopic{SC2005-L03-T02}{Process States 与 State Transitions}
+  \item \relatedtopic{SC2005-L03-T03}{PCB 与 Context Switch}
+  \item \relatedtopic{SC2005-L04-T01}{Process Creation 与 Termination}
+  \item \relatedtopic{SC2005-L04-T02}{IPC：Message Passing 与 Shared Memory}
+\end{itemize}
+
+\subsubsection*{题目}
+
+判断下列陈述是 True 还是 False，并说明理由。
+
+\begin{enumerate}[label=(\alph*)]
+  \item 等待获得 CPU 的 ready process（就绪进程）处于 Waiting state（等待状态）。
+  \item 任意 hardware interrupt（硬件中断，而非 trap）到达时，当前 Running process 都会进入 Ready state。
+  \item \texttt{wait()} system call 通常由 child process 调用，用来等待 parent process 的指令。
+  \item Message-passing IPC（消息传递式进程间通信）比 shared-memory IPC（共享内存式进程间通信）消耗更少内存。
+\end{enumerate}
+
+\begin{checkedsolution}
+\begin{enumerate}[label=(\alph*)]
+  \item \textbf{False。}Ready 表示执行条件已经满足、只等待 CPU；Waiting/Blocked 表示仍在等待 I/O、message 或其他 event。
+  \item \textbf{False。}Interrupt 必然使 CPU 暂时进入 kernel mode，但 ISR 完成后可以恢复原 process。只有 scheduler 决定改运行另一个 process 时，原 process 才会进入 Ready 并发生 process context switch。
+  \item \textbf{False。}通常由 parent 调用 \texttt{wait()}，等待 child 结束或状态变化并取得 termination status；它不是 child 接收 parent 指令的 IPC interface。
+  \item \textbf{False（作为普遍断言）。}Message passing 可能需要 kernel buffers 与数据复制；shared memory 让 processes 映射同一组 physical pages，传输大量数据时通常避免重复复制。实际内存开销取决于 implementation 与 workload，不能断言前者总是更少。
+\end{enumerate}
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+Interrupt entry（中断入口）不等于 process context switch；先判断 CPU 是否最终返回同一 process。比较 IPC 时也要说明数据规模、复制次数和 buffer implementation，不能只凭机制名称下结论。
+
+\exercisequestion{SC2005-TUT02-Q02}{Data Region 与 Stack Region}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L03-T01}{Process、Memory Image 与 Base--Limit Protection}；
+\relatedtopic{SC2005-L04-T04}{Thread Resources 与 Multithreaded Server}
+
+\subsubsection*{题目}
+
+写出 process memory（进程内存）中 data region（数据区）与 stack region（栈区）的两个主要区别。
+
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+  \toprule
+  对比 & Data region & Stack region \\
+  \midrule
+  内容与 lifetime & 保存 global/static variables，通常与 process 同寿命 & 保存 function parameters、local variables、return address 与必要的 saved registers；每次调用产生 stack frame，返回时释放该 frame \\
+  Thread ownership & 属于 process address space，同一 process 的 threads 共享 & 每个 thread 独立拥有自己的 stack \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+每次 function call 创建的是已有 stack 上的新 stack frame（栈帧），不是重新创建一整个 stack；\texttt{malloc}/\texttt{new} 分配的对象位于 heap，而不是 data region 或 stack。
+
+\exercisequestion{SC2005-TUT02-Q03}{Single-threaded 与 Multi-threaded Process}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L04-T04}{Thread Resources 与 Multithreaded Server}；
+\relatedtopic{SC2005-L04-T05}{User/Kernel Threads 与 Mapping Models}
+
+\subsubsection*{题目}
+
+说明 single-threaded process（单线程进程）与 multi-threaded process（多线程进程）的区别，包括 execution streams 的数量，以及 threads 共享和独享的资源。
+
+\begin{checkedsolution}
+Single-threaded process 只有一条 execution stream；multi-threaded process 有多条 execution streams。同一 process 的 threads 共享 code、data region、heap 与 open files，但每个 thread 独立拥有 program counter、register set 与 stack。
+
+多个 threads 能提供 concurrency（并发）；只有在多个 CPU cores 上同时执行时才形成 parallelism（并行）。共享 data/heap 还要求程序使用 synchronization，避免 race condition。
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+不要把 thread 独立的执行现场与 process 共享的资源混在一起，也不要把 multithreading 直接等同于 multicore parallelism。
+
+\clearpage
+\exercisequestion{SC2005-TUT02-Q04}{Interrupt、Blocking I/O 与 Context Switch}
+
+\textbf{对应讲义：}
+\begin{itemize}[leftmargin=2em]
+  \item \relatedtopic{SC2005-L03-T02}{Process States 与 State Transitions}
+  \item \relatedtopic{SC2005-L03-T03}{PCB 与 Context Switch}
+\end{itemize}
+
+\subsubsection*{题目}
+
+在 multiprogramming system（多道程序系统）中，P1 起初占用 CPU。Hardware interrupt 到达后，OS kernel 经过操作 A、B 改为运行 P0；随后 P0 发出 blocking I/O system call，kernel 再经过操作 C、D 恢复 P1。根据图示：
+
+\begin{enumerate}[label=(\alph*)]
+  \item 写出 P0 与 P1 的 state transitions。
+  \item 说明 kernel 在 A、B、C、D 分别执行什么操作。
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.92\textwidth}{!}{\input{figures/tutorial02-context-switch}}
+  \caption{Tutorial 02 Question 4 的原创重绘：两次 kernel entry 及其前后的 context save/restore。}
+  \label{fig:sc2005-tut02-context-switch}
+\end{figure}
+
+\clearpage
+\begin{checkedsolution}
+\[
+\begin{aligned}
+  P1 &: \mathrm{Running}\rightarrow\mathrm{Ready}\rightarrow\mathrm{Running},\\
+  P0 &: \mathrm{Ready}\rightarrow\mathrm{Running}\rightarrow\mathrm{Waiting}.
+\end{aligned}
+\]
+
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}>{\bfseries}lX@{}}
+  \toprule
+  操作 & Kernel action \\
+  \midrule
+  A & 响应 hardware interrupt，并把 P1 的 CPU context 保存到 $PCB_1$；本图给定 scheduler 随后选择 P0 \\
+  B & 从 $PCB_0$ 恢复 P0 的 context，返回 user mode 并令 P0 Running \\
+  C & 响应 blocking I/O system call，保存 P0 的 context、启动 I/O，并把 P0 放入 Waiting/device queue \\
+  D & 从 $PCB_1$ 恢复 P1 的 context，返回 user mode 并令 P1 继续 Running \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+P0 等待 I/O 时由 P1 运行；P1 并不等待该 I/O。设备完成后，P0 由 Waiting 进入 Ready，但是否立即 Running 仍由 scheduler 决定。
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+Hardware interrupt 本身只触发 kernel entry；本图中的 $P1:\mathrm{Running}\rightarrow\mathrm{Ready}$ 来自后续 scheduling decision。图中的 idle 只表示 process 没有占用 CPU，不能脱离事件直接等同于 Waiting。
