@@ -1,0 +1,93 @@
+% Lecture example set: SC2008-L03
+% Sources: M1-L6 pp. 12--20 and 30--35; checked discussion on 2026-08-25
+% Human verified: Yes
+
+\exercisemeta
+  {SC2008-L03-EX}
+  {2026-08-25}
+  {M1-L6 pp.~12--20、30--35；课堂检查题}
+  {三道例题的答案已完成并核对；自编题已明确标注}
+  {已确认（2026-08-25）}
+
+\exercisequestion{SC2008-L03-E01}{讲义扩展例：4-node Slotted ALOHA}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L03-T03}{ALOHA 与 Throughput}
+
+\subsubsection*{题目}
+
+讲义 L6 p.~13 给出一个 4-node Slotted ALOHA network（四节点时隙 ALOHA 网络）。每个节点在一个 slot 中独立地以 $p=0.25$ 发送。求 offered load $G$，以及该 slot 为 successful、empty、collision 的概率。
+
+\begin{checkedsolution}
+\[
+  G=Np=4(0.25)=1.
+\]
+Successful slot 要求四个节点中恰好一个发送：
+\[
+  \Pr(S)=4(0.25)(0.75)^3=0.421875.
+\]
+Empty slot 要求全部节点不发送：
+\[
+  \Pr(E)=(0.75)^4=0.31640625.
+\]
+其余情况均为 collision：
+\[
+  \Pr(C)=1-\Pr(S)-\Pr(E)=0.26171875.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}$p(1-p)^3$ 只表示某个指定节点成功；乘以 4 才是整个 slot 成功。$1/e$ 是 $N\to\infty$ 的极限，不是固定 $N=4$ 的精确上限。
+
+\exercisequestion{SC2008-L03-E02}{自编检验例：ALOHA Maximum Throughput}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L03-T03}{ALOHA 与 Throughput}
+
+\subsubsection*{题目}
+
+已知大规模网络中 Slotted ALOHA 与 Pure ALOHA 的 throughput 分别为
+\[
+  S_s(G)=Ge^{-G},\qquad S_p(G)=Ge^{-2G}.
+\]
+分别求使 throughput 最大的 offered load 及 maximum throughput，并解释两者差异的原因。
+
+\begin{checkedsolution}
+\begin{align*}
+  S_s'(G)&=e^{-G}(1-G),
+  &G_s^*&=1,
+  &S_s^*&=1/e,\\
+  S_p'(G)&=e^{-2G}(1-2G),
+  &G_p^*&=1/2,
+  &S_p^*&=1/(2e).
+\end{align*}
+Pure ALOHA 的 frame 可在任意时刻开始，vulnerable period 从一个 frame time 增为两个 frame times，因此最优 offered load 与 maximum throughput 均减半。
+\end{checkedsolution}
+
+\textbf{检查点：}最大值由 derivative 等于零得到；不能把 Slotted ALOHA 的最优点 $G=1$ 直接套给 Pure ALOHA。
+
+\clearpage
+\exercisequestion{SC2008-L03-E03}{自编检验例：CSMA/CD Minimum Frame Length}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L03-T05}{CSMA/CD、Propagation Delay 与 Minimum Frame Length}
+
+\subsubsection*{题目}
+
+某 CSMA/CD network 的 data rate 为 $R=100$ Mbps，maximum one-way propagation delay 为 $\tau=2\ \mu\mathrm{s}$。求 CSMA vulnerable time、worst-case collision detection time，以及保证 sender 能检测最远端 collision 所需的 theoretical minimum frame length，分别以 bits 和 bytes 表示。
+
+\begin{checkedsolution}
+\[
+  T_{\mathrm{vulnerable}}=\tau=2\ \mu\mathrm{s},
+  \qquad
+  T_{\mathrm{detect,max}}=2\tau=4\ \mu\mathrm{s}.
+\]
+因此
+\begin{align*}
+  L_{\min}
+    &=R(2\tau)\\
+    &=(100\times10^6)(4\times10^{-6})\\
+    &=400\ \text{bits}=50\ \text{bytes}.
+\end{align*}
+\end{checkedsolution}
+
+\textbf{检查点：}CSMA vulnerable time 是单程 $\tau$，CSMA/CD 最坏检测时间是往返 $2\tau$；本题的 50 bytes 是给定参数下的理论值，不是标准 Ethernet 的 64-byte minimum frame。

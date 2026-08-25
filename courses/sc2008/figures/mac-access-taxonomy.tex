@@ -1,0 +1,18 @@
+\begin{tikzpicture}[
+  >=Latex,
+  every node/.style={font=\small},
+  root/.style={draw=noteBlue,rounded corners,thick,minimum width=42mm,minimum height=10mm,align=center},
+  branch/.style={draw=ntuRed,rounded corners,thick,text width=39mm,minimum height=20mm,align=center,inner sep=2.5mm}
+]
+  \node[root] (root) {Multiple-access protocols};
+  \node[branch] (random) at (-5.0,-2.0)
+    {Random access\\ALOHA, CSMA,\\CSMA/CD, CSMA/CA};
+  \node[branch] (controlled) at (0,-2.0)
+    {Controlled access\\reservation, polling,\\token passing};
+  \node[branch] (channel) at (5.0,-2.0)
+    {Channelization\\FDMA, TDMA, CDMA};
+
+  \draw[->,thick] (root.south) -- ++(0,-6mm) -| (random.north);
+  \draw[->,thick] (root.south) -- (controlled.north);
+  \draw[->,thick] (root.south) -- ++(0,-6mm) -| (channel.north);
+\end{tikzpicture}

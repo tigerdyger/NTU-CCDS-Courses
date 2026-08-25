@@ -1,0 +1,30 @@
+\begin{tikzpicture}[>=Latex,every node/.style={font=\small}]
+  \coordinate (A0) at (0,0);
+  \coordinate (B0) at (9,0);
+  \coordinate (Atwo) at (0,-5.2);
+  \coordinate (Btwo) at (9,-5.2);
+
+  \draw[->,thick] (A0) -- (Atwo) node[below] {time};
+  \draw[->,thick] (B0) -- (Btwo) node[below] {time};
+  \node[above] at (A0) {Station A};
+  \node[above] at (B0) {Station B};
+  \draw[black!55] (A0) -- (B0) node[midway,above,font=\scriptsize] {maximum separation};
+
+  \draw[->,very thick,noteBlue] (0,-0.35) -- (8.75,-2.55)
+    node[midway,above,sloped] {A's signal};
+  \fill[ntuRed] (8.75,-2.55) circle[radius=2pt];
+  \node[anchor=east,text=ntuRed,font=\scriptsize] at (8.60,-3.25) {collision near B};
+  \draw[->,very thick,ntuRed] (8.75,-2.55) -- (0,-4.75)
+    node[midway,above,sloped] {collision indication};
+  \node[anchor=west,align=left] at (9.25,-1.75)
+    {B starts just before\\A's signal arrives};
+  \draw[->,thick,black!75] (9.25,-2.15) -- (8.82,-2.50);
+
+  \draw[dashed] (-0.15,-2.55) -- (9.15,-2.55);
+  \node[anchor=east] at (-0.2,-2.55) {$\tau$};
+  \draw[dashed] (-0.15,-4.75) -- (9.15,-4.75);
+  \node[anchor=east] at (-0.2,-4.75) {$2\tau$};
+  \node[anchor=west,text=noteBlue] at (0.15,-0.35) {A begins transmission};
+  \node[anchor=west,text=ntuRed,fill=white,inner sep=1.5pt] at (0.30,-4.15)
+    {A detects collision};
+\end{tikzpicture}

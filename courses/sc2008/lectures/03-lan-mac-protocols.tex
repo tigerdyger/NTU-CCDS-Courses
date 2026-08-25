@@ -1,0 +1,161 @@
+% Actual class: 03
+% Slide decks: M1-L5 LAN-Introduction (2026); M1-L6 LAN-MAC (2026)
+% Exact scope: L5 pp. 1--29; L6 pp. 1--36
+% NTULearn supplement: classroom recording transcript, used only to verify emphasis
+% Human verified: Yes
+
+\section{第 03 节课：LAN 与 MAC Protocols}
+\label{lecture:SC2008-L03}
+
+\lecturemeta
+  {SC2008-L03}
+  {2026-08-25}
+  {M1-L5 LAN-Introduction (2026)；M1-L6 LAN-MAC (2026)}
+  {L5 pp.~1--29；L6 pp.~1--36}
+  {课堂录像字幕（仅用于核对教师强调；原文未入库）}
+  {已确认（2026-08-25）}
+
+\subsection{本讲主线}
+
+LAN（Local Area Network，局域网）中的多个 stations（站点）可能共享同一 broadcast channel（广播信道）。MAC（Medium Access Control，介质访问控制）决定谁在何时发送、怎样降低 collision（冲突），以及发生冲突后如何恢复。协议演进的主线是
+\[
+\begin{aligned}
+  \text{ALOHA：直接发送}
+  &\Longrightarrow \text{CSMA：发送前先侦听}\\
+  &\Longrightarrow \text{CSMA/CD：发送时继续检测冲突}.
+\end{aligned}
+\]
+
+\lecturetopic{SC2008-L03-T01}{LAN、LLC 与 MAC 的职责}
+
+IEEE 802 model（IEEE 802 模型）把 OSI Data Link layer（数据链路层）分为 LLC（Logical Link Control，逻辑链路控制）与 MAC 两个 sublayers（子层）：
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}XX@{}}
+  \toprule
+  Sublayer & 主要职责 & 与本课程的关系 \\
+  \midrule
+  LLC & 面向 upper layer；flow control（流量控制）与 error control（差错控制） & 第 02 节课的 sliding window 与 ARQ \\
+  MAC & Frame addressing（帧寻址）、error detection（差错检测）、medium access（介质访问） & 本讲的共享信道竞争协议 \\
+  Physical & Signal encoding、bit transmission、topology 与 transmission medium & 为 MAC 提供实际信道 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+早期 bus（总线）或 hub-based star（基于集线器的星形）属于 shared collision domain（共享冲突域）；hub 会向所有端口广播信号，因此是 physical star（物理星形）、logical bus（逻辑总线）。Switch（交换机）只向目标端口转发 frame，现代 switched full-duplex Ethernet（交换式全双工以太网）通常不再发生 collision。
+
+L5 的 topology（拓扑）和 transmission media（传输介质）大部分在讲义中标为 Not Examinable；复习时保留上述结构关系即可。
+
+\lecturetopic{SC2008-L03-T02}{Multiple-Access Protocol Taxonomy 与 Ideal MAC}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/mac-access-taxonomy}}
+  \caption{Multiple-access protocols（多址访问协议）的三类资源分配方式。}
+  \label{fig:sc2008-l03-mac-taxonomy}
+\end{figure}
+
+Channelization（信道划分）预先按 frequency、time 或 code 分配资源，适合 continuous traffic（连续流量），但用户空闲时资源仍可能被占用。Controlled access（受控访问）用 reservation、polling 或 token passing 安排发送顺序，冲突较少但有控制开销。Random access（随机访问）让节点在需要时竞争 channel，适合 bursty traffic（突发流量），代价是可能发生 collision。
+
+若 broadcast channel 的速率为 $R$ bits/s，Ideal MAC（理想 MAC）希望单个 active node 获得 $R$，$M$ 个 active nodes 各平均获得 $R/M$，同时保持 decentralized（分布式）、无需 clock synchronization（时钟同步）且实现简单。现实协议只能在 throughput、delay、fairness 与 overhead 之间折中。
+
+\lecturetopic{SC2008-L03-T03}{ALOHA 与 Throughput}
+
+Slotted ALOHA（时隙 ALOHA）令所有 frames 等长，一个 slot（时隙）等于一个 frame time，并要求节点只在 slot boundary（时隙边界）发送。若有 $N$ 个节点，每个节点在一个 slot 中以概率 $p$ 发送，则指定节点成功的概率为
+\[
+  \Pr(S_i)=p(1-p)^{N-1},
+\]
+而 slot 中恰好一个节点发送的概率为
+\[
+  \boxed{\Pr(S)=Np(1-p)^{N-1}}.
+\]
+每个 successful slot 恰好交付一个 frame，因此 $\Pr(S)$ 也等于以 frames per frame time 表示的 normalized throughput（归一化吞吐率）。定义 offered load（提供负载）
+\[
+  G=Np.
+\]
+当 $N\to\infty$、$p\to0$ 且 $G$ 固定时，
+\[
+  S_{\mathrm{slotted}}=Ge^{-G},
+  \qquad
+  \boxed{S_{\max}=\frac{1}{e}\approx0.368\quad(G=1)}.
+\]
+此时 $\Pr(E)=1/e$，$\Pr(C)=1-2/e\approx0.264$。
+
+Pure ALOHA（纯 ALOHA）无需 synchronization，frame 到达后立即发送。若目标 frame 的发送区间为 $[t_0,t_0+T]$，其他 frame 在 $[t_0-T,t_0+T]$ 开始都会与它重叠，因此 vulnerable period（易受冲突时间）为 $2T$。大规模网络中
+\[
+  S_{\mathrm{pure}}=Ge^{-2G},
+  \qquad
+  \boxed{S_{\max}=\frac{1}{2e}\approx0.184\quad(G=1/2)}.
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.88\textwidth}{!}{\input{figures/aloha-throughput}}
+  \caption{Slotted ALOHA 与 Pure ALOHA 的 normalized throughput。取消时隙同步使 vulnerable period 加倍，最大吞吐率减半。}
+  \label{fig:sc2008-l03-aloha-throughput}
+\end{figure}
+
+\textbf{对应例题：}\relatedexercise{SC2008-L03-E01}{讲义扩展例：4-node Slotted ALOHA}；\relatedexercise{SC2008-L03-E02}{自编检验例：ALOHA maximum throughput}。
+
+\lecturetopic{SC2008-L03-T04}{CSMA Variants}
+
+CSMA（Carrier Sense Multiple Access，载波侦听多路访问）要求 station 在发送前 sense the medium（侦听介质）。Carrier sensing 能减少明显可避免的 collision，但 signal propagation delay（信号传播时延）使不同位置的 stations 可能同时判断 channel idle，因而不能完全消除 collision。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}XX@{}}
+  \toprule
+  Variant & Channel busy 时的行为 & 主要权衡 \\
+  \midrule
+  Non-persistent CSMA & 随机 backoff 后重新侦听 & collision 较少，但可能留下 idle channel time \\
+  1-persistent CSMA & 持续侦听；一旦 idle 就以概率 1 发送 & delay 较小，但多个等待节点会被隐式同步 \\
+  $p$-persistent CSMA & 在 slotted channel 中，以 $p$ 发送、以 $1-p$ 等一个 slot & 在 collision probability 与 idle time 间折中 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+$p$ 越小并不必然越好：它能降低同时发送的概率，却会增大 access delay（接入延迟）并浪费更多 idle slots。最合适的 $p$ 取决于 active nodes、offered load 与 propagation delay。
+
+\lecturetopic{SC2008-L03-T05}{CSMA/CD、Propagation Delay 与 Minimum Frame Length}
+
+设 maximum one-way propagation delay（最大单程传播时延）为 $\tau$。最远端 station 在源信号到达前仍可能判断 channel idle 并开始发送，所以
+\[
+  \boxed{\text{CSMA vulnerable time}=\tau}.
+\]
+若冲突发生在最远端附近，collision indication 还需传播回 sender，故
+\[
+  \boxed{\text{worst-case collision detection time}=2\tau}.
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.88\textwidth}{!}{\input{figures/csma-cd-timing}}
+  \caption{CSMA/CD 的最坏冲突检测时序：远端在源信号即将到达前开始发送，源端最迟在 $2\tau$ 后检测到冲突。}
+  \label{fig:sc2008-l03-csma-cd-timing}
+\end{figure}
+
+CSMA/CD（CSMA with Collision Detection，带冲突检测的 CSMA）在发送期间继续监听 medium；检测到 collision 后 abort transmission（中止发送），发送 jam signal（本讲按 48 bits），进行 random backoff（随机退避），再重新竞争并 retransmit。
+
+为了保证 sender 在 frame 发送结束前仍能检测最远端 collision，必须满足
+\[
+  T_{\mathrm{frame}}=\frac{L}{R}\ge 2\tau,
+  \qquad
+  \boxed{L_{\min}\ge2R\tau}.
+\]
+该式给出指定网络参数下的理论 minimum frame length；标准 Ethernet 的具体 64-byte minimum frame 将在后续 Ethernet 内容中结合 slot time 讨论。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L03-E03}{自编检验例：CSMA/CD minimum frame length}。
+
+\subsection{一分钟回顾}
+
+\[
+\boxed{
+\begin{gathered}
+S_{\mathrm{slotted}}=Ge^{-G},\quad S_{\max}=1/e\text{ at }G=1,\\
+S_{\mathrm{pure}}=Ge^{-2G},\quad S_{\max}=1/(2e)\text{ at }G=1/2,\\
+T_{\mathrm{vulnerable}}^{\mathrm{CSMA}}=\tau,\quad
+T_{\mathrm{detect,max}}^{\mathrm{CSMA/CD}}=2\tau,\quad
+L_{\min}\ge2R\tau.
+\end{gathered}}
+\]
