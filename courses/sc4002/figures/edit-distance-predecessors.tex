@@ -1,0 +1,23 @@
+\begin{tikzpicture}[
+  cell/.style={draw=noteBlue, rounded corners=2pt, minimum width=2.8cm,
+    minimum height=1.0cm, align=center, fill=noteBlue!5},
+  op/.style={-{Latex[length=2.6mm]}, thick, noteBlue},
+  every node/.style={font=\small}
+]
+  \node[cell] (diag) at (0,1.9) {$D[i-1,j-1]$};
+  \node[cell] (top)  at (4.6,1.9) {$D[i-1,j]$};
+  \node[cell] (left) at (0,0) {$D[i,j-1]$};
+  \node[cell, fill=ntuRed!7, draw=ntuRed] (cur) at (4.6,0) {$D[i,j]$};
+
+  \draw[op] (diag) -- node[above, sloped, align=center]
+    {match / substitute\\$x_i\rightarrow y_j$} (cur);
+  \draw[op] (top) -- node[right, align=left]
+    {delete\\$x_i$} (cur);
+  \draw[op] (left) -- node[below]
+    {insert $y_j$} (cur);
+
+  \node[anchor=east, text=noteBlue] at (-1.65,0.95)
+    {source prefix（源前缀）向下};
+  \node[anchor=south, text=noteBlue] at (2.3,2.7)
+    {target prefix（目标前缀）向右};
+\end{tikzpicture}

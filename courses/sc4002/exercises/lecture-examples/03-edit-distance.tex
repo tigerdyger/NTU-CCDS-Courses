@@ -1,0 +1,71 @@
+% Lecture example set: SC4002-L03
+% Source: Week3 Edit Distance
+% Question classification: E01 lecture worked example; E02 self-contained check
+% Human verified: Answers corrected and checked in discussion
+
+\exercisemeta
+  {SC4002-L03-EX}
+  {2026-08-26}
+  {Week3 Edit Distance；E01 改编自讲义 worked example，E02 为自编检验例}
+  {两题答案已完成并订正}
+  {已确认（2026-08-26）}
+
+\exercisequestion{SC4002-L03-E01}{\texttt{intention} 到 \texttt{execution} 的编辑成本}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4002-L03-T01}{Minimum Edit Distance 与成本约定}；
+\relatedtopic{SC4002-L03-T03}{Backpointers、Alignment 与并列最优}
+
+\subsubsection*{题目（讲义 worked example 改编）}
+
+采用 insertion cost $=1$、deletion cost $=1$、substitution cost $=2$（相同字符 match cost $=0$）。讲义给出的一个 alignment 为
+\[
+\begin{array}{cccccccccc}
+ i&n&t&e&-&n&t&i&o&n\\
+ -&e&x&e&c&u&t&i&o&n
+\end{array}
+\]
+求该 alignment 的 operation count（操作次数）与 total edit cost（总编辑成本），并说明两者为何不同。
+
+\begin{workedsolution}
+该 alignment 包含一次 deletion（删除首字符 $i$）、三次 substitution（$n\to e$、$t\to x$、$n\to u$）和一次 insertion（插入 $c$），共 5 次 operations。其成本为
+\[
+  1+3\times2+1=8.
+\]
+Operation count 只统计操作数量；MED 使用题目给定的加权成本，因此 5 次操作不代表成本为 5。DP matrix 的终点同样给出 $D[9,9]=8$。
+\end{workedsolution}
+
+\textbf{检查点：}看到 Edit Distance 数值前，先写明每种 operation 的 cost convention。
+
+\exercisequestion{SC4002-L03-E02}{Tie 与多个 Backpointers}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4002-L03-T02}{Dynamic Programming State 与 Recurrence}；
+\relatedtopic{SC4002-L03-T03}{Backpointers、Alignment 与并列最优}
+
+\subsubsection*{题目（自编检验例）}
+
+仍采用 insertion/deletion cost $=1$、substitution cost $=2$。
+
+\begin{enumerate}[label=(\alph*)]
+  \item 求从 \texttt{cat} 到 \texttt{cut} 的 MED，并判断 optimal alignment 是否唯一。
+  \item 若某一格的三个前驱值为 $D[i-1,j]=5$、$D[i,j-1]=4$、$D[i-1,j-1]=3$，且 $x_i\ne y_j$，求 $D[i,j]$ 并指出应保存哪些 backpointers。
+\end{enumerate}
+
+\begin{workedsolution}
+\textbf{(a)} 直接把 $a$ substitute 为 $u$ 的成本为 $2$；删除 $a$ 后插入 $u$ 的成本也为 $1+1=2$。因此
+\[
+  \operatorname{MED}(\texttt{cat},\texttt{cut})=2,
+\]
+且 optimal alignment 不唯一。除直接 substitution 外，deletion 与 insertion 还可按两种次序排列，因此该例共有三条成本为 $2$ 的 optimal paths。
+
+\textbf{(b)} 三个候选成本为
+\[
+  5+1=6\quad(\text{deletion}),\qquad
+  4+1=5\quad(\text{insertion}),\qquad
+  3+2=5\quad(\text{substitution}).
+\]
+故 $D[i,j]=5$，并同时保存来自 $D[i,j-1]$ 的 insertion backpointer 与来自 $D[i-1,j-1]$ 的 substitution backpointer；不保存 deletion predecessor。
+\end{workedsolution}
+
+\textbf{检查点：}backpointer 保存所有取得 minimum 的前驱，而不是只保留代码中最先遇到的一个。

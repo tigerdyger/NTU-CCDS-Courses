@@ -1,0 +1,101 @@
+% Actual class: 03
+% Released material: Week3 Edit Distance
+% Exact released scope: pp. 1--14
+% Video supplement: Week 3 lecture transcript checked locally; not included in repository
+% Human verified: Coverage and representative check answers confirmed in discussion
+
+\section{第 03 节课：Edit Distance}
+\label{lecture:SC4002-L03}
+
+\lecturemeta
+  {SC4002-L03}
+  {2026-08-26}
+  {Week3 Edit Distance (2026)}
+  {pp.~1--14；Edit Distance 全部内容}
+  {Week 3 课堂视频字幕已作本地核对，未收入仓库}
+  {课堂范围及代表题答案已确认（2026-08-26）}
+
+\subsection{本讲主线}
+
+Edit Distance（编辑距离）用最小编辑成本衡量两个 strings（字符串）的差异，可用于 spelling correction（拼写纠错）、coreference resolution（共指消解）以及 machine translation / speech recognition evaluation（机器翻译／语音识别评估）。穷举所有 edit sequences（编辑序列）会产生大量重复子问题；Dynamic Programming（动态规划，DP）通过求解所有 prefix pairs（前缀对）得到全局最优解。
+
+\lecturetopic{SC4002-L03-T01}{Minimum Edit Distance 与成本约定}
+
+令 source string（源字符串）为 $X=x_1\cdots x_n$，target string（目标字符串）为 $Y=y_1\cdots y_m$。允许三种基本操作：
+
+\begin{center}
+\small
+\begin{tabularx}{0.88\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}Xc@{}}
+  \toprule
+  Operation（操作） & 作用 & 本讲成本 \\
+  \midrule
+  Insertion（插入） & 在当前结果中插入 $y_j$ & $1$ \\
+  Deletion（删除） & 删除 source 中的 $x_i$ & $1$ \\
+  Substitution（替换） & 将 $x_i$ 替换为 $y_j$；相同字符视为 match（匹配） & $2$；match 为 $0$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Minimum Edit Distance（最小编辑距离，MED）是把 $X$ 变为 $Y$ 的所有合法 edit sequences 中 total cost（总成本）最小者。必须先确认 cost convention（成本约定）：有些资料把 substitution cost 设为 $1$，而本讲采用 $2$，考试计算应以题目或讲义给定的成本为准。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L03-E01}{\texttt{intention} 到 \texttt{execution} 的编辑成本}。
+
+\lecturetopic{SC4002-L03-T02}{Dynamic Programming State 与 Recurrence}
+
+定义
+\[
+  D[i,j]
+  =\text{把 }X[1{:}i]\text{ 转换为 }Y[1{:}j]\text{ 的 minimum cost},
+  \qquad 0\le i\le n,\ 0\le j\le m.
+\]
+所求答案为 $D[n,m]$。单位 insertion/deletion cost 下，boundary conditions（边界条件）为
+\[
+  D[i,0]=i,\qquad D[0,j]=j.
+\]
+令
+\[
+  \operatorname{sub}(x_i,y_j)=
+  \begin{cases}
+    0, & x_i=y_j,\\
+    2, & x_i\ne y_j,
+  \end{cases}
+\]
+则 recurrence（递推式）为
+\[
+  D[i,j]=\min\!\begin{cases}
+    D[i-1,j]+1, & \text{delete }x_i,\\
+    D[i,j-1]+1, & \text{insert }y_j,\\
+    D[i-1,j-1]+\operatorname{sub}(x_i,y_j),
+      & \text{match/substitute}.
+  \end{cases}
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.86\textwidth}{!}{\input{figures/edit-distance-predecessors}}
+  \caption{Edit-distance matrix（编辑距离矩阵）的三个 predecessor states（前驱状态）。行表示 source prefix，列表示 target prefix。}
+  \label{fig:sc4002-l03-predecessors}
+\end{figure}
+
+递推式来自对 optimal solution（最优解）最后一步的完整分类：最后一步只能是 deletion、insertion 或 match/substitution；若此前的 prefix solution 不是最优，就可用更优前缀替换它，从而与整体最优矛盾。这体现了 optimal substructure（最优子结构）。
+
+\lecturetopic{SC4002-L03-T03}{Backpointers、Alignment 与并列最优}
+
+计算每个 $D[i,j]$ 时，可保存达到最小值的 predecessor（前驱）作为 backpointer（回溯指针）。从 $D[n,m]$ 回溯到 $D[0,0]$，即可恢复一个 optimal alignment（最优对齐）和对应 edit sequence。
+
+若多个候选值相同，应保存全部并列 backpointers；一个最小距离可能对应多个不同的 optimal alignments。例如本讲成本下，一次 substitution 的成本 $2$，与一次 deletion 加一次 insertion 的成本 $1+1$ 相同，因此两类路径可能并列最优。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L03-E02}{Tie 与多个 Backpointers}。
+
+\lecturetopic{SC4002-L03-T04}{Complexity 与空间优化}
+
+矩阵共有 $(n+1)(m+1)$ 个 states，每个 state 只比较三个候选值，因此
+\[
+  \text{time complexity}=O(nm),\qquad
+  \text{space complexity}=O(nm).
+\]
+若只需要 distance 而不恢复 alignment，每一行只依赖当前行与上一行，可用 rolling rows（滚动数组）把空间降为 $O(m)$（通常令较短字符串作为列）；若需要完整 backtrace，则仍须保存 backpointers 或采用额外的重算策略。
+
+\subsection{一分钟回顾}
+
+Edit Distance 把字符串转换问题写成 prefix-pair DP。$D[i,j]$ 的三个来源分别对应 deletion、insertion 和 match/substitution；边界行列表示把非空前缀与空串相互转换。回溯指针恢复具体 alignment，并列最小值意味着可能存在多个最优编辑序列。最后务必先确认 substitution cost，不能把“操作次数”和“加权总成本”混为一谈。
