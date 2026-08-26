@@ -1,0 +1,190 @@
+% Tutorial set: 01
+% Source: Tutorial 1: Regular Expressions and Text Normalization, PDF pp. 1--2
+% Session date: 2026-08-26
+% Human verified: Yes
+
+\subsection{Tutorial 01：Regular Expressions、Tokenization 与 Edit Distance}
+\label{tutorial:SC4002-TUT01}
+
+\exercisemeta
+  {SC4002-TUT01}
+  {2026-08-26}
+  {Tutorial 1: Regular Expressions and Text Normalization，PDF pp.~1--2，Questions 1--6}
+  {Q1、Q3--Q6 已完成并订正；Q2 已完成测试设计与边界分析，未记录 Regexr 实测}
+  {已确认（2026-08-26）}
+
+\exercisequestion{SC4002-TUT01-Q01}{为五类 Language 编写 Regular Expression}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L01-T03}{Regular Expressions（正则表达式）}
+
+\subsubsection*{题目}
+
+题目把 word（单词）定义为 alphabetic string（字母串），并由 whitespace（空白）、punctuation（标点）、line break（换行）等与其他 words 分隔。分别匹配：(a) 仅含英文字母的非空 string（字符串）；(b) 以 \texttt{b} 结尾的全小写 alphabetic string；(c) 含有两个连续重复 word 的 string；(d) 以 integer（整数）开头、以 word 结尾的单行文本；(e) 同时含有完整单词 \texttt{grotto} 与 \texttt{raven}、顺序不限的 string，其中 \texttt{grottos} 不计作 \texttt{grotto}。
+
+\begin{checkedsolution}
+以下采用 JavaScript-style regex（JavaScript 风格正则），并默认 case-sensitive（区分大小写）：
+\begin{enumerate}[label=(\alph*)]
+  \item \verb|^[A-Za-z]+$|
+  \item \verb|^[a-z]*b$|
+  \item \verb|\b([A-Za-z]+)\s+\1\b|
+  \item \verb|^\d+\b.*\b[A-Za-z]+$|
+  \item \verb|^(?=[\s\S]*\bgrotto\b)(?=[\s\S]*\braven\b)[\s\S]*$|
+\end{enumerate}
+
+其中 (c) 的 capturing group（捕获组）记录第一个 word，\verb|\1| 是 backreference（反向引用）；(e) 的两个 lookaheads（前瞻断言）只检查两个完整 word 是否都存在，因而不需要枚举先后顺序。若 (d) 允许 signed integer（带符号整数），开头应改为 \verb|^[+-]?\d+|；若逐行测试多行文本，应启用 \texttt{m} flag（多行标志）。
+\end{checkedsolution}
+
+\textbf{边界：}(c) 只覆盖 whitespace-separated repetition（以空白分隔的重复），所以 \texttt{the, the} 不匹配；是否需要忽略大小写也必须由题意另行规定。
+
+\exercisequestion{SC4002-TUT01-Q02}{用 GenAI 生成并测试 Regular Expression}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L01-T03}{Regular Expressions（正则表达式）}
+
+\subsubsection*{题目}
+
+为 Q1 的五项要求设计 GenAI prompt（生成式 AI 提示词），在 Regexr 等 tester（测试器）中检验人工与 AI 生成的表达式，并报告 false positive（假阳性）和 false negative（假阴性）。
+
+\begin{checkedsolution}
+可复用的 prompt 应明确：使用 Regexr 支持的 JavaScript syntax（JavaScript 语法）；说明 case sensitivity（大小写敏感性）、word boundary（单词边界）、punctuation（标点）、line break（换行）及 full-string/substring matching（整串/子串匹配）假设；给出 regex、flags（标志）、逐段解释及至少三组 positive/negative cases（正/负测试样例）。
+
+本次边界分析得到：
+\begin{itemize}[leftmargin=2em]
+  \item Q1(c) 对 \texttt{the, the} 出现 false negative；若题意要求 case-insensitive，\texttt{The the} 也会漏匹配。
+  \item Q1(d) 在允许 signed integer 时会漏掉以 \texttt{-12} 开头的文本。
+  \item 若 Q1(e) 使用 \verb|.*grotto.*raven.*| 一类写法，既可能把 \texttt{grottos} 错算为完整单词，也可能因 dot（点号）默认不跨行而漏掉分处两行的目标词。
+\end{itemize}
+这些 cases 可作为 tester 中的最小 regression set（回归测试集）。本次未保留 Regexr 的实际运行记录，因此这里只记录可复现测试方案和静态边界检查，不声称已完成在线实测。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT01-Q03}{分析包含 Negated Character Class 的 Pattern}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L01-T03}{Regular Expressions（正则表达式）}
+
+\subsubsection*{题目}
+
+判断 pattern（模式）\verb|E*F+[^Gg]| 能在下列哪些 strings 中找到 match（匹配）：A.~\texttt{EFG}；B.~\texttt{EF}；C.~\texttt{FFF}；D.~\texttt{EFFa}。
+
+\begin{checkedsolution}
+\[
+  \boxed{\text{C、D}}
+\]
+A 的末尾 \texttt{G} 被 negated character class（取反字符类）排除；B 在 \texttt{F+} 后没有剩余 character（字符）供 \verb|[^Gg]| 匹配。C 中 regex engine（正则引擎）会 backtrack（回溯），令 \texttt{F+} 消耗前两个 \texttt{F}，最后一个 \texttt{F} 由 \verb|[^Gg]| 匹配；D 则由末尾 \texttt{a} 完成该匹配。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT01-Q04}{比较两种 Tokenization}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L02-T02}{Tokenization（分词）}
+
+\subsubsection*{题目}
+
+以下列完整句子为例：
+\begin{quote}
+\small\ttfamily
+Mr. Sherwood said reaction to Sea Containers'\par
+proposal has been ``very positive.'' In New York Stock Exchange\par
+composite trading yesterday, Sea Containers closed at \$62.625,\par
+up 62.5 cents.
+\end{quote}
+说明 whitespace tokenizer（空白分词器）与 punctuation-aware tokenizer（感知标点的分词器）会如何得到不同 tokens（词元）。
+
+\begin{checkedsolution}
+Whitespace tokenizer 只在空白处分割，开头部分可得到
+\[
+\begin{array}{l}
+\texttt{Mr.},\ \texttt{Sherwood},\ \texttt{said},\ \ldots,\ \texttt{Containers'},\ \texttt{proposal},\ldots,\\
+\texttt{\$62.625,},\ \texttt{up},\ \texttt{62.5},\ \texttt{cents.}
+\end{array}
+\]
+标点仍与相邻 word 黏在一起。Punctuation-aware tokenizer 的一种可能结果为
+\[
+\begin{array}{l}
+\texttt{Mr},\ \texttt{.},\ \texttt{Sherwood},\ \texttt{said},\ldots,\ \texttt{Containers},\ \texttt{'},\ \texttt{proposal},\ldots,\\
+\texttt{\$},\ \texttt{62.625},\ \texttt{,},\ \texttt{up},\ \texttt{62.5},\ \texttt{cents},\ \texttt{.}
+\end{array}
+\]
+后者通常拆得更细，但结果取决于 tokenizer rules（分词规则）：实现可能保留 abbreviation（缩写）\texttt{Mr.}、专门处理 possessive（所有格），或保留 decimal number（小数）为一个 token。因此 tokenization 不是脱离规则的唯一答案。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT01-Q05}{\texttt{idea} 到 \texttt{deal} 的 Edit Distance}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L03-T01}{Minimum Edit Distance（最小编辑距离）}；
+\relatedtopic{SC4002-L03-T02}{Dynamic Programming Recurrence（动态规划递推）}
+
+\subsubsection*{题目}
+
+Insertion（插入）、deletion（删除）和 substitution（替换）的 cost（代价）均为 1。求 \texttt{idea} 转换为 \texttt{deal} 的 minimum edit distance（最小编辑距离），并给出一条 optimal alignment（最优对齐）。
+
+\begin{checkedsolution}
+令 rows（行）表示 source prefix（源前缀），columns（列）表示 target prefix（目标前缀）。按本题三种操作 cost 均为 1 填表：
+\[
+\begin{array}{c|ccccc}
+  D[i,j] & \epsilon & \texttt{d} & \texttt{e} & \texttt{a} & \texttt{l} \\
+  \hline
+  \epsilon    & \mathbf{0} & 1 & 2 & 3 & 4 \\
+  \texttt{i}  & \mathbf{1} & 1 & 2 & 3 & 4 \\
+  \texttt{d}  & 2 & \mathbf{1} & 2 & 3 & 4 \\
+  \texttt{e}  & 3 & 2 & \mathbf{1} & 2 & 3 \\
+  \texttt{a}  & 4 & 3 & 2 & \mathbf{1} & \mathbf{2}
+\end{array}
+\]
+加粗 cells（单元格）给出一条 optimal backtrace（最优回溯路径）：先 deletion（删除）\texttt{i}，依次 match（匹配）\texttt{d}、\texttt{e}、\texttt{a}，最后 insertion（插入）\texttt{l}。对应 alignment 为
+\[
+\begin{array}{ccccc}
+  \texttt{i}&\texttt{d}&\texttt{e}&\texttt{a}&-\\
+  -&\texttt{d}&\texttt{e}&\texttt{a}&\texttt{l}
+\end{array}
+\]
+删除开头的 \texttt{i}，再在末尾插入 \texttt{l}，总 cost 为
+\[
+  \boxed{D(\texttt{idea},\texttt{deal})=2}.
+\]
+长度相同并不意味着只能使用 substitution；两次 edit（编辑）可以保留中间完整的 matching substring（匹配子串）\texttt{dea}。
+\end{checkedsolution}
+
+\clearpage
+\exercisequestion{SC4002-TUT01-Q06}{Word-level Edit Distance 与 Alignment}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L03-T01}{Minimum Edit Distance（最小编辑距离）}；
+\relatedtopic{SC4002-L03-T03}{Alignment 与 Backtrace（回溯）}
+
+\subsubsection*{题目}
+
+在 word level（词级别）上，把 source（源序列）\texttt{computed the edit distance} 转为 target（目标序列）\texttt{the edit distance is computed}。Insertion/deletion cost 为 1，substitution cost 为 2；求 minimum edit distance 并给出 alignment。
+
+\begin{checkedsolution}
+在 word level（词级别）使用 insertion/deletion cost 1、substitution cost 2，可得：
+\[
+\small
+\begin{array}{c|cccccc}
+  D[i,j] & \epsilon & \texttt{the} & \texttt{edit} & \texttt{distance} & \texttt{is} & \texttt{computed} \\
+  \hline
+  \epsilon           & \mathbf{0} & 1 & 2 & 3 & 4 & 5 \\
+  \texttt{computed}  & \mathbf{1} & 2 & 3 & 4 & 5 & 4 \\
+  \texttt{the}       & 2 & \mathbf{1} & 2 & 3 & 4 & 5 \\
+  \texttt{edit}      & 3 & 2 & \mathbf{1} & 2 & 3 & 4 \\
+  \texttt{distance}  & 4 & 3 & 2 & \mathbf{1} & \mathbf{2} & \mathbf{3}
+\end{array}
+\]
+加粗 cells 表示一条 optimal backtrace：删除句首 \texttt{computed}，匹配中间三个 words，再插入 \texttt{is} 与句末 \texttt{computed}。对应 alignment 为
+\[
+\begin{array}{c|c|c|c|c|c}
+\texttt{computed}&\texttt{the}&\texttt{edit}&\texttt{distance}&-&-\\
+-&\texttt{the}&\texttt{edit}&\texttt{distance}&\texttt{is}&\texttt{computed}
+\end{array}
+\]
+因此
+\[
+  \boxed{D=1+1+1=3}.
+\]
+标准 edit-distance operation set（编辑距离操作集合）没有 move（移动）；把一个 word 从句首移到句末必须表示成一次 deletion 加一次 insertion。
+\end{checkedsolution}
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1--Q3 检查 regex construction（正则构造）、boundary assumptions（边界假设）与 backtracking（回溯）；Q4 说明 tokenization 依赖明确规则；Q5--Q6 则要求先确定 operation unit（操作单位）和 costs，再通过 alignment 解释 minimum edit distance。
