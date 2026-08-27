@@ -1,0 +1,119 @@
+% Actual class: 05
+% Slide deck: Part 3 (CPU Scheduling)
+% Exact scope: pp. 1--13; knowledge content pp. 2--13
+% Video supplement: Part 3.1 complete; Part 3.2 through FCFS properties (about first 10 minutes)
+% Human verified: Yes
+
+\section{第 05 节课：CPU Scheduling Foundations 与 FCFS}
+\label{lecture:SC2005-L05}
+
+\lecturemeta
+  {SC2005-L05}
+  {2026-08-27}
+  {Part 3 (CPU Scheduling)}
+  {pp.~1--13（知识内容 pp.~2--13）}
+  {Part 3.1 完整；Part 3.2 至 FCFS properties（约前 10 分钟）}
+  {已确认（2026-08-27；按学习进度划分）}
+
+\subsection{本讲主线}
+
+Process execution（进程执行）在 CPU bursts（CPU 执行区间）与 I/O bursts（I/O 等待区间）之间交替。Short-term scheduler（短期调度器）从 ready queue（就绪队列）中为每个 idle core（空闲核心）选择一个 process。Scheduling policy（调度策略）需要在 CPU utilization、throughput、turnaround time、waiting time 与 response time 之间权衡；FCFS（First-Come, First-Served，先到先服务）实现简单，但容易产生 convoy effect（护航效应）。
+
+\lecturetopic{SC2005-L05-T01}{CPU--I/O Bursts 与 Short-Term Scheduler}
+
+\keyidea{当当前 process 因 I/O/event wait 或 termination 不能继续运行时，scheduler 必须从 Ready processes 中选择替代者，才能避免 CPU idle。}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/cpu-io-burst-cycle}}
+  \caption{CPU--I/O burst cycle（CPU--I/O 执行周期）与 multiprogramming（多道程序设计）：A 等待 I/O 时，CPU 可执行 B 或 C。}
+  \label{fig:sc2005-l05-cpu-io-bursts}
+\end{figure}
+
+CPU burst 是一次连续 CPU execution；I/O burst 是一次 I/O operation/event wait。I/O controller 工作时，相应 process 通常为 Waiting，CPU 可以服务其他 Ready processes。Scheduler dispatch（调度分派）只为 process 分配 CPU；一个 core 在同一时刻至多运行一个 process。
+
+沿用 process-state diagram（进程状态图）的编号：
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}c>{\raggedright\arraybackslash}p{4.0cm}X@{}}
+  \toprule
+  Case & Transition & 是否为了保持 CPU busy 而必须重新选择 \\
+  \midrule
+  1 & Running $\rightarrow$ Waiting & 是；原 process 已 blocked \\
+  2 & Running $\rightarrow$ Ready & 不一定；原 process 仍 runnable，可再次被选中 \\
+  3 & Waiting $\rightarrow$ Ready & 不一定；当前 Running process 仍可继续 \\
+  4 & New $\rightarrow$ Ready & 通常不一定；若 core 原本 idle，则需要调度 \\
+  5 & Running $\rightarrow$ Terminated & 是；原 process 已结束 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+因此要区分 scheduler may run（调度器可以运行）与 scheduling must occur to keep a core busy（为了不让核心空闲而必须调度）。
+
+\lecturetopic{SC2005-L05-T02}{Nonpreemptive 与 Preemptive Scheduling}
+
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}XX@{}}
+  \toprule
+  Policy & CPU 何时被收回 & 主要 trade-off \\
+  \midrule
+  Nonpreemptive（非抢占式） & Process 主动释放 CPU：termination、I/O 或 event wait & 实现简单、context-switch overhead 较低；response 可能较慢 \\
+  Preemptive（抢占式） & OS 可在 process 仍 runnable 时收回 CPU，例如 time quantum 到期或更高优先级任务到达 & Responsiveness 与 fairness 较好；切换和 synchronization 代价更高 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Hardware interrupt（硬件中断）不自动等于 process preemption。Timer interrupt 先造成 user/kernel mode switch；若 OS 检查后仍恢复原 process，则只有一次 preemption opportunity（抢占机会），没有实际的 process preemption，也没有 process context switch。只有 CPU 真正由当前 process 转交给另一个 process，才发生 process context switch。
+
+\lecturetopic{SC2005-L05-T03}{Scheduling Objectives 与 Time Metrics}
+
+对 $m$ 个 CPU cores、长度为 $T$ 的观察区间，CPU utilization（CPU 利用率）为
+\[
+  U_{\mathrm{CPU}}
+  =\frac{\sum_{c=1}^{m}\text{busy time of core }c}{mT},
+\]
+而 throughput（吞吐量）是单位时间内完成的 processes 数量。高 utilization 不保证高 throughput：系统可能长期执行少数超长任务，却很少产生 completion。
+
+设 arrival/admission time 为 $A$，第一次运行时间为 $S$，completion time 为 $C$，总 CPU-burst time 为 $B$，总 I/O/event wait 为 $I$：
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\centering\arraybackslash}p{3.3cm}X@{}}
+  \toprule
+  Metric & Formula & 统计范围 \\
+  \midrule
+  Turnaround time（周转时间） & $C-A$ & 从进入 Ready 到最终 Terminated 的全部时间 \\
+  Waiting time（等待时间） & $(C-A)-B-I$ & 所有 Ready-queue intervals 之和，不含 I/O wait \\
+  Response time（响应时间） & $S-A$ & 到第一次获得 CPU 为止，不关心何时完成 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.92\textwidth}{!}{\input{figures/scheduling-metrics-timeline}}
+  \caption{Response、waiting 与 turnaround time。被抢占后的第二段 Ready interval 计入 waiting，但不再增加 response time。}
+  \label{fig:sc2005-l05-scheduling-metrics}
+\end{figure}
+
+在 single-burst、nonpreemptive model（单 CPU burst、非抢占模型）中，process 第一次获得 CPU 后不再回到 Ready，因此 $T_{\mathrm{response}}=T_{\mathrm{waiting}}$；抢占式执行中通常只有 $T_{\mathrm{response}}\le T_{\mathrm{waiting}}$。
+
+\lecturetopic{SC2005-L05-T04}{FCFS 与 Convoy Effect}
+
+FCFS 按 processes 进入 ready queue 的顺序使用 FIFO queue（先进先出队列）。新 process 加入队尾；CPU 空闲时取队首；本讲模型中一旦开始 CPU burst 就运行到完成，因此 FCFS 为 nonpreemptive。
+
+对给定 FCFS 顺序，第 $k$ 个 process 的 start time、waiting time 与 completion time 可递推为
+\[
+  S_k=\max(A_k,C_{k-1}),\qquad
+  W_k=S_k-A_k,\qquad
+  C_k=S_k+B_k.
+\]
+若所有 processes 均在 $t=0$ 到达，则 $W_k$ 就是它前面所有 burst lengths 之和。
+
+Convoy effect 指一个先到达的 long process 令许多 short processes 长时间排队。FCFS 规则简单、overhead 低，但不保证最小 average waiting time，也可能让 interactive processes 的 response time 很差。
+
+\textbf{对应讲义例题：}\relatedexercise{SC2005-L05-E01}{FCFS Order 与 Convoy Effect}。
+
+\subsection{一分钟回顾}
+
+CPU scheduling 在 Ready processes 中为每个 core 选择一个 process；Running $\rightarrow$ Waiting/Terminated 后必须调度，Ready population 的其他变化不一定强迫换人。Interrupt 只是进入 kernel 和重新评估的机会，不自动等于 preemption 或 process context switch。Turnaround 覆盖全部完成时间，waiting 只累计 Ready，response 只到第一次运行。FCFS 按 arrival order 非抢占执行，简单但容易产生 convoy effect。

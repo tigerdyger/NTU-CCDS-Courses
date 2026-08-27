@@ -1,0 +1,21 @@
+\begin{tikzpicture}[
+  x=0.34cm,y=0.9cm,
+  every node/.style={font=\small},
+  long/.style={draw=ntuRed,very thick,fill=red!7,minimum height=0.8cm,align=center},
+  short/.style={draw=noteBlue,very thick,fill=blue!9,minimum height=0.8cm,align=center},
+  tick/.style={font=\scriptsize,anchor=north}
+]
+  \node[anchor=east,font=\bfseries] at (-0.6,1.5) {$P_1,P_2,P_3$};
+  \node[long,minimum width=24*0.34cm] at (12,1.5) {$P_1$};
+  \node[short,minimum width=3*0.34cm] at (25.5,1.5) {$P_2$};
+  \node[short,minimum width=3*0.34cm] at (28.5,1.5) {$P_3$};
+  \foreach \x in {0,24,27,30} {\draw (\x,1.02) -- (\x,0.84); \node[tick] at (\x,0.82) {\x};}
+  \node[anchor=west,text=ntuRed] at (31.0,1.5) {$\overline W=17$};
+
+  \node[anchor=east,font=\bfseries] at (-0.6,-0.2) {$P_2,P_3,P_1$};
+  \node[short,minimum width=3*0.34cm] at (1.5,-0.2) {$P_2$};
+  \node[short,minimum width=3*0.34cm] at (4.5,-0.2) {$P_3$};
+  \node[long,minimum width=24*0.34cm] at (18,-0.2) {$P_1$};
+  \foreach \x in {0,3,6,30} {\draw (\x,-0.68) -- (\x,-0.86); \node[tick] at (\x,-0.88) {\x};}
+  \node[anchor=west,text=noteBlue] at (31.0,-0.2) {$\overline W=3$};
+\end{tikzpicture}

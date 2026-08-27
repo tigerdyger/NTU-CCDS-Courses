@@ -1,0 +1,30 @@
+\begin{tikzpicture}[
+  x=0.78cm,y=0.85cm,
+  every node/.style={font=\small},
+  cpu/.style={draw=noteBlue,very thick,fill=blue!10,minimum height=0.72cm,align=center},
+  io/.style={draw=ntuRed,very thick,fill=red!7,minimum height=0.72cm,align=center},
+  other/.style={draw=black!60,thick,fill=black!5,minimum height=0.72cm,align=center},
+  axis/.style={->,thick,draw=black!65}
+]
+  \node[anchor=east,font=\bfseries] at (-0.25,1.5) {Process A};
+  \node[cpu,minimum width=2.4*0.78cm] at (1.2,1.5) {CPU burst};
+  \node[io,minimum width=3.6*0.78cm] at (4.2,1.5) {I/O burst\\(Waiting)};
+  \node[cpu,minimum width=2.3*0.78cm] at (7.15,1.5) {CPU burst};
+  \node[io,minimum width=1.9*0.78cm] at (9.25,1.5) {I/O burst};
+  \node[cpu,minimum width=1.8*0.78cm] at (11.1,1.5) {CPU burst};
+
+  \node[anchor=east,font=\bfseries] at (-0.25,0) {CPU core};
+  \node[cpu,minimum width=2.4*0.78cm] at (1.2,0) {A};
+  \node[other,minimum width=3.6*0.78cm] at (4.2,0) {B};
+  \node[cpu,minimum width=2.3*0.78cm] at (7.15,0) {A};
+  \node[other,minimum width=1.9*0.78cm] at (9.25,0) {C};
+  \node[cpu,minimum width=1.8*0.78cm] at (11.1,0) {A};
+
+  \draw[axis] (0,-0.65) -- (12.45,-0.65) node[right]{time};
+  \foreach \x in {0,2.4,6,8.3,10.2,12} {
+    \draw[black!55] (\x,-0.55) -- (\x,-0.78);
+  }
+  \node[font=\scriptsize,text=ntuRed,align=center] (ioNote) at (4.2,2.58)
+    {A cannot use the CPU;\\scheduler runs another ready process};
+  \draw[->,thin,draw=ntuRed] (ioNote.south) -- (4.2,1.94);
+\end{tikzpicture}

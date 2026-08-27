@@ -1,0 +1,24 @@
+\begin{tikzpicture}[
+  x=0.86cm,y=0.9cm,
+  every node/.style={font=\small},
+  run/.style={draw=noteBlue,very thick,fill=blue!10,minimum height=0.72cm,align=center},
+  ready/.style={draw=orange!75!black,very thick,fill=orange!10,minimum height=0.72cm,align=center},
+  axis/.style={->,thick,draw=black!65},
+  timelineMark/.style={draw=black!55,thick,dashed}
+]
+  \draw[axis] (0,0) -- (10.7,0) node[right]{time};
+  \node[ready,minimum width=2*0.86cm] at (1,0.65) {Ready};
+  \node[run,minimum width=3*0.86cm] at (3.5,0.65) {Running};
+  \node[ready,minimum width=2*0.86cm] at (6,0.65) {Ready};
+  \node[run,minimum width=3*0.86cm] at (8.5,0.65) {Running};
+
+  \foreach \x/\label in {0/$A$,2/$S$,5/preempt,7/resume,10/$C$} {
+    \draw[timelineMark] (\x,-0.1) -- (\x,1.28);
+    \node[font=\scriptsize,anchor=north] at (\x,-0.13) {\label};
+  }
+
+  \draw[<->,very thick,draw=orange!80!black] (0,-0.72) -- node[fill=white,inner sep=1pt]{response time} (2,-0.72);
+  \draw[<->,very thick,draw=ntuRed] (0,-1.35) -- node[fill=white,inner sep=1pt]{turnaround time} (10,-1.35);
+  \node[font=\scriptsize,align=center,text=orange!70!black] at (6,-2.0)
+    {waiting time is the sum of all Ready intervals};
+\end{tikzpicture}

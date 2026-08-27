@@ -1,0 +1,59 @@
+% Related lecture: SC2005-L05
+% Source: Part 3 (CPU Scheduling), pp. 11--13, FCFS lecture example
+% Human verified: Yes
+
+\exercisemeta
+  {SC2005-L05-EX}
+  {2026-08-27}
+  {Part 3 (CPU Scheduling), pp.~11--13，FCFS lecture example}
+  {题干、Gantt charts 与答案均已核对}
+  {已确认（2026-08-27）}
+
+\exercisequestion{SC2005-L05-E01}{FCFS Order 与 Convoy Effect}
+
+\textbf{对应知识点：}\par
+\relatedtopic{SC2005-L05-T03}{Scheduling Objectives 与 Time Metrics}；
+\relatedtopic{SC2005-L05-T04}{FCFS 与 Convoy Effect}
+
+\subsubsection*{题目（Lecture Example）}
+
+三个 processes 均在 $t=0$ 到达，CPU burst lengths 为
+\[
+  B_1=24,\qquad B_2=3,\qquad B_3=3.
+\]
+分别按 ready-queue order（就绪队列顺序）$P_1,P_2,P_3$ 与 $P_2,P_3,P_1$ 使用 FCFS。画出 Gantt charts，计算各 process 的 waiting time 与 average waiting time，并解释两种结果的差异。
+
+\begin{checkedsolution}
+两种 schedule 为：
+\begin{center}
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/fcfs-convoy-gantt}}
+
+  \smallskip
+  \textit{相同 workload、不同 ready-queue order 下的 FCFS schedules。}
+\end{center}
+
+顺序 $P_1,P_2,P_3$：
+\[
+  (W_1,W_2,W_3)=(0,24,27),\qquad
+  \overline W=\frac{0+24+27}{3}=17.
+\]
+因为 arrival times 都为 $0$，completion times 也就是 turnaround times：
+\[
+  (T_1,T_2,T_3)=(24,27,30),\qquad \overline T=27.
+\]
+
+顺序 $P_2,P_3,P_1$：
+\[
+  (W_1,W_2,W_3)=(6,0,3),\qquad
+  \overline W=\frac{6+0+3}{3}=3,
+\]
+\[
+  (T_1,T_2,T_3)=(30,3,6),\qquad \overline T=13.
+\]
+本题为 single-burst、nonpreemptive scheduling，所以每个 process 的 response time 等于其 waiting time。
+
+第一种顺序中，长任务 $P_1$ 迫使两个短任务等待，形成 convoy effect。第二种顺序只是改变题目给定的入队顺序，并不表示 FCFS 会主动按 burst length 重排；主动优先短任务属于下一讲的 SJF。
+\end{checkedsolution}
+
+\textbf{检查点：}先根据 arrival/order 画 Gantt chart，再由每个 process 的实际 start time 计算 $W_i=S_i-A_i$；不能先按 burst length 排序后仍称为 FCFS。
