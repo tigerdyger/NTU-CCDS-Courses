@@ -1,0 +1,33 @@
+% Original reconstruction from the converged parameters in Lecture 3, Example 2.
+\begin{tikzpicture}[>=Latex,scale=0.9]
+  \draw[->,thick] (-5.1,0) -- (5.25,0) node[right] {$x_1$};
+  \draw[->,thick] (0,-4.2) -- (0,4.35) node[above] {$x_2$};
+
+  \begin{scope}
+    \clip (-5,-4) rectangle (5,4);
+    \draw[very thick,draw=ntuRed,domain=-5:5,samples=2]
+      plot (\x,{2.167-0.517*\x});
+    \draw[very thick,draw=noteBlue,domain=-5:5,samples=2]
+      plot (\x,{2.425*\x-1.211});
+    \draw[very thick,draw=verifyOrange,domain=-5:5,samples=2]
+      plot (\x,{1.044+0.460*\x});
+  \end{scope}
+
+  \foreach \p in {(-1.0,3.0),(0.0,3.5),(2.0,3.0)}
+    \draw[noteBlue,very thick,fill=blue!15] \p -- ++(-0.10,-0.18) -- ++(0.20,0) -- cycle;
+  \foreach \p in {(-3.2,1.0),(-2.4,0.2),(-1.2,1.0)}
+    \fill[ntuRed] \p circle (3pt);
+  \foreach \p in {(2.0,0.1),(3.0,1.0),(4.0,0.1)}
+    \draw[verifyOrange,very thick] \p ++(-0.10,-0.10) -- ++(0.20,0.20)
+      \p ++(-0.10,0.10) -- ++(0.20,-0.20);
+
+  \fill[black] (1.15,1.57) circle (2.2pt)
+    node[above right,font=\scriptsize] {$u_A=u_B=u_C$};
+  \node[noteBlue,font=\small] at (-0.5,3.65) {class A};
+  \node[ntuRed,font=\small] at (-3.8,1.55) {class B};
+  \node[verifyOrange,font=\small] at (3.8,1.55) {class C};
+
+  \node[ntuRed,font=\scriptsize,rotate=-27] at (-2.9,3.3) {$u_A=u_B$};
+  \node[noteBlue,font=\scriptsize,rotate=67] at (-0.7,-3.0) {$u_B=u_C$};
+  \node[verifyOrange,font=\scriptsize,rotate=25] at (3.7,2.5) {$u_A=u_C$};
+\end{tikzpicture}

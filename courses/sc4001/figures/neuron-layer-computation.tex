@@ -1,0 +1,30 @@
+% Original diagram based on the matrix relationships in Lecture 3.
+\begin{tikzpicture}[
+  >=Latex,
+  block/.style={draw=noteBlue,very thick,rounded corners=3pt,fill=blue!7,
+    minimum width=2.55cm,minimum height=1.0cm,align=center},
+  loss/.style={draw=ntuRed,very thick,rounded corners=3pt,fill=red!6,
+    minimum width=1.7cm,minimum height=1.0cm,align=center},
+  grad/.style={draw=verifyOrange,thick,rounded corners=3pt,fill=orange!8,
+    minimum width=3.6cm,minimum height=0.9cm,align=center},
+  flow/.style={->,thick,draw=noteBlue},
+  back/.style={->,thick,draw=ntuRed}
+]
+  \node[block] (x) at (0,0) {$X\in\mathbb R^{P\times n}$\\batch inputs};
+  \node[block] (u) at (3.7,0) {$U=XW+\bm 1_P\bm b^{\mathsf T}$\\$U\in\mathbb R^{P\times K}$};
+  \node[block] (y) at (7.4,0) {$Y=f(U)$\\$Y\in\mathbb R^{P\times K}$};
+  \node[loss] (j) at (10.35,0) {$J$\\loss};
+
+  \draw[flow] (x) -- (u);
+  \draw[flow] (u) -- (y);
+  \draw[flow] (y) -- (j);
+
+  \node[grad] (g) at (7.4,-2.0) {$G=\nabla_UJ$\\由 activation 与 loss 决定};
+  \node[grad] (gw) at (2.4,-2.0) {$\nabla_WJ=X^{\mathsf T}G\in\mathbb R^{n\times K}$};
+  \node[grad] (gb) at (2.4,-3.25) {$\nabla_{\bm b}J=G^{\mathsf T}\bm 1_P\in\mathbb R^K$};
+
+  \draw[back] (j.south) |- node[pos=0.36,right,font=\scriptsize]{backpropagation} (g.east);
+  \draw[back] (g.west) -- (gw.east);
+  \draw[back] (g.south west) -- (gb.east);
+  \draw[back,dashed] (x.south) |- (gw.north west);
+\end{tikzpicture}

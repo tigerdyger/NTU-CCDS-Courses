@@ -1,0 +1,247 @@
+% Lecture example set: SC4001-L03
+% Sources: 3_neuron_layers pp. 6--9 and pp. 40--54; L3_summary pp. 7--25
+% Human verified: Yes
+
+\exercisemeta
+  {SC4001-L03-EX}
+  {2026-08-28}
+  {3\_neuron\_layers：Examples 1--2；L3\_summary：Worked Example 1}
+  {题干与答案已根据课件、数值结果和问答核对}
+  {已确认（2026-08-28）}
+
+\exercisequestion{SC4001-L03-E01}{Lecture Example 1：Perceptron Layer Forward Pass}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4001-L03-T01}{Weight Matrix 与 Batch Forward Computation}
+
+\subsubsection*{题目（Lecture Example）}
+
+一个 perceptron layer（感知机层）接收 four two-dimensional inputs（四个二维输入），含三个 sigmoid neurons：
+\[
+  W=
+  \begin{bmatrix}
+    0.133&0.072&-0.155\\
+    -0.001&0.062&-0.072
+  \end{bmatrix},
+  \qquad
+  \bm b=
+  \begin{bmatrix}0.017\\0.009\\0.069\end{bmatrix},
+\]
+\[
+  X=
+  \begin{bmatrix}
+    0.50&-1.66\\
+    -1.00&-0.51\\
+    0.78&-0.65\\
+    0.04&-0.20
+  \end{bmatrix}.
+\]
+计算 synaptic-input matrix（突触输入矩阵）$U$ 和 output matrix（输出矩阵）$Y=\sigma(U)$，并写出第三个 input 的 output vector。
+
+\begin{checkedsolution}
+Bias vector 在四个 rows（行）上广播：
+\[
+  U=XW+\bm1_4\bm b^{\mathsf T}
+  =
+  \begin{bmatrix}
+    0.085&-0.058&0.111\\
+    -0.115&-0.095&0.261\\
+    0.121&0.025&-0.005\\
+    0.023&-0.001&0.077
+  \end{bmatrix}.
+\]
+逐元素应用 sigmoid：
+\[
+  Y=
+  \begin{bmatrix}
+    0.521&0.486&0.528\\
+    0.471&0.476&0.565\\
+    0.530&0.506&0.499\\
+    0.506&0.500&0.519
+  \end{bmatrix}.
+\]
+第三个 input $\bm x^{(3)}=(0.78,-0.65)^{\mathsf T}$ 对应第三行，故
+\[
+  \boxed{\bm y^{(3)}=(0.530,0.506,0.499)^{\mathsf T}}.
+\]
+\end{checkedsolution}
+
+\textbf{课件核对：}以上数值由题给 $W,X,\bm b$ 重新计算并四舍五入至三位小数。课件矩阵把 $U_{2,2}$ 排成 $+0.094$，但正确值约为 $-0.095$；下一页 $Y_{2,2}=0.476<0.5$ 也与负的 pre-activation 一致。
+
+\textbf{检查点：}$U_{3,2}\approx0.025$ 是 pre-activation，$Y_{3,2}\approx0.506$ 才是第二个 neuron 对第三个 input 的 output。
+
+\exercisequestion{SC4001-L03-E02}{Worked Example：Perceptron Layer 的 GD 与 SGD}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4001-L03-T02}{Single-layer Backpropagation、GD 与 SGD}；
+\relatedtopic{SC4001-L03-T03}{Perceptron Layer 与 Square-error Gradient}
+
+\subsubsection*{题目（Summary Worked Example）}
+
+训练一个 two-input, two-output perceptron layer，使下列 inputs 映射到 targets：
+\begin{center}
+\small
+\begin{tabular}{@{}rrrr@{}}
+  \toprule
+  $x_1$ & $x_2$ & $d_1$ & $d_2$ \\
+  \midrule
+  0.50&0.23&0.16&0.74\\
+  0.20&0.76&0.49&0.97\\
+  0.17&0.09&0.01&0.26\\
+  0.69&0.95&1.19&1.70\\
+  0.00&0.51&0.13&0.52\\
+  0.81&0.61&0.77&1.48\\
+  0.72&0.29&0.40&1.04\\
+  0.92&0.72&1.14&1.70\\
+  \bottomrule
+\end{tabular}
+\end{center}
+使用
+\[
+  f(u)=\frac{2}{1+e^{-u}},
+  \qquad
+  W_0=
+  \begin{bmatrix}1.24&0.11\\-0.48&0.97\end{bmatrix},
+  \qquad
+  \bm b_0=\bm0,
+  \qquad
+  \alpha=0.05.
+\]
+分别说明一次 full-batch GD update 与一次 single-sample SGD update，并比较收敛结果。
+
+\begin{checkedsolution}
+Scaled sigmoid 的 derivative 为
+\[
+  f'(u)=y\left(1-\frac y2\right).
+\]
+Full-batch GD 依次计算
+\[
+  U=XW+B,
+  \quad Y=f(U),
+  \quad \nabla_UJ=(Y-D)\odot f'(U).
+\]
+课件第一轮得到
+\[
+  \nabla_WJ=
+  \begin{bmatrix}0.99&0.00\\0.88&0.17\end{bmatrix},
+  \qquad
+  \nabla_{\bm b}J=
+  \begin{bmatrix}2.41\\0.87\end{bmatrix}.
+\]
+因此
+\[
+  \boxed{W_1\approx
+  \begin{bmatrix}1.19&0.11\\-0.52&0.96\end{bmatrix}},
+  \qquad
+  \boxed{\bm b_1\approx
+  \begin{bmatrix}-0.12\\-0.04\end{bmatrix}}.
+\]
+
+SGD 若首先抽到 $\bm x=(0.17,0.09)^{\mathsf T}$、$\bm d=(0.01,0.26)^{\mathsf T}$，课件算得
+\[
+  \bm u\approx(0.17,0.11)^{\mathsf T},
+  \quad
+  \bm y\approx(1.08,1.05)^{\mathsf T},
+  \quad
+  \nabla_{\bm u}J\approx(0.53,0.40)^{\mathsf T}.
+\]
+立即更新后
+\[
+  W\approx
+  \begin{bmatrix}1.23&0.11\\-0.48&0.96\end{bmatrix},
+  \qquad
+  \bm b\approx(-0.03,-0.02)^{\mathsf T}.
+\]
+后续 samples 使用这组新参数继续更新。课件中 GD 与 SGD 最终均达到约
+\[
+  \boxed{\operatorname{MSE}=0.002},
+\]
+但二者每个 epoch 的更新次数和 parameter trajectory（参数轨迹）不同。
+\end{checkedsolution}
+
+\textbf{检查点：}GD 在整批 gradient 算完后只更新一次；SGD 每处理一个 sample 就更新，不能先把所有 single-sample gradients 用同一组旧参数算完再称作 SGD。
+
+\exercisequestion{SC4001-L03-E03}{Lecture Example 2：GD of a Softmax Layer}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4001-L03-T04}{Softmax、Cross-entropy 与 Logit Gradient}；
+\relatedtopic{SC4001-L03-T05}{Softmax Decision Boundaries 与三分类例题}
+
+\subsubsection*{题目（Lecture Example）}
+
+使用 softmax layer 将 18 个 two-dimensional patterns 分为 classes A、B、C：
+\begin{center}
+\small
+\begin{tabular}{@{}rrc@{\qquad}rrc@{}}
+  \toprule
+  $x_1$&$x_2$&Class & $x_1$&$x_2$&Class \\
+  \midrule
+   0& 4&A &  2& 1&C\\
+  -1& 3&A &  4& 1&C\\
+   2& 3&A & -2& 0&B\\
+  -2& 2&B &  1& 0&C\\
+   0& 2&B &  3& 0&C\\
+   1& 2&A & -3&-1&B\\
+  -1& 2&B & -2&-1&B\\
+  -3& 1&B &  2&-1&C\\
+  -1& 1&B &  4&-1&C\\
+  \bottomrule
+\end{tabular}
+\end{center}
+令 A、B、C 分别对应 classes $1,2,3$，并使用
+\[
+  W_0=
+  \begin{bmatrix}
+    0.88&0.08&-0.34\\
+    0.68&-0.39&-0.19
+  \end{bmatrix},
+  \qquad \bm b_0=\bm0,
+  \qquad \alpha=0.05.
+\]
+求一次 GD update 的结果、收敛参数和 pairwise decision boundaries。
+
+\begin{checkedsolution}
+令 $T$ 为 one-hot target matrix。Forward 与 backward equations 为
+\[
+  U=XW+B,
+  \qquad P=\operatorname{softmax}(U),
+  \qquad \nabla_UJ=P-T,
+\]
+\[
+  W\leftarrow W-\alpha X^{\mathsf T}(P-T),
+  \qquad
+  \bm b\leftarrow\bm b-\alpha(P-T)^{\mathsf T}\bm1_{18}.
+\]
+初始 forward pass 的 cross-entropy 为 $34.36$，classification error 为 $14$。应用第一次 GD update 后，课件给出
+\[
+  \boxed{W_1\approx
+  \begin{bmatrix}
+    0.28&-0.54&0.89\\
+    0.54&-0.12&-0.31
+  \end{bmatrix}},
+  \qquad
+  \boxed{\bm b_1\approx(-0.32,0.27,0.06)^{\mathsf T}}.
+\]
+收敛参数为
+\[
+  W^*=\begin{bmatrix}
+    -0.15&-3.41&4.18\\
+    5.27&-1.02&-4.15
+  \end{bmatrix},
+  \qquad
+  \bm b^*=(-7.82,5.81,2.02)^{\mathsf T}.
+\]
+令对应 logits 为 $u_A,u_B,u_C$。分别解 $u_A=u_B$、$u_B=u_C$、$u_A=u_C$，得到
+\[
+  \boxed{3.25x_1+6.29x_2-13.63=0},
+\]
+\[
+  \boxed{-7.59x_1+3.13x_2+3.79=0},
+\]
+\[
+  \boxed{4.33x_1-9.42x_2+9.84=0}.
+\]
+课件报告收敛时 cross-entropy 为 $0.58$、classification error 为 $0$。零分类错误不要求 cross-entropy 为零，因为正确类别 probability 只需最大，未必已经等于 $1$。
+\end{checkedsolution}
+
+\textbf{检查点：}Softmax probabilities 是 nonlinear functions，但 $p_i=p_j\iff u_i=u_j$，因此单层 softmax 的 pairwise boundaries 仍是 linear hyperplanes。

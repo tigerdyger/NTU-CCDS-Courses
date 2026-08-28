@@ -1,0 +1,207 @@
+% Actual class: 03
+% Slide decks: 3_neuron_layers; L3_summary
+% Exact scope: 3_neuron_layers pp. 1--60; L3_summary pp. 1--31
+% Video supplement: Lecture3_Part1 and Lecture3_Part2; durations confirmed, no standalone subtitle track
+% Human verified: Yes
+
+\section{第 03 节课：Neuron Layers}
+\label{lecture:SC4001-L03}
+
+\lecturemeta
+  {SC4001-L03}
+  {2026-08-28}
+  {3\_neuron\_layers；L3\_summary}
+  {主讲义 pp.~1--60；Summary pp.~1--31}
+  {Lecture3\_Part1（40:37）与 Lecture3\_Part2（41:50）；视频时长已核对，公式与例题以课件为准}
+  {已确认（2026-08-28；检查题完成，仅订正 $U_{5,2}$ 的术语）}
+
+\subsection{本讲主线}
+
+Neuron layer（神经元层）把 $K$ 个 neurons（神经元）的 affine computation（仿射计算）合并为 matrix operations（矩阵运算）。不同 layer 的 forward function（前向函数）和 local error signal（局部误差信号）不同，但参数 gradient 具有统一结构：
+\[
+  \boxed{\nabla_WJ=X^{\mathsf T}\nabla_UJ},
+  \qquad
+  \boxed{\nabla_{\bm b}J=(\nabla_UJ)^{\mathsf T}\bm 1_P}.
+\]
+这正是后续 multilayer backpropagation（多层反向传播）的基本模块。
+
+\lecturetopic{SC4001-L03-T01}{Weight Matrix 与 Batch Forward Computation}
+
+设 input dimension（输入维数）为 $n$，一层含 $K$ 个 neurons。将第 $k$ 个 neuron 的 weight vector（权重向量）$\bm w_k\in\mathbb R^n$ 按列排列：
+\[
+  W=[\bm w_1\ \bm w_2\ \cdots\ \bm w_K]\in\mathbb R^{n\times K},
+  \qquad
+  \bm b=(b_1,\ldots,b_K)^{\mathsf T}\in\mathbb R^K.
+\]
+对单个 input（输入）$\bm x\in\mathbb R^n$，
+\[
+  \boxed{\bm u=W^{\mathsf T}\bm x+\bm b}\in\mathbb R^K,
+  \qquad
+  \bm y=f(\bm u).
+\]
+若 $P$ 个 inputs 按行组成 $X\in\mathbb R^{P\times n}$，则
+\[
+  \boxed{U=XW+B=XW+\bm 1_P\bm b^{\mathsf T}}
+  \in\mathbb R^{P\times K},
+  \qquad Y=f(U).
+\]
+$U_{pk}$ 是第 $p$ 个 sample（样本）送入第 $k$ 个 neuron 后的 synaptic input / pre-activation（激活前输入）；真正的 output（输出）是 $Y_{pk}=f(U_{pk})$。因此本课程矩阵约定可记为：\textbf{row（行）对应 sample，column（列）对应 neuron}。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/neuron-layer-computation}}
+  \caption{Neuron layer 的 batch forward computation 与统一 gradient 结构。橙色框中的 $G=\nabla_UJ$ 由具体 activation（激活函数）和 loss（损失函数）决定。}
+  \label{fig:sc4001-l03-layer-computation}
+\end{figure}
+
+\textbf{对应例题：}\relatedexercise{SC4001-L03-E01}{Lecture Example 1：Perceptron Layer Forward Pass}。
+
+\lecturetopic{SC4001-L03-T02}{Single-layer Backpropagation、GD 与 SGD}
+
+对 single sample（单样本），第 $k$ 个 neuron 满足
+\[
+  u_k=\bm w_k^{\mathsf T}\bm x+b_k,
+  \qquad
+  \nabla_{\bm w_k}J=\bm x\frac{\partial J}{\partial u_k}.
+\]
+将所有 neurons 合并，可得 outer product（外积）形式
+\[
+  \boxed{\nabla_WJ=\bm x(\nabla_{\bm u}J)^{\mathsf T}},
+  \qquad
+  \boxed{\nabla_{\bm b}J=\nabla_{\bm u}J}.
+\]
+所以课程定义的 SGD（每个 sample 更新一次）为
+\[
+  W\leftarrow W-\alpha\bm x(\nabla_{\bm u}J)^{\mathsf T},
+  \qquad
+  \bm b\leftarrow\bm b-\alpha\nabla_{\bm u}J.
+\]
+对 full-batch GD（全批量梯度下降），若 total loss（总损失）$J=\sum_{p=1}^{P}J_p$，则
+\[
+  \boxed{\nabla_WJ=X^{\mathsf T}\nabla_UJ},
+  \qquad
+  \boxed{\nabla_{\bm b}J=(\nabla_UJ)^{\mathsf T}\bm 1_P}.
+\]
+若实现使用 mean loss（平均损失），上述 batch gradients 还要除以 $P$；这会改变 gradient scale（梯度尺度），不能脱离 loss normalization（损失归一化）直接比较 learning rate（学习率）。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{3.5cm}X@{}}
+  \toprule
+  Layer & Forward / loss & Local error signal $\nabla_UJ$ \\
+  \midrule
+  Linear layer（线性层） & $Y=U$；square error & $Y-D$ \\
+  Perceptron layer（感知机层） & $Y=f(U)$；square error & $(Y-D)\odot f'(U)$ \\
+  Softmax layer & $P=\operatorname{softmax}(U)$；cross-entropy & $P-T$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\lecturetopic{SC4001-L03-T03}{Perceptron Layer 与 Square-error Gradient}
+
+按课程 terminology（术语），perceptron layer 使用连续 sigmoid activation（Sigmoid 激活）并完成 multidimensional nonlinear regression（多维非线性回归）：
+\[
+  y_k=f(u_k)=\frac{1}{1+e^{-u_k}},
+  \qquad
+  J=\frac12\sum_{k=1}^{K}(d_k-y_k)^2.
+\]
+Chain rule（链式法则）给出
+\[
+  \boxed{\nabla_{\bm u}J
+    =-(\bm d-\bm y)\odot f'(\bm u)
+    =(\bm y-\bm d)\odot f'(\bm u)}.
+\]
+对 batch，
+\[
+  \boxed{\nabla_UJ=(Y-D)\odot f'(U)}.
+\]
+Sigmoid 进入 saturation region（饱和区）时 $f'(u)$ 很小，即使 prediction error（预测误差）明显，传回的 gradient 也可能很弱。单层 sigmoid 虽是 nonlinear mapping（非线性映射），但每个 output 仍属于 $f(\bm w^{\mathsf T}\bm x+b)$ 这一受限函数族。
+
+Summary 的 worked example（讲解例题）使用 scaled sigmoid
+\[
+  y=2\sigma(u)=\frac{2}{1+e^{-u}},
+  \qquad
+  \boxed{f'(u)=y\left(1-\frac y2\right)},
+\]
+使 output range（输出范围）变为 $(0,2)$。GD 每个 epoch 用全部 samples 更新一次；SGD 按顺序逐个处理 samples，后一个 sample 使用的是前一个 sample 已更新后的参数。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L03-E02}{Worked Example：Perceptron Layer 的 GD 与 SGD}。
+
+\lecturetopic{SC4001-L03-T04}{Softmax、Cross-entropy 与 Logit Gradient}
+
+Softmax layer 用于 $K$-class classification（$K$ 类分类）。对 logits（未归一化得分）$u_k$，
+\[
+  \boxed{p_k=P(y=k\mid\bm x)
+    =\frac{e^{u_k}}{\sum_{j=1}^{K}e^{u_j}}},
+  \qquad
+  \hat y=\arg\max_k p_k=\arg\max_k u_k.
+\]
+各 $p_k$ 相互耦合且满足 $\sum_kp_k=1$。若 target（目标）为 one-hot vector（独热向量）$\bm t$，multiclass cross-entropy（多类交叉熵）为
+\[
+  J=-\sum_{k=1}^{K}t_k\ln p_k=-\ln p_d,
+\]
+其中 $d$ 是正确类别。利用 softmax Jacobian（雅可比矩阵）
+\[
+  \frac{\partial p_i}{\partial u_j}=p_i(\delta_{ij}-p_j),
+\]
+可得本讲最关键的简化：
+\[
+  \boxed{\nabla_{\bm u}J=\bm p-\bm t},
+  \qquad
+  \boxed{\nabla_UJ=P-T}.
+\]
+对 correct class（正确类别）$d$，$p_d-1<0$，gradient descent 会增大 $u_d$；对 incorrect class（错误类别），gradient 为 $p_k>0$，更新会减小相应 logit。
+
+数值实现应先使用 shift invariance（平移不变性）
+\[
+  \operatorname{softmax}(\bm u)
+  =\operatorname{softmax}(\bm u-c\bm 1),
+  \qquad c=\max_k u_k,
+\]
+再计算指数，避免 numerical overflow（数值溢出）。
+
+\lecturetopic{SC4001-L03-T05}{Softmax Decision Boundaries 与三分类例题}
+
+类别 $i$ 与 $j$ 的 decision boundary（决策边界）满足
+\begin{align*}
+  p_i=p_j
+  &\iff e^{u_i}=e^{u_j}
+   \iff u_i=u_j\\
+  &\iff
+  \boxed{(\bm w_i-\bm w_j)^{\mathsf T}\bm x+(b_i-b_j)=0}.
+\end{align*}
+因此每一条 pairwise boundary（两两类别边界）都是 linear hyperplane（线性超平面）。多个类别的 regions（区域）由若干 hyperplanes 的交集形成，整体边缘可以是 piecewise-linear（分段线性）的，但单独一个 softmax layer 不能直接产生 curved boundary（弯曲边界）。Hidden layers（隐藏层）需要先学习 nonlinear features（非线性特征），再由 softmax 完成线性分类。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.70\textwidth}{!}{\input{figures/softmax-piecewise-boundary}}
+  \caption{由 Lecture Example 2 收敛参数重绘的 three-class softmax boundaries。三条直线分别满足 $u_A=u_B$、$u_B=u_C$ 与 $u_A=u_C$；样本点仅作类别位置示意。}
+  \label{fig:sc4001-l03-softmax-boundaries}
+\end{figure}
+
+讲义三分类例题的 initial forward pass（初始前向计算）得到 cross-entropy $34.36$、classification errors（分类错误数）$14$；一次 GD update 后参数明显改变。收敛时 classification error 为 $0$，但 cross-entropy 仍为 $0.58$：正确分类只要求正确类别 probability 最大，而 cross-entropy 还要求该 probability 尽量接近 $1$。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L03-E03}{Lecture Example 2：GD of a Softmax Layer}。
+
+\FloatBarrier
+\lecturetopic{SC4001-L03-T06}{Weight Initialization}
+
+所有 neurons 使用完全相同的初始参数会产生相同 outputs 与 gradients，后续更新也保持相同，形成 symmetry problem（对称性问题）。但 weights 过大又会使 sigmoid/tanh 容易饱和。因此 initialization（初始化）应随机打破对称性，同时控制 forward activations 与 backward gradients 的 variance（方差）。
+
+Xavier/Glorot uniform initialization（Xavier/Glorot 均匀初始化）为
+\[
+  w\sim U(-a,a),
+  \qquad
+  \boxed{a=\mathrm{gain}\sqrt{\frac{6}{n_{\mathrm{in}}+n_{\mathrm{out}}}}}.
+\]
+讲义列出的 gain（增益）为：linear 与 sigmoid 取 $1$，tanh 取 $5/3$，ReLU 取 $\sqrt2$，Leaky ReLU 取 $\sqrt{2/(1+\text{slope}^2)}$。
+
+对 ReLU-family activations（ReLU 类激活），常用 Kaiming/He scaling（Kaiming/He 方差缩放）
+\[
+  \operatorname{std}(w)=\frac{\mathrm{gain}}{\sqrt{n_{\mathrm{in}}}}.
+\]
+\textbf{严格性补充：}课件把截断在 $2$ 个 standard deviations（标准差）内的 normal sampling（正态采样）直接称为 Kaiming normal；实际框架中的 Kaiming initialization 核心是按 fan-in/fan-out 和 nonlinearity 缩放方差，不一定采用 truncated normal（截断正态分布）。考试按课程公式作答，编程时应检查框架的具体定义。
+
+\subsection{一分钟回顾}
+
+Neuron layer 用 $U=XW+\bm1_P\bm b^{\mathsf T}$ 完成 batch forward computation；一旦得到 local error signal $\nabla_UJ$，所有 layer 都共享 $\nabla_WJ=X^{\mathsf T}\nabla_UJ$ 与 $\nabla_{\bm b}J=(\nabla_UJ)^{\mathsf T}\bm1_P$。Perceptron--square-error 给出 $(Y-D)\odot f'(U)$，softmax--cross-entropy 给出更简洁的 $P-T$。单独 softmax layer 的两两边界仍是 linear hyperplanes；合理 initialization 则负责打破对称性并维持信号尺度。
