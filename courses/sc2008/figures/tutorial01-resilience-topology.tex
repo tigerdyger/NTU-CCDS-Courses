@@ -1,0 +1,17 @@
+% Original redraw of SC2008 Part I Tutorial 1, Question 4.
+\begin{tikzpicture}[
+  >=Latex,
+  node/.style={draw=noteBlue,very thick,rounded corners=2pt,fill=blue!5,
+    minimum width=1.25cm,minimum height=0.8cm,align=center},
+  link/.style={very thick,draw=noteBlue},
+  backup/.style={very thick,draw=ntuRed}
+]
+  \node[node] (sg) at (0,0) {SG};
+  \node[node] (hw) at (4.2,0) {HW};
+  \node[node] (sf) at (8.4,0) {SF};
+
+  \draw[link] (sg) to[bend left=20] node[above] {$L_1$} (hw);
+  \draw[link] (sg) to[bend right=20] node[below] {$L_2$} (hw);
+  \draw[link] (hw) -- node[below] {$L_3$} (sf);
+  \draw[backup] (sg) to[bend left=33] node[above] {$L_4$（direct）} (sf);
+\end{tikzpicture}

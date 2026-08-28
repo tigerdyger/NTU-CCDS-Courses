@@ -1,0 +1,170 @@
+% Tutorial set: 01
+% Source: Part 1-Tutorial 1-Questions, p. 1 (PDF p. 1), Questions 1--4
+% Session date: 2026-08-28
+% Human verified: Yes
+
+\subsection{Tutorial 01：Layering、Encapsulation 与 Network Resilience}
+\label{tutorial:SC2008-TUT01}
+
+\exercisemeta
+  {SC2008-TUT01}
+  {2026-08-28}
+  {Part 1-Tutorial 1-Questions，p.~1（PDF p.~1），Questions 1--4}
+  {四题的模型、推导与数值均已核对}
+  {已确认（2026-08-28）}
+
+\exercisequestion{SC2008-TUT01-Q01}{OSI 与 Internet (TCP/IP) Layering Models}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L01-T02}{为什么采用 Layering，以及 OSI 与 TCP/IP 模型}
+
+\subsubsection*{题目}
+
+比较 OSI model（OSI 模型）与 Internet/TCP-IP model（互联网/TCP-IP 模型），说明各层的对应关系及两种模型的主要区别。
+
+\begin{checkedsolution}
+本课程采用 Internet 5-layer model（互联网五层模型）：
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{4.2cm}X@{}}
+  \toprule
+  Internet layer & 对应 OSI layer(s) & 主要职责 \\
+  \midrule
+  Application（应用层） & Application、Presentation、Session & 网络应用、data representation（数据表示）与 session management（会话管理） \\
+  Transport（传输层） & Transport & process-to-process delivery（进程到进程传递） \\
+  Network（网络层） & Network & logical addressing、forwarding 与 routing \\
+  Data Link（数据链路层） & Data Link & 相邻 network elements 间的 frame transmission（帧传输） \\
+  Physical（物理层） & Physical & bits/signals 在 transmission medium（传输介质）上的表示与发送 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+OSI 是强调 protocol、service 与 interface 分离的 reference model（参考模型）；TCP/IP 是 Internet 实际采用的 protocol suite（协议族）。Internet model 没有删除 Presentation 与 Session 的功能，而是把它们并入 Application layer，由 application protocols 或 software 实现。
+
+部分资料把 TCP/IP 写成 four-layer model（四层模型），将 Data Link 与 Physical 合称 Link/Network Access layer；本课程考试应使用上述五层版本。
+\end{checkedsolution}
+
+\textbf{检查点：}从上到下，OSI 七层是 Application、Presentation、Session、Transport、Network、Data Link、Physical；本课程 Internet model 只把最上面的三层合并。
+
+\exercisequestion{SC2008-TUT01-Q02}{Sending-host Encapsulation 与 WAN Router Processing}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L01-T04}{Encapsulation 与 Router Processing}
+
+\subsubsection*{题目}
+
+借助 diagram（示意图）说明 sending host（发送主机）依次向 data 添加哪些 headers；再解释这些 headers 在 WAN switching nodes（广域网交换节点）中如何处理。
+
+\begin{checkedsolution}
+令 application message（应用层报文）为 $M$。发送端的 encapsulation（封装）顺序是
+\[
+  M
+  \longrightarrow
+  [H_T\mid M]
+  \longrightarrow
+  [H_N\mid H_T\mid M]
+  \longrightarrow
+  [H_L\mid H_N\mid H_T\mid M\mid T_L],
+\]
+其中 $H_T,H_N,H_L$ 分别是 Transport、Network 与 Data-Link headers，$T_L$ 是 link trailer（链路层尾部）。Physical layer 不添加普通 protocol header，而是把 frame 表示为 bits/signals。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/encapsulation}}
+  \caption{Sending host 中的 encapsulation。该图复用 Lecture 1 的原创示意图。}
+  \label{fig:sc2008-tut01-encapsulation}
+\end{figure}
+
+若 router 从 link 1 收到
+\[
+  [H_L^{(1)}\mid H_N\mid H_T\mid M\mid T_L^{(1)}],
+\]
+它会检查并移除 incoming link 的 $H_L^{(1)},T_L^{(1)}$，根据 Network-layer header 转发 packet，并更新 TTL（以及 IPv4 header checksum）等字段。随后为 outgoing link 重新封装：
+\[
+  [H_L^{(2)}\mid H_N'\mid H_T\mid M\mid T_L^{(2)}].
+\]
+因此 link-layer header/trailer 是 hop-by-hop（逐跳）的；IP header 总体随 packet 端到端传递，但部分字段会被 router 修改；Transport header 与 application data 通常留给 destination host 解封装。
+
+题目中的 switching node 在 WAN 语境下预期指 router/packet switch。若特指 Layer-2 switch（二层交换机），它主要处理 link-layer header，而不按正常转发流程处理 IP header。
+\end{checkedsolution}
+
+\textbf{检查点：}不能简单说“router 完全不改变 IP header”；TTL/Hop Limit 必须逐跳更新。也不能说 router 会删除 TCP/UDP header，因为正常 forwarding 不终止 transport-layer connection。
+
+\exercisequestion{SC2008-TUT01-Q03}{Six-nines Availability 的年度 Downtime}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L01-T05}{Reliability、Availability 与 Network Resilience}
+
+\subsubsection*{题目}
+
+题目把 link failure probability 解释为某个 time window（时间窗口）内的 downtime fraction（停机时间比例）。Carrier-grade network 要求 ``six nines''，即 $99.9999\%$ reliability。计算每年允许的 downtime duration（停机时长）。
+
+\begin{checkedsolution}
+按题目定义，availability 与 unavailability 分别为
+\[
+  A=99.9999\%=0.999999,
+  \qquad
+  U=1-A=10^{-6}.
+\]
+一年按 $365$ 天计算：
+\begin{align*}
+  T_{\mathrm{down}}
+    &=U\times365\times24\times60\times60\\
+    &=10^{-6}\times31{,}536{,}000\\
+    &=\boxed{31.536\ \text{s/year}}
+    \approx31.5\ \text{s/year}.
+\end{align*}
+
+\textbf{术语说明：}题目所用的“长期 downtime 比例”严格对应 availability（可用性）而不是系统在整个一年内从未失效的 reliability $R(t)$；本题按其明确定义计算。
+\end{checkedsolution}
+
+\textbf{检查点：}$99.9999\%=0.999999$，故不可用比例是 $0.000001=10^{-6}$，不是 $10^{-4}$。
+
+\exercisequestion{SC2008-TUT01-Q04}{SG--HW--SF Hybrid Topology 的断开概率}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L01-T05}{Reliability、Availability 与 Network Resilience}
+
+\subsubsection*{题目}
+
+Singapore（SG）经 Hawaii（HW）连接 San Francisco（SF）。SG--HW 之间有两条 independent parallel links（相互独立的并行链路），HW--SF 有一条 link，另有一条 SG--SF direct long-range link（直连长距离链路）。每条 link 独立地以概率 $b=0.05$ 失效，求 SG 与 SF 断开的概率。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.78\textwidth}{!}{\input{figures/tutorial01-resilience-topology}}
+  \caption{Tutorial 1 Question 4 的原创重绘：$L_1,L_2$ 为 SG--HW parallel links，$L_3$ 为 HW--SF link，$L_4$ 为 SG--SF direct link。}
+  \label{fig:sc2008-tut01-resilience-topology}
+\end{figure}
+
+\begin{checkedsolution}
+令每条 link 的 availability 为 $r=1-b=0.95$。两条 SG--HW parallel links 至少一条可用的概率为
+\[
+  P(\text{SG--HW works})=1-b^2.
+\]
+Indirect path（间接路径）还要求 HW--SF link 可用，故
+\[
+  P(\text{indirect works})=(1-b^2)(1-b),
+\]
+\[
+  P(\text{indirect fails})=1-(1-b^2)(1-b)
+  =b+(1-b)b^2.
+\]
+整个 network 断开要求 direct link 与 indirect path 同时失效。由于组成 direct path 和 indirect path 的 links 相互独立，
+\begin{align*}
+  P(\text{disconnect})
+    &=b\left[1-(1-b^2)(1-b)\right]\\
+    &=0.05\left[1-(1-0.05^2)(0.95)\right]\\
+    &=\boxed{0.00261875}
+     =\boxed{0.261875\%}.
+\end{align*}
+对应 network availability 为
+\[
+  \boxed{1-0.00261875=0.99738125=99.738125\%}.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}不能写成 $b^4$，因为 network 断开不要求四条 links 全部失效；例如 direct link 与 HW--SF link 同时失效时，SG 已无法到达 SF。
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1 比较 reference model 与实际 Internet stack；Q2 强调 link-layer information 逐跳重建，而 Transport payload 保持端到端；Q3 将 unavailability 转换为年度 downtime；Q4 应先把 topology 分解为 parallel section、series path 和 direct backup，再计算断开事件。
