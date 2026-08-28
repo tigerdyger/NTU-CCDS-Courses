@@ -1,0 +1,17 @@
+\begin{tikzpicture}[x=0.13cm,y=0.92cm,>=Latex,font=\small]
+  \node[anchor=east,font=\bfseries] at (-2,1.45) {$0$--$77$};
+  \draw[fill=blue!12] (0,1.05) rectangle (20,1.85) node[midway] {$P_1$};
+  \draw[fill=orange!18] (20,1.05) rectangle (37,1.85) node[midway] {$P_2$};
+  \draw[fill=green!15] (37,1.05) rectangle (57,1.85) node[midway] {$P_3$};
+  \draw[fill=red!12] (57,1.05) rectangle (77,1.85) node[midway] {$P_4$};
+  \foreach \t in {0,20,37,57,77}{\draw (\t,1.05)--(\t,0.92) node[below,font=\scriptsize]{\t};}
+
+  \node[anchor=east,font=\bfseries] at (-2,0.05) {$77$--$162$};
+  \draw[fill=blue!12] (0,-0.35) rectangle (20,0.45) node[midway] {$P_1$};
+  \draw[fill=green!15] (20,-0.35) rectangle (40,0.45) node[midway] {$P_3$};
+  \draw[fill=red!12] (40,-0.35) rectangle (44,0.45) node[midway,font=\tiny] {$P_4$};
+  \draw[fill=blue!12] (44,-0.35) rectangle (57,0.45) node[midway] {$P_1$};
+  \draw[fill=green!15] (57,-0.35) rectangle (77,0.45) node[midway] {$P_3$};
+  \draw[fill=green!24] (77,-0.35) rectangle (85,0.45) node[midway,font=\scriptsize] {$P_3$};
+  \foreach \x/\t in {0/77,20/97,40/117,44/121,57/134,77/154,85/162}{\draw (\x,-0.35)--(\x,-0.48) node[below,font=\scriptsize]{\t};}
+\end{tikzpicture}

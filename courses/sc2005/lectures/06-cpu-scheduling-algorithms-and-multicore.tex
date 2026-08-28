@@ -1,0 +1,109 @@
+% Actual class: 06
+% Slide deck: Part 3 (CPU Scheduling)
+% Exact scope: pp. 14--30
+% Video supplement: Part 3.2 from SJF to end; Part 3.3 complete
+% Human verified: Yes
+
+\section{第 06 节课：Scheduling Algorithms 与 Multiprocessor Scheduling}
+\label{lecture:SC2005-L06}
+
+\lecturemeta
+  {SC2005-L06}
+  {2026-08-28}
+  {Part 3 (CPU Scheduling)}
+  {pp.~14--30}
+  {Part 3.2 自 SJF 起至结尾；Part 3.3 完整}
+  {已确认（2026-08-28）}
+
+\subsection{本讲主线}
+
+FCFS 只依据 arrival order（到达顺序）；本讲进一步用 predicted CPU burst、priority 与 time quantum 决定 CPU 的下一位使用者，并把相同原则扩展到多个 cores。SJF/SRTF 追求较小的 average waiting time，RR 追求 responsiveness，multilevel queue 为不同类别提供不同 policy；多核系统还必须在 load balance、synchronization 与 cache locality 之间权衡。
+
+\lecturetopic{SC2005-L06-T01}{SJF 与 SRTF}
+
+\keyidea{SJF 在每次必须调度时选择 Ready processes 中 next CPU burst 最短者；SRTF 在 arrival 等调度事件后保留 remaining time 最短者运行，必要时抢占。}
+
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{2.9cm}XX@{}}
+  \toprule
+  Policy & Selection rule & 何时改变 Running process \\
+  \midrule
+  Nonpreemptive SJF & 选择最短的 next CPU burst & 当前 burst 完成或主动 blocked 后 \\
+  SRTF（preemptive SJF） & 选择最短的 remaining CPU-burst time & 新到达任务比当前 remaining time 更短时可抢占 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+在 exact burst lengths 已知、忽略 scheduling/context-switch overhead 的模型中，SJF/SRTF 可最小化 average waiting time。现实系统只能估计未来 burst；持续到达的 short processes 也可能使 long process starvation。相等时必须使用题目规定的 tie-breaking rule；若未说明，通常沿用 FCFS，并避免无收益的抢占。
+
+\textbf{对应讲义例题：}\relatedexercise{SC2005-L06-E01}{Single-core SJF 与 SRTF}。
+
+\lecturetopic{SC2005-L06-T02}{Priority Scheduling 与 Aging}
+
+Priority-based scheduling 为每个 process 赋予 priority number，并运行最高优先级者；讲义采用 smaller integer means higher priority（数字越小、优先级越高）的约定，但题目可采用相反约定。它既可以 preemptive，也可以 nonpreemptive。
+
+FCFS 可视为 priority 由 arrival order 决定；SJF 可视为 priority 由 burst length 决定。Priority scheduling 的典型失败模式是 starvation：高优先级任务持续到达，使低优先级任务长期无法运行。Aging（老化）通过随 waiting time 逐步提高 priority 保证最终获得服务。
+
+\lecturetopic{SC2005-L06-T03}{Round Robin 与 Time Quantum}
+
+RR（Round Robin，时间片轮转）使用 FIFO ready queue。Process 最多运行一个 time quantum $q$：若未完成则被抢占并放到队尾；若提前完成或 blocked，则立即释放 CPU。
+
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{2.7cm}XX@{}}
+  \toprule
+  Quantum & 行为 & Trade-off \\
+  \midrule
+  $q\ge \max_i B_i$ & 每个 burst 一次完成，RR 退化为 FCFS & overhead 低，response 可能较慢 \\
+  较小 $q$ & Processes 更快轮到第一次 CPU service & response 较好，但 timer/dispatch overhead 增加 \\
+  极小 $q$ & 接近 processor sharing & 大量调度开销可能吞噬有效 CPU time \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+若一个固定 round 内有 $n$ 个 Ready processes，忽略新到达与切换开销，一个 process 再次获得 CPU 前至多等待 $(n-1)q$；这不是其 total waiting time 上界。Quantum expiry 只提供 preemption opportunity；若仍选择同一个 process，则不一定发生 process context switch。Average turnaround time 与 $q$ 一般没有单调关系。
+
+\textbf{对应讲义例题：}\relatedexercise{SC2005-L06-E02}{Single-core RR，q=20}。
+
+\lecturetopic{SC2005-L06-T04}{Multilevel Queue Scheduling}
+
+Multilevel queue scheduling 将 Ready processes 按 workload class 静态放入不同队列，例如 foreground queue 使用 RR，background queue 使用 FCFS。必须分别指定 intra-queue policy（队列内部）与 inter-queue policy（队列之间）：
+
+\begin{itemize}
+  \item Fixed-priority inter-queue scheduling：始终先服务高优先级队列，低优先级队列可能 starvation；
+  \item Time-slice inter-queue scheduling：为每个队列分配 CPU 份额，例如 foreground/background 按 $80\,\mathrm{ms}:20\,\mathrm{ms}$ 轮换。
+\end{itemize}
+
+本讲的 multilevel queue 使用 static assignment；不要与允许 process 在队列间移动的 MLFQ（Multilevel Feedback Queue，多级反馈队列）混淆。Inter-queue time slice 与队列内部 RR quantum 也属于不同层级。
+
+\lecturetopic{SC2005-L06-T05}{Partitioned 与 Global Multiprocessor Scheduling}
+
+讲义假设每个 process 在任一时刻至多运行于一个 core，并采用以下分类：
+
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}XX@{}}
+  \toprule
+  Model & Mechanism & 主要 trade-off \\
+  \midrule
+  Partitioned scheduling（课程中对应 AMP） & Process 创建时映射到固定 core；每个 core 维护 local ready queue & 实现简单、cache locality 好；mapping 困难且可能 load imbalance \\
+  Global scheduling（课程中对应 SMP） & 所有 cores 从一个或多个 global ready queues 动态取任务 & Load balance 灵活；需同步 shared scheduling data，并可能发生 migration 与 cache reload \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/multicore-scheduling-models}}
+  \caption{Partitioned scheduling 使用 per-core queues；global scheduling 允许任一 idle core 从 global queue 取下一个 process。}
+  \label{fig:sc2005-l06-multicore-models}
+\end{figure}
+
+Partitioned scheduling 中，仅改变某个 local queue 的 FCFS/RR 顺序不能把 workload 转移给 idle core。Global scheduling 则在每个 arrival、completion 或 quantum expiry 后，按全局 policy 为所有可用 cores 选择 candidates；各 core 的完成时刻不必同步。
+
+\textbf{对应讲义例题：}\relatedexercise{SC2005-L06-E03}{Dual-core SRTF 与 RR}。
+
+\subsection{一分钟回顾}
+
+SJF/SRTF 按 burst 或 remaining time 选择，等待时间较优但依赖预测且可能使长任务 starvation；priority scheduling 用 aging 改善低优先级 starvation。RR 以 $q$ 换取 responsiveness，$q$ 过小会增加 overhead。Multilevel queue 分离 workload classes；多核 partitioned scheduling 偏向简单与 cache locality，global scheduling 偏向动态 load balance，但需要 synchronization 并可能迁移 cache state。

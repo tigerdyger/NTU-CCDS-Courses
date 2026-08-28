@@ -1,0 +1,17 @@
+\begin{tikzpicture}[x=0.63cm,y=0.95cm,>=Latex,font=\small]
+  \node[anchor=east,font=\bfseries] at (-0.25,1.45) {SJF};
+  \draw[fill=blue!12] (0,1.05) rectangle (7,1.85) node[midway] {$P_1$};
+  \draw[fill=green!15] (7,1.05) rectangle (8,1.85) node[midway,font=\scriptsize] {$P_3$};
+  \draw[fill=orange!18] (8,1.05) rectangle (12,1.85) node[midway] {$P_2$};
+  \draw[fill=red!12] (12,1.05) rectangle (16,1.85) node[midway] {$P_4$};
+  \foreach \t in {0,7,8,12,16}{\draw (\t,1.05)--(\t,0.92) node[below,font=\scriptsize]{\t};}
+
+  \node[anchor=east,font=\bfseries] at (-0.25,0.05) {SRTF};
+  \draw[fill=blue!12] (0,-0.35) rectangle (2,0.45) node[midway] {$P_1$};
+  \draw[fill=orange!18] (2,-0.35) rectangle (4,0.45) node[midway] {$P_2$};
+  \draw[fill=green!15] (4,-0.35) rectangle (5,0.45) node[midway,font=\scriptsize] {$P_3$};
+  \draw[fill=orange!18] (5,-0.35) rectangle (7,0.45) node[midway] {$P_2$};
+  \draw[fill=red!12] (7,-0.35) rectangle (11,0.45) node[midway] {$P_4$};
+  \draw[fill=blue!12] (11,-0.35) rectangle (16,0.45) node[midway] {$P_1$};
+  \foreach \t in {0,2,4,5,7,11,16}{\draw (\t,-0.35)--(\t,-0.48) node[below,font=\scriptsize]{\t};}
+\end{tikzpicture}

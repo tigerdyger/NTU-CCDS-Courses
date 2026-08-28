@@ -1,0 +1,24 @@
+\begin{tikzpicture}[
+  >=Latex,
+  queue/.style={draw=noteBlue,rounded corners,fill=blue!8,minimum width=3.2cm,minimum height=0.72cm,align=center},
+  core/.style={draw=ntuRed,rounded corners,fill=red!8,minimum width=2.0cm,minimum height=0.72cm,align=center},
+  label/.style={font=\bfseries}
+]
+  \node[label] at (2.6,3.25) {Partitioned scheduling};
+  \node[queue] (q1) at (1.75,2.35) {Local queue 1\\$P_1,P_3$};
+  \node[queue] (q2) at (1.75,1.15) {Local queue 2\\$P_2,P_4$};
+  \node[core] (c1) at (5.0,2.35) {Core 1};
+  \node[core] (c2) at (5.0,1.15) {Core 2};
+  \draw[->,thick] (q1)--(c1);
+  \draw[->,thick] (q2)--(c2);
+
+  \draw[dashed,gray] (6.45,0.55)--(6.45,3.45);
+
+  \node[label] at (10.0,3.25) {Global scheduling};
+  \node[queue,minimum width=4.2cm] (gq) at (9.1,1.75) {Global ready queue\\$P_1,P_2,P_3,P_4$};
+  \node[core] (gc1) at (12.9,2.35) {Core 1};
+  \node[core] (gc2) at (12.9,1.15) {Core 2};
+  \draw[->,thick] (gq.east)--(gc1.west);
+  \draw[->,thick] (gq.east)--(gc2.west);
+  \node[font=\scriptsize,align=center,text=gray!70!black] at (9.3,0.58) {任一 idle core 均可取队首};
+\end{tikzpicture}

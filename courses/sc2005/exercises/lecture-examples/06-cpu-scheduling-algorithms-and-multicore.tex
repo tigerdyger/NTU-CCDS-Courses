@@ -1,0 +1,109 @@
+% Related lecture: SC2005-L06
+% Source: Part 3 (CPU Scheduling), pp. 15--16, 19, 28--29
+% Human verified: Yes
+
+\exercisemeta
+  {SC2005-L06-EX}
+  {2026-08-28}
+  {Part 3 (CPU Scheduling), pp.~15--16、19、28--29，lecture examples}
+  {题干、Gantt charts 与答案均已核对}
+  {已确认（2026-08-28）}
+
+\exercisequestion{SC2005-L06-E01}{Single-core SJF 与 SRTF}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L06-T01}{SJF 与 SRTF}
+
+\subsubsection*{题目（Lecture Example）}
+
+给定 single-core processes：
+\[
+\begin{array}{c|cccc}
+  \text{Process} & P_1 & P_2 & P_3 & P_4\\ \hline
+  A_i & 0 & 2 & 4 & 5\\
+  B_i & 7 & 4 & 1 & 4
+\end{array}
+\]
+分别使用 nonpreemptive SJF 与 SRTF，画出 Gantt charts 并计算 average waiting time。
+
+\begin{checkedsolution}
+\begin{center}
+  \resizebox{0.96\textwidth}{!}{\input{figures/sjf-srtf-gantt}}
+
+  \smallskip
+  \textit{同一 workload 下，nonpreemptive SJF 与 SRTF 的执行顺序。}
+\end{center}
+
+Nonpreemptive SJF：$P_1$ 在 $t=0$ 是唯一 Ready process，因此必须先运行；之后选择 $P_3,P_2,P_4$（等长时按 arrival order）。
+\[
+  (W_1,W_2,W_3,W_4)=(0,6,3,7),\qquad \overline W=4.
+\]
+
+SRTF 在 $t=2$ 以 $P_2(4)<P_1(5)$ 抢占，在 $t=4$ 又以 $P_3(1)<P_2(2)$ 抢占。由 $W_i=C_i-A_i-B_i$：
+\[
+  (W_1,W_2,W_3,W_4)=(9,1,0,2),\qquad \overline W=3.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}尚未到达的 process 没有资格参与 SJF 选择；SRTF 比较的是 remaining time，而不是 original burst time。
+
+\exercisequestion{SC2005-L06-E02}{Single-core RR，q=20}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L06-T03}{Round Robin 与 Time Quantum}
+
+\subsubsection*{题目（Lecture Example）}
+
+$P_1,P_2,P_3,P_4$ 均在 $t=0$ 按此顺序进入 ready queue，burst lengths 为 $(53,17,68,24)$。使用 RR 且 $q=20$，画出 schedule，计算 completion、waiting 与 response times。
+
+\begin{checkedsolution}
+\begin{center}
+  \resizebox{0.96\textwidth}{!}{\input{figures/rr-single-core-gantt}}
+
+  \smallskip
+  \textit{RR schedule 分成两行显示；第二行的时间从 $77$ 延续。}
+\end{center}
+
+\[
+  (C_1,C_2,C_3,C_4)=(134,37,162,121),
+\]
+\[
+  (W_1,W_2,W_3,W_4)=C_i-B_i=(81,20,94,97),\qquad \overline W=73.
+\]
+第一次获得 CPU 的时间为 $(0,20,37,57)$，所以 average response time 为 $28.5$。$P_3$ 在 $134$--$154$ 后只剩 $8$；$t=154$ 时没有其他 Ready process，故 scheduler 再次选择 $P_3$，两段可连续绘制，但 quantum boundary 仍存在。
+\end{checkedsolution}
+
+\textbf{检查点：}RR 按 ready-queue order 轮换，不按 remaining time 排序；waiting time 可用 $C_i-A_i-B_i$ 自检。
+
+\exercisequestion{SC2005-L06-E03}{Dual-core SRTF 与 RR}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L06-T05}{Partitioned 与 Global Multiprocessor Scheduling}
+
+\subsubsection*{题目（Lecture Examples）}
+
+在 global dual-core model 下：
+\begin{enumerate}
+  \item 对 E01 的 arrival/burst data 使用 SRTF；
+  \item 对 E02 的四个同时到达 processes 使用 RR，$q=20$。
+\end{enumerate}
+画出两个 cores 的 schedules，并说明调度事件如何发生。
+
+\begin{checkedsolution}
+\begin{center}
+  \resizebox{0.96\textwidth}{!}{\input{figures/dual-core-scheduling-gantt}}
+
+  \smallskip
+  \textit{Global dual-core SRTF 与 RR。空白区间表示该 core idle。}
+\end{center}
+
+SRTF 在 $t=4$ 从 $(P_1:3,P_2:2,P_3:1)$ 中选择 $P_2,P_3$，令 $P_1$ 等待；$t=5$ 时选择 $(P_2:1,P_1:3)$，令新到达的 $P_4:4$ 等待。最终
+\[
+  (W_1,W_2,W_3,W_4)=(1,0,0,1),\qquad \overline W=0.5.
+\]
+
+Dual-core RR 的 completion times 为
+\[
+  (C_1,C_2,C_3,C_4)=(73,17,89,61),
+\]
+故 waiting times 为 $(20,0,21,37)$，average waiting time 为 $19.5$。两个 cores 在各自 idle 的时刻独立触发 scheduler，并非以同步 rounds 推进；同一 process 不能同时占用两个 cores。
+\end{checkedsolution}
+
+\textbf{检查点：}每个 arrival、completion 或 quantum expiry 都可能改变 global ready queue；先按真实事件时间更新队列，再给 idle core 分派任务。
