@@ -228,4 +228,122 @@ Process context（进程上下文）包含恢复执行所需的 program counter�
   \item Thread 的 shared resources（共享资源）与 private execution context（私有执行上下文）必须分开记忆：heap 共享，stack 独立。
 \end{itemize}
 
+\section{Lecture Quiz 2}
+\label{homework:SC2005-HW02}
+
+\exercisemeta
+  {SC2005-HW02}
+  {2026-08-29}
+  {NTULearn Lecture Quiz 2，5 道 multiple-choice questions（选择题）；题干与选项见下文}
+  {已完成，并根据平台满分反馈逐题核对}
+  {是（2026-08-29）}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW02-Q01}{Question 1：Preemptive Scheduling Events}
+
+\textbf{题干：} In a preemptive CPU scheduler, when does scheduling happen?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Upon any of the five transitions (in the process state transition diagram).
+  \item Upon any of the five transitions (in the process state transition diagram) and even at other time instants.
+  \item Upon transitions 1 and 5 and ocassionally upon transition 4 (in the process state transition diagram).
+  \item Upon transitions 2, 3 and 4 (in the process state transition diagram).
+\end{enumerate}
+
+\textbf{正确答案：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L05-T02}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Preemptive scheduling（抢占式调度）不仅包含五种 state transitions（状态转换）上的调度，还允许 scheduler 在其他 time instants（时刻）收回 CPU，例如 time quantum（时间片）到期。D 只列出 transitions 2、3、4，遗漏了 transitions 1、5 以及其他时刻。Scheduler 被唤起并重新选择不等于一定发生 process context switch（进程上下文切换）。
+\end{checkedsolution}
+
+\Needspace{12\baselineskip}
+\exercisequestion{SC2005-HW02-Q02}{Question 2：Aging}
+
+\textbf{题干：} What is Aging?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item A technique in which the priority of processes that are unable to execute is slowly increased over time to avoid starvation.
+  \item A technique in which the priority of processes that are unable to execute is slowly decreased over time to avoid starvation.
+  \item A technique in which the priority of all processes is slowly increased over time to avoid starvation.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L06-T02}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Aging（老化）逐步提高长期无法执行的 processes 的 effective priority（有效优先级），使其最终获得 CPU，从而避免 starvation（饥饿）。这里的“提高 priority”指提高调度地位；若系统采用 smaller integer means higher priority（数字越小优先级越高），实现时反而会逐渐减小 priority number。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW02-Q03}{Question 3：Global Multiprocessor Scheduling}
+
+\textbf{题干：} Under global multiprocessor scheduling, a process may execute on two cores at the same time.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item False, a process can only execute on one core at any time. Under global scheduling, it may migrate between cores over time.
+  \item False, a process can only execute on one core at any time. Under global scheduling, a process is assigned to a core when it arrives in the system and is always executed only on that core.
+  \item True, under global scheduling, a process may migrate between cores over time and execute on them in parallel.
+  \item True, under global scheduling, a process may execute on two cores in parallel, but never on three or more cores in parallel.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L06-T05}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+按本讲模型，一个 process 在任一时刻只能占用一个 CPU core。Global scheduling（全局调度）允许该 process 在不同调度区间运行于不同 cores，即发生 migration（迁移），但不允许同一个 execution stream 同时在多个 cores 上执行。B 描述的是固定 core mapping（核心映射），属于 partitioned scheduling（分区调度）。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW02-Q04}{Question 4：RR Quantum 与 Turnaround Time}
+
+\textbf{题干：} Turnaround time of processes decreases as the quantum size in Round-Robin (RR) scheduling increases.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item False, there is no direct correlation between turnaround time and quantum size.
+  \item False, it increases as the quantum size increases.
+  \item False, it is always fixed independent of the quantum size.
+  \item True, and further it remains fixed once the quantum size is larger than the maximum CPU burst length.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L06-T03}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Average turnaround time（平均周转时间）与 time quantum（时间片）之间通常不存在单调关系；改变 $q$ 会改变 completion order（完成顺序），因此可能增大、减小或保持不变。在讲义忽略 context-switch overhead（上下文切换开销）的固定 workload 模型中，当 $q$ 大于最大 CPU burst length 后，RR 退化为 FCFS，turnaround time 才不再随 $q$ 改变。D 的后半句成立，但题干声称“随 $q$ 增大而减小”，所以整体仍为 False。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW02-Q05}{Question 5：Nonpreemptive Scheduling Events}
+
+\textbf{题干：} In a nonpreemptive CPU scheduler, when does scheduling happen?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Upon transitions 1 and 5 and ocassionally upon transition 4 (in the process state transition diagram).
+  \item Upon transitions 2, 3 and 4 (in the process state transition diagram).
+  \item Upon any of the five transitions (in the process state transition diagram).
+  \item Upon any of the five transitions (in the process state transition diagram) and even at other time instants.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L05-T02}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Nonpreemptive scheduling（非抢占式调度）只在当前 process 主动释放 CPU 时重新选择：transition 1 为 Running $\rightarrow$ Waiting，transition 5 为 Running $\rightarrow$ Terminated。Transition 4（New $\rightarrow$ Ready）通常不会打断正在运行的 process；只有 CPU core 原本 idle 时才需要立即调度，因此是 occasionally（偶尔）。
+\end{checkedsolution}
+
+\subsection{易错点}
+
+\begin{itemize}
+  \item Scheduling decision（调度决策）、process preemption（进程抢占）和 process context switch 是三个不同事件；scheduler 运行后仍可能选择原 process。
+  \item Aging 提高的是 effective priority，而不保证 priority number 数值增大；必须先确认题目的优先级编号约定。
+  \item Global scheduling 允许同一 process 跨 cores 迁移，不表示同一个 process 能在多个 cores 上同时执行。
+  \item RR 的 $q$ 与 turnaround time 没有一般性的单调关系；$q$ 足够大时退化为 FCFS，只是一个边界情况。
+\end{itemize}
+
 \end{document}
