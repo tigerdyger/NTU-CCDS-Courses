@@ -1,0 +1,142 @@
+% Actual class: 03
+% Slide decks: CZ3005 Module 3_Constraint satisfaction and adversarial search; CZ3005 Module 4_Markov Decision Process
+% Exact scope: Module 3 pp. 26--54; Module 4 pp. 1--24, aligned with the Week 4 schedule
+% NTULearn supplement: None
+% Human verified: Concepts discussed and checks completed
+
+\section{第 03 节课：Adversarial Search 与 MDP 1}
+\label{lecture:SC3000-L03}
+
+\lecturemeta
+  {SC3000-L03}
+  {2026-08-31}
+  {CZ3005 Module 3；CZ3005 Module 4}
+  {Module 3 pp.~26--54；Module 4 pp.~1--24（对应 Week 4 schedule）}
+  {无}
+  {知识内容已讨论并通过检查题}
+
+\subsection{本讲主线}
+
+Adversarial search（对抗搜索）面对会主动选择不利动作的 opponent（对手），用 Minimax（极大极小算法）在 MAX 与 MIN 之间回传 utility（效用）。Markov Decision Process（马尔可夫决策过程，MDP）面对 stochastic transition（随机转移），用 probability-weighted expectation（概率加权期望）评价动作。两者都研究 sequential decision making（序贯决策），但不确定性的来源和备份运算不同。
+
+\lecturetopic{SC3000-L03-T01}{Game Formulation 与 Minimax}
+
+本讲聚焦 two-player、turn-taking、deterministic、fully observable、zero-sum games。一个 game problem 由 initial state、current player、legal actions、result function、terminal test 与 utility function 构成；utility 统一从 MAX 视角定义，例如胜、和、负分别记为 $+1,0,-1$。
+
+Minimax 假设双方都 optimal（最优）：MAX 选最大值，MIN 选最小值。
+\[
+  V(s)=
+  \begin{cases}
+    U(s), & s\text{ 为 terminal state},\\
+    \displaystyle\max_{a\in A(s)}V(\operatorname{Result}(s,a)),
+      & s\text{ 为 MAX node},\\
+    \displaystyle\min_{a\in A(s)}V(\operatorname{Result}(s,a)),
+      & s\text{ 为 MIN node}.
+  \end{cases}
+\]
+Minimax value 是面对 optimal opponent 时能够保证的结果；若 opponent 犯错，实际收益可以更高。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/minimax-backup-tree}}
+  \caption{讲义 game tree 的 Minimax backup（价值回传）：MAX 层取最大值，MIN 层取最小值，root 最终取值 $4$。}
+  \label{fig:sc3000-l03-minimax-tree}
+\end{figure}
+
+\textbf{对应例题：}\relatedexercise{SC3000-L03-E01}{Minimax Tree 的逐层回传}。
+
+\lecturetopic{SC3000-L03-T02}{Cutoff、Evaluation、Quiescent Search 与 MCTS}
+
+大型 game tree 无法完整展开，因此实际算法在 cutoff depth（截断深度）停止，并用 evaluation function（评估函数）近似 non-terminal state 的真实 utility：
+\[
+  V(s)\approx \operatorname{Eval}(s).
+\]
+Evaluation function 应计算高效、与 terminal utility 一致，并能合理排序局面。Othello 的简单线性评估可对双方占据的 corner、edge 与 middle 数量之差分别赋予 $3,2,1$ 的权重；它是 heuristic estimate（启发式估计），不是必然胜率。
+
+固定深度可能产生 horizon effect（水平线效应）：剧烈后果恰好落在 cutoff 之外。Quiescent search（静态搜索）只在局面相对 quiet 时评估；若仍有明显战术变化，则继续展开到较稳定的位置。
+
+Monte Carlo Tree Search（蒙特卡洛树搜索，MCTS）通过 selection、expansion、simulation/rollout 与 backpropagation 逐步集中计算量，并在 exploitation（利用）与 exploration（探索）之间平衡。AlphaGo 类方法以 policy network 提供 move priors，以 value network 估计 leaf value。标准缩写是 MCTS；课件中的 $f=g+h$ 只能视作宽松类比，并非标准 MCTS 更新公式。
+
+\lecturetopic{SC3000-L03-T03}{MDP、Markov Property 与 Policy}
+
+MDP 可写成
+\[
+  \boxed{\mathcal M=(S,A,P,R,\gamma)},
+\]
+其中 $P(s'\mid s,a)$ 是 transition model，$R(s,a,s')$ 是 reward，$\gamma$ 是 discount factor。Agent 能选择 action，但 environment 按 $P$ 随机产生 next state；因此解不是固定路径，而是 policy（策略）。Deterministic policy 写作 $\pi(s)=a$，stochastic policy 写作 $\pi(a\mid s)$。
+
+Markov property（马尔可夫性质）为
+\[
+  P(S_{t+1}=s'\mid S_t=s,A_t=a,\text{history})
+  =P(S_{t+1}=s'\mid S_t=s,A_t=a).
+\]
+它表示 current state 已包含预测未来所需的信息，不表示 transition 是 deterministic。若 state representation 丢失对未来有用的信息，Markov property 便不成立。
+
+\lecturetopic{SC3000-L03-T04}{Return、Discount 与 Value Functions}
+
+Discounted return（折扣回报）为
+\[
+  G_t=R_t+\gamma R_{t+1}+\gamma^2R_{t+2}+\cdots
+      =\sum_{k=0}^{\infty}\gamma^kR_{t+k},
+  \qquad 0\le\gamma<1.
+\]
+$\gamma$ 越小越重视 immediate reward；越接近 $1$ 越重视长期结果。Reward 有界且 $\gamma<1$ 时，无限序列的 discounted sum 仍有界。
+
+对固定 policy $\pi$，state-value 与 action-value 分别为
+\[
+  V^\pi(s)=\mathbb E_\pi[G_t\mid S_t=s],
+  \qquad
+  Q^\pi(s,a)=\mathbb E_\pi[G_t\mid S_t=s,A_t=a],
+\]
+且
+\[
+  V^\pi(s)=\sum_{a\in A}\pi(a\mid s)Q^\pi(s,a).
+\]
+$V^\pi$ 表示指定 policy 的价值；只有 $V^*$ 才表示所有 policies 中的 optimal value。
+
+\textbf{对应例题：}\relatedexercise{SC3000-L03-E02}{Game Show 的 Backward Induction}。
+
+\lecturetopic{SC3000-L03-T05}{Bellman Optimality Equation}
+
+Bellman equation 把 long-term value 分解为 immediate reward 与 discounted future value。固定 policy 满足
+\[
+  V^\pi(s)=\sum_a\pi(a\mid s)\sum_{s'}P(s'\mid s,a)
+  \left[R(s,a,s')+\gamma V^\pi(s')\right].
+\]
+Optimal value 满足 Bellman optimality equation：
+\[
+  \boxed{
+  V^*(s)=\max_{a\in A}\sum_{s'}P(s'\mid s,a)
+  \left[R(s,a,s')+\gamma V^*(s')\right] }.
+\]
+其中 $\max_a$ 对应 agent 可控的 action choice；$\sum_{s'}P(s'\mid s,a)$ 对应不可控的 stochastic outcome。Optimal policy 为
+\[
+  \pi^*(s)=\arg\max_{a\in A}\sum_{s'}P(s'\mid s,a)
+  \left[R(s,a,s')+\gamma V^*(s')\right].
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/mdp-action-chance}}
+  \caption{Bellman backup 的两层结构：agent 在 action nodes 之间取最大值，environment 在 successor states 上计算期望。}
+  \label{fig:sc3000-l03-mdp-backup}
+\end{figure}
+
+\textbf{对应例题：}\relatedexercise{SC3000-L03-E03}{Terminal MDP 的 Expected Action Value}。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+  \toprule
+  Problem & 下一状态的来源 & 关键 backup operation \\
+  \midrule
+  Ordinary search & action 通常确定 successor & 选择较优 successor \\
+  Adversarial search & MAX 与 hostile MIN 交替选择 & $\max$ 与 $\min$ \\
+  MDP & agent 选 action，environment 随机转移 & $\max$ 与 expectation \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{一分钟回顾}
+
+Minimax 在 MAX/MIN 层交替回传最优与最坏结果；完整搜索不可行时，以 cutoff、evaluation、quiescent search 或 MCTS 控制计算。MDP 用 $(S,A,P,R,\gamma)$ 描述随机序贯决策，policy 指定每个 state 的 action。Value function 是 expected discounted return，Bellman optimality equation 则把一次可控的 $\max$ 与随机转移的 expectation 结合起来。Value Iteration 与 Policy Iteration 从下一讲开始。

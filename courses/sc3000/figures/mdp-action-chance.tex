@@ -1,0 +1,27 @@
+\begin{tikzpicture}[
+  >=Latex,
+  state/.style={rounded corners,draw=noteBlue,fill=noteBlue!9,minimum width=1.15cm,minimum height=0.7cm,font=\small},
+  chance/.style={circle,draw=ntuRed,fill=ntuRed!9,minimum size=0.9cm,font=\small},
+  every edge/.style={draw=gray!80,->},
+  lab/.style={font=\scriptsize,fill=white,inner sep=1pt}
+]
+  \node[state] (s) {$s$};
+  \node[chance,above right=0.7cm and 2.0cm of s] (a1) {$a_1$};
+  \node[chance,below right=0.7cm and 2.0cm of s] (a2) {$a_2$};
+  \node[state,above right=0.25cm and 2.2cm of a1] (s11) {$s'_1$};
+  \node[state,below right=0.25cm and 2.2cm of a1] (s12) {$s'_2$};
+  \node[state,above right=0.25cm and 2.2cm of a2] (s21) {$s'_3$};
+  \node[state,below right=0.25cm and 2.2cm of a2] (s22) {$s'_4$};
+
+  \draw[->,thick] (s) -- node[lab,above,sloped]{agent 选择：$\max_a$} (a1);
+  \draw[->,thick] (s) -- (a2);
+  \draw[->] (a1) -- node[lab,above,sloped]{$P(s'_1\mid s,a_1)$} (s11);
+  \draw[->] (a1) -- node[lab,below,sloped]{$P(s'_2\mid s,a_1)$} (s12);
+  \draw[->] (a2) -- node[lab,above,sloped]{$P(s'_3\mid s,a_2)$} (s21);
+  \draw[->] (a2) -- node[lab,below,sloped]{$P(s'_4\mid s,a_2)$} (s22);
+
+  \node[align=left,font=\small,right=0.9cm of s11] {
+    environment 随机转移：$\sum_{s'}P(s'\mid s,a)$\\[0.25em]
+    每条分支贡献：$R(s,a,s')+\gamma V(s')$
+  };
+\end{tikzpicture}

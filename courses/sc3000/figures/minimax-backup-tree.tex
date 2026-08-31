@@ -1,0 +1,32 @@
+\begin{tikzpicture}[
+  level distance=1.55cm,
+  level 1/.style={sibling distance=8.0cm},
+  level 2/.style={sibling distance=3.8cm},
+  level 3/.style={sibling distance=1.75cm},
+  edge from parent/.style={draw=gray!75,-{Latex[length=2mm]}},
+  maxnode/.style={circle,draw=noteBlue,fill=noteBlue!10,minimum size=9mm,align=center,font=\scriptsize},
+  minnode/.style={circle,draw=ntuRed,fill=ntuRed!9,minimum size=9mm,align=center,font=\scriptsize},
+  leaf/.style={rounded corners,draw=gray!70,fill=gray!8,minimum width=7mm,minimum height=6mm,font=\scriptsize}
+]
+\node[maxnode] {MAX\\$A:4$}
+  child { node[minnode] {MIN\\$B:4$}
+    child { node[maxnode] {MAX\\$D:4$}
+      child { node[leaf] {$-1$} }
+      child { node[leaf] {$4$} }
+    }
+    child { node[maxnode] {MAX\\$E:6$}
+      child { node[leaf] {$2$} }
+      child { node[leaf] {$6$} }
+    }
+  }
+  child { node[minnode] {MIN\\$C:-3$}
+    child { node[maxnode] {MAX\\$F:-3$}
+      child { node[leaf] {$-3$} }
+      child { node[leaf] {$-5$} }
+    }
+    child { node[maxnode] {MAX\\$G:7$}
+      child { node[leaf] {$0$} }
+      child { node[leaf] {$7$} }
+    }
+  };
+\end{tikzpicture}
