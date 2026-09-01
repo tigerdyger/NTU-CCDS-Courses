@@ -1,0 +1,57 @@
+\begin{tikzpicture}[x=1cm,y=1cm,font=\small]
+  \tikzset{tile/.style={draw,very thick,minimum width=2.5cm,minimum height=1.75cm}}
+
+  \begin{scope}[shift={(0,2.3)}]
+    \fill[gray!45] (0,0) rectangle (2.5,1.75);
+    \draw[very thick] (0,0) rectangle (2.5,1.75);
+    \node[above=1mm,align=center,font=\scriptsize] at (1.25,1.75)
+      {$(u,v)=(0,0)$\\constant};
+  \end{scope}
+
+  \begin{scope}[shift={(3.4,2.3)}]
+    \begin{scope}
+      \clip (0,0) rectangle (2.5,1.75);
+      \foreach \i in {0,...,9}{
+        \pgfmathtruncatemacro{\shade}{20+65*mod(\i,2)}
+        \fill[black!\shade] (0.25*\i,0) rectangle ++(0.25,1.75);
+      }
+    \end{scope}
+    \draw[very thick] (0,0) rectangle (2.5,1.75);
+    \node[above=1mm,align=center,font=\scriptsize] at (1.25,1.75)
+      {larger $u$\\vertical stripes};
+  \end{scope}
+
+  \begin{scope}[shift={(0,0)}]
+    \begin{scope}
+      \clip (0,0) rectangle (2.5,1.75);
+      \foreach \i in {0,...,6}{
+        \pgfmathtruncatemacro{\shade}{20+65*mod(\i,2)}
+        \fill[black!\shade] (0,0.25*\i) rectangle ++(2.5,0.25);
+      }
+    \end{scope}
+    \draw[very thick] (0,0) rectangle (2.5,1.75);
+    \node[below=1mm,align=center,font=\scriptsize] at (1.25,0)
+      {larger $v$\\horizontal stripes};
+  \end{scope}
+
+  \begin{scope}[shift={(3.4,0)}]
+    \fill[gray!15] (0,0) rectangle (2.5,1.75);
+    \begin{scope}
+      \clip (0,0) rectangle (2.5,1.75);
+      \foreach \k in {-5,...,10}{
+        \draw[line width=3.4pt,black!78] (-1+0.35*\k,0) -- ++(2.8,2.8);
+      }
+    \end{scope}
+    \draw[very thick] (0,0) rectangle (2.5,1.75);
+    \node[below=1mm,align=center,font=\scriptsize] at (1.25,0)
+      {nonzero $u,v$\\oriented stripes};
+  \end{scope}
+
+  \draw[->,very thick,noteBlue] (6.5,2.0) -- (8.3,2.0)
+    node[midway,above,align=center] {linear\ combination};
+  \node[draw,very thick,rounded corners,fill=orange!12,
+    minimum width=2.7cm,minimum height=2.4cm,align=center] at (10.0,2.0)
+    {$f(x,y)$\\arbitrary image};
+  \node[align=center,text=noteBlue] at (8.25,0.65)
+    {$MN$ orthogonal modes\\for an $M\times N$ image};
+\end{tikzpicture}

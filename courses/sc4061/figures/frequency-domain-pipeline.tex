@@ -1,0 +1,29 @@
+\begin{tikzpicture}[node distance=0.65cm and 0.7cm,>=Latex,font=\small]
+  \tikzset{
+    data/.style={draw,rounded corners,very thick,fill=blue!8,
+      minimum width=2.0cm,minimum height=1.0cm,align=center},
+    op/.style={draw,circle,very thick,fill=orange!15,minimum size=1.05cm,align=center}
+  }
+
+  \node[data] (f) {$f(x,y)$\\spatial image};
+  \node[op,right=of f] (fft) {DFT};
+  \node[data,right=of fft] (F) {$F(u,v)$\\spectrum};
+  \node[op,right=of F] (mul) {$\times$};
+  \node[data,above=0.75cm of mul] (H) {$H(u,v)$\\filter mask};
+  \node[data,right=of mul] (G) {$G=HF$\\filtered spectrum};
+  \node[op,right=of G] (ifft) {IDFT};
+  \node[data,right=of ifft] (g) {$g(x,y)$\\output image};
+
+  \draw[->,very thick,noteBlue] (f) -- (fft);
+  \draw[->,very thick,noteBlue] (fft) -- (F);
+  \draw[->,very thick,noteBlue] (F) -- (mul);
+  \draw[->,very thick,noteBlue] (H) -- (mul);
+  \draw[->,very thick,noteBlue] (mul) -- (G);
+  \draw[->,very thick,noteBlue] (G) -- (ifft);
+  \draw[->,very thick,noteBlue] (ifft) -- (g);
+
+  \node[below=0.58cm of fft,align=center,text=gray!75!black]
+    {optional \texttt{fftshift}\\centre DC for display};
+  \node[below=0.58cm of ifft,align=center,text=gray!75!black]
+    {undo with \texttt{ifftshift}\\before IDFT};
+\end{tikzpicture}

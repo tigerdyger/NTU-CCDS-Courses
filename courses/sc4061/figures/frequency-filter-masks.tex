@@ -1,0 +1,46 @@
+\begin{tikzpicture}[x=1cm,y=1cm,font=\small]
+  \tikzset{mask/.style={draw,very thick,minimum width=2.3cm,minimum height=2.3cm}}
+
+  \begin{scope}[shift={(0,0)}]
+    \fill[black!82] (0,0) rectangle (2.3,2.3);
+    \fill[white] (1.15,1.15) circle (0.62);
+    \draw[very thick] (0,0) rectangle (2.3,2.3);
+    \draw[dashed,gray] (1.15,0) -- (1.15,2.3);
+    \draw[dashed,gray] (0,1.15) -- (2.3,1.15);
+    \node[below] at (1.15,-0.18) {Ideal low-pass};
+  \end{scope}
+
+  \begin{scope}[shift={(3.2,0)}]
+    \fill[black!85] (0,0) rectangle (2.3,2.3);
+    \fill[black!55] (1.15,1.15) circle (0.93);
+    \fill[black!30] (1.15,1.15) circle (0.69);
+    \fill[black!10] (1.15,1.15) circle (0.40);
+    \draw[very thick] (0,0) rectangle (2.3,2.3);
+    \draw[dashed,gray] (1.15,0) -- (1.15,2.3);
+    \draw[dashed,gray] (0,1.15) -- (2.3,1.15);
+    \node[below] at (1.15,-0.18) {Gaussian low-pass};
+  \end{scope}
+
+  \begin{scope}[shift={(6.4,0)}]
+    \fill[white] (0,0) rectangle (2.3,2.3);
+    \fill[black!82] (1.15,1.15) circle (0.62);
+    \draw[very thick] (0,0) rectangle (2.3,2.3);
+    \draw[dashed,gray] (1.15,0) -- (1.15,2.3);
+    \draw[dashed,gray] (0,1.15) -- (2.3,1.15);
+    \node[below] at (1.15,-0.18) {Ideal high-pass};
+  \end{scope}
+
+  \begin{scope}[shift={(9.6,0)}]
+    \fill[white] (0,0) rectangle (2.3,2.3);
+    \fill[black!82] (0.70,1.55) circle (0.20);
+    \fill[black!82] (1.60,0.75) circle (0.20);
+    \draw[very thick] (0,0) rectangle (2.3,2.3);
+    \draw[dashed,gray] (1.15,0) -- (1.15,2.3);
+    \draw[dashed,gray] (0,1.15) -- (2.3,1.15);
+    \node[below] at (1.15,-0.18) {Notch reject pair};
+  \end{scope}
+
+  \draw[->,very thick,noteBlue] (5.35,3.0) -- (6.55,3.0)
+    node[midway,above] {distance $D(u,v)$};
+  \node[anchor=east,text=noteBlue] at (5.25,3.0) {DC / low frequency at centre};
+\end{tikzpicture}

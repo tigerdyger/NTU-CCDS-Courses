@@ -1,0 +1,89 @@
+% Lecture example set: SC4061-L04
+% Sources: L3 (full) Frequency slides pp. 17, 20, 23--26, 30; checked discussion on 2026-09-01
+% Human verified: Yes
+
+\clearpage
+
+\exercisemeta
+  {SC4061-L04-EX}
+  {2026-09-01}
+  {L3 (full) Frequency slides pp.~17, 20, 23--26, 30；课堂讨论中的自编检验例}
+  {三道例题答案已完成并核对}
+  {已确认（2026-09-01）}
+
+\exercisequestion{SC4061-L04-E01}{Constant Image 的 DFT 与 DC Component}
+
+\textbf{类型：}self-contained check example（自编检验例）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L04-T02}{DFT、IDFT 与 Spectrum}
+
+\subsubsection*{题目}
+
+一幅 $M\times N$ image 的所有 pixels 均为 $100$。采用本讲的 forward DFT convention，求非零 Fourier coefficients 的数量与数值，并说明 \texttt{fftshift} 后其位置。
+
+\begin{checkedsolution}
+常数图像只含 DC mode，因此只有一个 coefficient 非零：
+\[
+  F(0,0)=\sum_{x=0}^{M-1}\sum_{y=0}^{N-1}100
+  =\boxed{100MN}.
+\]
+其余 coefficients 因 complex exponentials 的正交性均为 $0$。\texttt{fftshift} 后，DC 被移动到 spectrum centre（频谱中心）。图像 mean intensity 是
+\[
+  \bar f=\frac{F(0,0)}{MN}=100,
+\]
+不能把 mean intensity 与未归一化的 DC coefficient 混淆。
+\end{checkedsolution}
+
+\textbf{检查点：}Forward DFT 是否含归一化因子决定 DC coefficient 的数值；本讲约定 forward 不除以 $MN$。
+
+\exercisequestion{SC4061-L04-E02}{Gaussian Low-pass 的 \texorpdfstring{$\sigma_f$}{sigma-f}}
+
+\textbf{类型：}self-contained check example（自编检验例，基于讲义 pp.~24--26）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L04-T05}{Low-pass、High-pass 与 Notch Filtering}
+
+\subsubsection*{题目}
+
+保持 image size 不变，增大 frequency-domain Gaussian low-pass filter 的 $\sigma_f$。判断：（1）passband 变宽还是变窄；（2）输出更清晰还是更模糊；（3）对应 spatial Gaussian kernel 变宽还是变窄。
+
+\begin{checkedsolution}
+\[
+  H(u,v)=\exp\!\left[-\frac{D^2(u,v)}{2\sigma_f^2}\right].
+\]
+$\sigma_f$ 增大时，同一 $D$ 下指数绝对值减小，更多中高频获得较大 weight。因此：
+\[
+  \boxed{\text{passband 变宽，输出更清晰，spatial kernel 变窄。}}
+\]
+Frequency width 与 spatial width 成反比；不要把 frequency-domain $\sigma_f$ 与 spatial-domain blur width 当作同方向变化。
+\end{checkedsolution}
+
+\textbf{检查点：}先判断 $H(D)$ 在固定 $D$ 处随 $\sigma_f$ 如何变化，再判断保留信息量，避免只凭``高斯更宽''作答。
+
+\exercisequestion{SC4061-L04-E03}{Periodic Noise 与 Notch Pair}
+
+\textbf{类型：}lecture example / self-contained check（基于讲义 pp.~17, 30）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L04-T05}{Low-pass、High-pass 与 Notch Filtering}
+
+\subsubsection*{题目}
+
+一幅 real-valued text image 受到规则斜向 sinusoidal interference 干扰。Shifted magnitude spectrum 在中心右上方出现一个异常 bright peak。
+
+（1）还应在哪里寻找相应 peak，为什么？
+
+（2）应优先使用 general low-pass、high-pass 还是 notch reject filter？说明理由。
+
+\begin{checkedsolution}
+（1）Real image 满足 conjugate symmetry：
+\[
+  F(M-u,N-v)=F^*(u,v).
+\]
+因此中心左下方应存在关于 DC 对称的另一个 peak。只删除一个会破坏共轭对称性，使 IDFT 结果通常含 nonzero imaginary component。
+
+（2）应优先使用 \textbf{notch reject pair}，同时衰减两个局部 peaks。General low-pass 会连同文字 edges 一起删除，造成 blur；high-pass 会抑制文字与背景的整体低频结构。Notch filter 只针对周期干扰对应的少数 frequencies，通常能保留更多有效信息。该 filter 是按 spectrum 设计的，不是从数据中自动``学习''得到的。
+\end{checkedsolution}
+
+\textbf{检查点：}对 real image 的 periodic noise，频谱异常通常成共轭对出现；notch positions 必须成对处理。

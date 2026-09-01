@@ -1,0 +1,185 @@
+% Actual class: 04
+% Slide deck: L3 (full) Frequency slides
+% Exact scope: pp. 1--32 (Parts 1--2)
+% NTULearn supplement: two L3 video transcripts; test2_FT.m
+% Human verified: Yes
+
+\section{第 04 节课：Frequency-domain Image Enhancement}
+\label{lecture:SC4061-L04}
+
+\lecturemeta
+  {SC4061-L04}
+  {2026-09-01}
+  {L3 (full) Frequency slides；\texttt{test2\_FT.m}}
+  {L3 pp.~1--32（Parts 1--2）；pp.~33--45 留待 Part 3}
+  {课程视频 L3 Parts 1--2（字幕核对）}
+  {已确认（2026-09-01）}
+
+\subsection{本讲主线}
+
+Frequency-domain processing（频域处理）把 image（图像）分解为不同 spatial frequency（空间频率）和 orientation（方向）的 Fourier modes（傅里叶模态），修改各模态的 coefficients（系数），再合成为输出图像。它特别适合 global periodic disturbance（全局周期干扰）与按频率定义的 filtering；但 Fourier transform 始终可用不等于始终最方便，是否简化问题取决于目标 operator（算符）在 Fourier basis 中是否 diagonal 或 sparse。
+
+\lecturetopic{SC4061-L04-T01}{Fourier Decomposition 与二维 Modes}
+
+对 $M\times N$ image，采用 $x=0,\ldots,M-1$、$y=0,\ldots,N-1$，Fourier atom（傅里叶原子）为
+\[
+  \boxed{a_{u,v}(x,y)=
+  \exp\!\left[j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right]},
+\]
+其中 $u=0,\ldots,M-1$、$v=0,\ldots,N-1$ 是 mode indices（模态索引），不是脱离具体算符而独立存在的 eigenvalues（特征值）。$u/M$ 与 $v/N$ 表示 cycles per pixel（周期/像素）；相应 angular spatial frequencies（角空间频率）为 $2\pi u/M$ 与 $2\pi v/N$。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/fourier-mode-basis}}
+  \caption{二维 Fourier modes：$(u,v)$ 控制灰度变化的密度与方向，$MN$ 个正交 modes 构成 $M\times N$ image space 的一组完整 basis。}
+  \label{fig:sc4061-l04-fourier-modes}
+\end{figure}
+
+Pixel basis（像素基）同样有 $MN$ 个 basis images：每个 basis image 仅一个 pixel 为 $1$。因此每个 pixel 是一个 coordinate（坐标），整个 image space 的维数为 $MN$；natural-image correlation（自然图像相关性）可能使真实数据集中于低维结构，但不改变 ambient vector-space dimension（环境向量空间维数）。
+
+\lecturetopic{SC4061-L04-T02}{DFT、IDFT 与 Spectrum}
+
+本讲采用 forward transform 不归一化、inverse transform 除以 $MN$ 的 convention：
+\[
+  \boxed{F(u,v)=\sum_{x=0}^{M-1}\sum_{y=0}^{N-1}
+  f(x,y)\exp\!\left[-j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right]},
+\]
+\[
+  \boxed{f(x,y)=\frac1{MN}\sum_{u=0}^{M-1}\sum_{v=0}^{N-1}
+  F(u,v)\exp\!\left[j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right]}.
+\]
+Normalization（归一化）也可对称分配为正、逆变换各 $1/\sqrt{MN}$；不同 convention 只缩放 coefficients，不改变可逆性与频率内容。
+
+正交性的关键是一维 geometric sum（等比和）：
+\[
+  \sum_{x=0}^{M-1}e^{j2\pi x(u-s)/M}
+  =\begin{cases}M,&u=s\pmod M,\\0,&u\ne s\pmod M.\end{cases}
+\]
+两个方向相乘后，仅相同的 $(u,v)$ mode 被保留，因此 DFT 给出唯一 coefficients。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}X@{}}
+  \toprule
+  Quantity（量） & Interpretation（解释） \\
+  \midrule
+  $F(0,0)$ & DC component（直流分量），$F(0,0)=\sum_{x,y}f(x,y)=MN\,\bar f$ \\
+  $|F(u,v)|$ & magnitude spectrum（幅度频谱），表示该 mode 的强度 \\
+  $\angle F(u,v)$ & phase spectrum（相位频谱），保存 spatial shift 与结构位置 \\
+  $F(M-u,N-v)=F^*(u,v)$ & real-valued image 的 conjugate symmetry（共轭对称性） \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+原始 DFT 把 DC 放在数组角点；\texttt{fftshift} 只重新排列 indices，使低频位于中心、离中心越远频率越高。IDFT 前必须 \texttt{ifftshift}。显示 spectrum 时宜使用 $\log(1+|F|)$，避免 DC 的巨大 dynamic range 掩盖其他 coefficients。
+
+\textbf{对应例题：}
+\relatedexercise{SC4061-L04-E01}{Constant Image 的 DFT 与 DC Component}。
+
+\lecturetopic{SC4061-L04-T03}{FFT 与 Convolution Theorem}
+
+FFT（Fast Fourier Transform，快速傅里叶变换）是高效计算 DFT 的算法，不是新的 transform。Direct 2D DFT 的朴素复杂度为 $O(M^2N^2)$；separable 2D FFT 约为
+\[
+  O\!\left(MN(\log M+\log N)\right).
+\]
+
+Convolution theorem（卷积定理）给出
+\[
+  g=f*h
+  \quad\Longleftrightarrow\quad
+  \boxed{G(u,v)=F(u,v)H(u,v)}.
+\]
+DFT 默认对应 circular convolution（循环卷积）；要获得 ordinary linear convolution，大小分别为 $M_1\times N_1$ 与 $M_2\times N_2$ 的输入至少需 zero-pad 到
+\[
+  (M_1+M_2-1)\times(N_1+N_2-1).
+\]
+
+若 kernel 为 $P\times Q$，两种方法的主要复杂度约为
+\[
+  \text{direct spatial convolution}: O(MNPQ),\qquad
+  \text{FFT method}: O(MN\log(MN)).
+\]
+FFT 还需 transforms、padding 与 complex arithmetic。Small local kernel（如 $3\times3$）通常直接在 spatial domain 更快；large shift-invariant kernel 或直接按 frequency 设计的 global filter 更适合 FFT。Gaussian kernel 还可用 separability（可分离性）在 spatial domain 高效实现。
+
+\lecturetopic{SC4061-L04-T04}{Frequency-domain Filtering Framework}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.99\textwidth}{!}{\input{figures/frequency-domain-pipeline}}
+  \caption{Frequency-domain filtering：把 spectrum 与 transfer function $H(u,v)$ 逐点相乘，再经 IDFT 返回空间域。}
+  \label{fig:sc4061-l04-frequency-pipeline}
+\end{figure}
+
+完整流程为
+\[
+  F=\mathcal F\{f\},\qquad
+  G=HF,\qquad
+  g=\mathcal F^{-1}\{G\}.
+\]
+$H=1$ 表示完全保留，$H=0$ 表示移除，$0<H<1$ 表示衰减。Low frequency（低频）通常对应 smooth trend、illumination 与大尺度结构；high frequency（高频）通常对应 edge、fine texture 与 abrupt change。不能把 ``低频''直接等同于 signal、``高频''直接等同于 noise：white noise 具有宽频谱，periodic noise 可能只形成少数尖峰，而有效 edges 本身也是高频 signal。
+
+\lecturetopic{SC4061-L04-T05}{Low-pass、High-pass 与 Notch Filtering}
+
+令 centred spectrum 中
+\[
+  D(u,v)=\sqrt{u^2+v^2}
+\]
+表示到 DC 的距离。Ideal low-pass filter（理想低通）为
+\[
+  H_{\mathrm{ILPF}}(u,v)=
+  \begin{cases}1,&D(u,v)\le D_0,\\0,&D(u,v)>D_0.\end{cases}
+\]
+其 sharp cutoff（突变截止）在空间域对应带 sidelobes 的 sinc-like kernel，容易在强边缘产生 ringing artifacts（振铃伪影）。讲义中若写成 $u^2+v^2\le D_0$，当 $D_0$ 表示 radius 时，严格形式应为 $u^2+v^2\le D_0^2$。
+
+Gaussian low-pass filter（高斯低通）平滑衰减：
+\[
+  \boxed{H_{\mathrm{GLPF}}(u,v)=
+  \exp\!\left[-\frac{D^2(u,v)}{2\sigma_f^2}\right]}.
+\]
+$\sigma_f$ 越大，frequency passband 越宽，图像越清晰；对应 spatial Gaussian kernel 越窄。两个 domains 的宽度成反比，Gaussian 没有 ideal filter 的明显 sidelobes，因此 ringing 更弱。
+
+High-pass filter（高通）可由
+\[
+  H_{\mathrm{HP}}=1-H_{\mathrm{LP}}
+\]
+获得，用于提取 edge 与 detail。直接 high-pass 输出主要是细节；sharpening（锐化）通常需要把细节加回原图：$g_{\mathrm{sharp}}=f+\alpha g_{\mathrm{HP}}$。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/frequency-filter-masks}}
+  \caption{以 centred spectrum 表示的常见 masks。白色表示 pass，黑色表示 reject；notch pair 同时抑制实值图像中共轭对称的周期噪声峰。}
+  \label{fig:sc4061-l04-filter-masks}
+\end{figure}
+
+Notch reject filter（陷波滤波器）只抑制特定 frequencies，适合 spectrum 中呈 conjugate peak pair（共轭峰对）的 sinusoidal interference。Band-reject filter（带阻滤波器）删除一段 frequency band；若干扰只占少数尖峰，notch 往往比删除整个 band 更能保留图像信息。
+
+\textbf{对应例题：}
+\begin{itemize}
+  \item \relatedexercise{SC4061-L04-E02}{Gaussian Low-pass 的 $\sigma_f$}；
+  \item \relatedexercise{SC4061-L04-E03}{Periodic Noise 与 Notch Pair}。
+\end{itemize}
+
+\lecturetopic{SC4061-L04-T06}{何时 Fourier Basis 会简化问题}
+
+Fourier modes 可在不指定算符时作为一组 periodic orthogonal basis（周期正交基）定义；$u,v$ 首先只是 mode labels。它们是 cyclic translations（循环平移）的共同 eigenvectors，也使所有 periodic linear shift-invariant operators（周期线性平移不变算符），包括 circular convolution，变为 diagonal。不同 operators 共享 eigenvectors，但 eigenvalues 不同：shift 的 eigenvalue 为 $e^{-j2\pi u/M}$，convolution 的 eigenvalue 为 kernel spectrum $H(u,v)$。
+
+并非所有 operators 都被 Fourier transform 简化。例如 spatially varying pointwise multiplication（空间变化的逐点乘法）
+\[
+  g(x,y)=m(x,y)f(x,y)
+\]
+在 pixel basis 中已经 diagonal，而在 frequency domain 中变成 convolution $G=M*F$，会混合多个 modes。应选择使目标 operator diagonal 或 sparse 的 domain：小型 local/spatially varying 操作常在 spatial domain 更自然；large shift-invariant convolution、global periodic interference 与 frequency-selective filtering 常在 frequency domain 更自然。
+
+\subsection{MATLAB 速查}
+
+附件代码的核心对应关系为
+\begin{verbatim}
+F = fftshift(fft2(f));
+G = H .* F;
+g = real(ifft2(ifftshift(G)));
+imagesc(log1p(abs(F)));
+\end{verbatim}
+直接保留 centred spectrum 的一个矩形区域相当于 crude ideal low-pass（粗糙理想低通），可能产生方向偏置与 ringing；更平滑的 Gaussian mask 通常更稳健。
+
+\subsection{一分钟回顾}
+
+DFT 用 $MN$ 个二维 complex exponential modes 表示 $M\times N$ image；magnitude 表示 mode 强度，phase 保存空间位置，\texttt{fftshift} 只改变排列。FFT 高效计算 DFT，convolution theorem 使 shift-invariant convolution 变成 spectrum multiplication，但小 kernel 与 spatially varying operator 不一定适合 FFT。Low-pass 保留趋势、high-pass 保留细节，Gaussian cutoff 比 ideal cutoff 更少 ringing；periodic noise 常以共轭尖峰出现，应成对使用 notch reject。
