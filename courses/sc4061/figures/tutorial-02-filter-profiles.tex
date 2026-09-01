@@ -1,0 +1,71 @@
+\begin{tikzpicture}[x=0.9cm,y=0.82cm,font=\scriptsize]
+  \tikzset{
+    axis/.style={->,semithick,gray!75!black},
+    signal/.style={very thick,noteBlue},
+    hist/.style={very thick,orange!85!black}
+  }
+
+  % Profiles
+  \begin{scope}[shift={(0,3.7)}]
+    \node[font=\small\bfseries] at (1.8,2.1) {Original step};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {$x$};
+    \draw[axis] (0,0) -- (0,1.8) node[above] {$r$};
+    \draw[signal] (0,0) -- (1.8,0) -- (1.8,1.5) -- (3.5,1.5);
+    \node[left] at (0,0) {$0$};
+    \node[left] at (0,1.5) {$255$};
+  \end{scope}
+
+  \begin{scope}[shift={(5.2,3.7)}]
+    \node[font=\small\bfseries] at (1.8,2.1) {Box-filtered profile};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {$x$};
+    \draw[axis] (0,0) -- (0,1.8) node[above] {$g_B$};
+    \draw[signal] (0,0) -- (1.15,0) -- (2.45,1.5) -- (3.5,1.5);
+    \draw[<->,gray!75!black] (1.15,-0.28) -- node[below] {$L$} (2.45,-0.28);
+  \end{scope}
+
+  \begin{scope}[shift={(10.4,3.7)}]
+    \node[font=\small\bfseries] at (1.8,2.1) {Gaussian-filtered profile};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {$x$};
+    \draw[axis] (0,0) -- (0,1.8) node[above] {$g_G$};
+    \draw[signal,smooth,samples=80,domain=0.15:3.45]
+      plot (\x,{1.5/(1+exp(-4*(\x-1.8)))});
+    \draw[dashed,gray!60] (1.8,0) -- (1.8,0.75);
+    \node[below] at (1.8,0) {$x_0$};
+  \end{scope}
+
+  % Histograms
+  \begin{scope}[shift={(0,0)}]
+    \node[font=\small\bfseries] at (1.8,2.1) {Original histogram};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {gray level};
+    \draw[axis] (0,0) -- (0,1.8) node[above] {$h$};
+    \draw[hist,->] (0.55,0) -- (0.55,1.45);
+    \draw[hist,->] (3.05,0) -- (3.05,1.45);
+    \node[below] at (0.55,0) {$0$};
+    \node[below] at (3.05,0) {$255$};
+  \end{scope}
+
+  \begin{scope}[shift={(5.2,0)}]
+    \node[font=\small\bfseries] at (1.8,2.1) {Box-filtered histogram};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {gray level};
+    \draw[axis] (0,0) -- (0,1.8) node[above] {$h$};
+    \draw[hist,->] (0.55,0) -- (0.55,1.45);
+    \draw[hist,->] (3.05,0) -- (3.05,1.45);
+    \draw[hist] (0.55,0.38) -- (3.05,0.38);
+    \node[below] at (0.55,0) {$0$};
+    \node[below] at (3.05,0) {$255$};
+    \node[above] at (1.8,0.38) {uniform intermediate levels};
+  \end{scope}
+
+  \begin{scope}[shift={(10.4,0)}]
+    \node[font=\small\bfseries] at (1.8,2.1) {Gaussian-filtered histogram};
+    \draw[axis] (0,0) -- (3.7,0) node[right] {gray level};
+    \draw[axis] (0,0) -- (0,1.8) node[above] {$h$};
+    \draw[hist,->] (0.55,0) -- (0.55,1.45);
+    \draw[hist,->] (3.05,0) -- (3.05,1.45);
+    \draw[hist,smooth,samples=60,domain=0.55:3.05]
+      plot (\x,{0.28+0.55*(\x-1.8)^2});
+    \node[below] at (0.55,0) {$0$};
+    \node[below] at (3.05,0) {$255$};
+    \node[above] at (1.8,0.28) {few mid-gray pixels};
+  \end{scope}
+\end{tikzpicture}
