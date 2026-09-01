@@ -1,0 +1,93 @@
+% Lecture example set: SC2008-L04
+% Sources: M1-L7 pp. 19, 27; M1-L8 p. 39; checked discussion on 2026-09-01
+% Human verified: Yes
+
+\exercisemeta
+  {SC2008-L04-EX}
+  {2026-09-01}
+  {M1-L7 pp.~19、27；M1-L8 p.~39；课堂检查题}
+  {三道讲义例题的答案已完成并核对}
+  {已确认（2026-09-01）}
+
+\exercisequestion{SC2008-L04-E01}{讲义例题：MAC Address Classification}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L04-T01}{Ethernet Frame 与 MAC Addressing}
+
+\subsubsection*{题目}
+
+判断以下 destination MAC addresses 属于 unicast、multicast 还是 broadcast：
+\begin{enumerate}[label=(\alph*)]
+  \item \texttt{4A:30:10:21:10:1A}
+  \item \texttt{47:20:1B:2E:08:EE}
+  \item \texttt{FF:FF:FF:FF:FF:FF}
+\end{enumerate}
+
+\begin{checkedsolution}
+先检查是否为全 \texttt{FF}；否则读取 first octet 的 least significant bit，等价于检查第二个 hex digit 的奇偶性。
+\begin{enumerate}[label=(\alph*)]
+  \item $\texttt{A}=1010_2$，最低位为 $0$，故为 \textbf{unicast}；
+  \item $\texttt{7}=0111_2$，最低位为 $1$，故为 \textbf{multicast}；
+  \item 全部 bits 为 $1$，故为 \textbf{broadcast}。
+\end{enumerate}
+\end{checkedsolution}
+
+\textbf{检查点：}这里检查的是 first octet 的最低位，不是整个 48-bit address 的最后一位；broadcast 必须先单独识别。
+
+\exercisequestion{SC2008-L04-E02}{讲义例题：BEB Retrial Probability}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L04-T03}{Binary Exponential Backoff 与 Ethernet Domains}
+
+\subsubsection*{题目}
+
+两个 Ethernet stations A、B 在 collision 后独立执行 BEB。第一次 retrial 从 $\{0,1\}$ 选择 slot，第二次 retrial 从 $\{0,1,2,3\}$ 选择 slot。分别求再次 collision 的概率。
+
+\begin{checkedsolution}
+若从 $m$ 个 slots 中独立均匀选择，给定 A 的选择后，B 只有一个相同 slot 会 collision，故 $P(C)=1/m$。
+\[
+  P(C_1)=2\left(\frac12\right)^2=\frac12,
+  \qquad
+  P(C_2)=4\left(\frac14\right)^2=\frac14.
+\]
+第二次扩大 window 后，retrial collision probability 从 $1/2$ 降至 $1/4$，代价是可能等待更多 idle slots。
+\end{checkedsolution}
+
+\textbf{检查点：}Backoff range 的大小是 $m$，最大 slot index 是 $m-1$；不要把 $\{0,1,2,3\}$ 误认为只有三个 choices。
+
+\clearpage
+\exercisequestion{SC2008-L04-E03}{讲义例题：MARP Utilization}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L04-T05}{MARP Utilization 与 Amortization}
+
+\subsubsection*{题目}
+
+某 experimental LAN 使用 MARP。Reservation frame 长 $v=5\ \mathrm{ms}$，data frame transmission time 为 $u=1\ \mathrm{s}$，reservation phase 的 underlying MAC utilization 为 $S_r=0.5$，且 reservation frame 不携带 message data。求 overall utilization。
+
+\begin{checkedsolution}
+Geometric reservation trials 的期望次数为
+\[
+  E[X]=\frac1{S_r}=2,
+\]
+故平均 reservation phase length 为
+\[
+  \frac{v}{S_r}=\frac{0.005}{0.5}=0.01\ \mathrm{s}.
+\]
+Overall utilization 为
+\[
+  S=\frac{u}{u+v/S_r}
+   =\frac{1}{1+0.01}
+   =\frac{1}{1.01}
+   \approx\boxed{0.9901}.
+\]
+虽然 reservation MAC 自身 utilization 只有 $0.5$，但其短期成本被摊销到 $1$ s 的 collision-free data phase，因此 overall utilization 接近 $99\%$。
+
+课堂检查题中若 $v=0.2\ \mathrm{ms}$、$u=4\ \mathrm{ms}$、$S_r=0.25$，则
+\[
+  E[X]=4,\qquad \frac{v}{S_r}=0.8\ \mathrm{ms},\qquad
+  S=\frac{4}{4+0.8}=\boxed{\frac56}.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}必须先把 $5\ \mathrm{ms}$ 转成 $0.005\ \mathrm{s}$；$S_r$ 进入 denominator 的方式是 $v/S_r$，不是 $vS_r$。

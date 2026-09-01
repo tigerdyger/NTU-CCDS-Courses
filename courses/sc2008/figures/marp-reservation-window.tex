@@ -1,0 +1,20 @@
+\begin{tikzpicture}[x=1.15cm,y=1cm,>=Latex,font=\small]
+  \node[anchor=west,font=\bfseries] at (0,2.1) {Phase 1: Reservation};
+  \node[anchor=west,font=\bfseries] at (6.0,2.1) {Phase 2: Data Transmission};
+
+  \foreach \i in {0,1,2}{
+    \draw[fill=red!10] (\i*1.35,0.55) rectangle +(1.05,0.85);
+  }
+  \node at (0.525,0.975) {fail};
+  \node at (1.875,0.975) {fail};
+  \node at (3.225,0.975) {fail};
+  \draw[fill=green!18] (4.05,0.55) rectangle +(1.05,0.85) node[midway] {success};
+  \draw[fill=blue!12] (6.0,0.55) rectangle (12.3,1.4) node[midway] {collision-free data};
+
+  \draw[<->] (0,0.12) -- (1.05,0.12) node[midway,below] {$v$};
+  \draw[<->] (0,-0.72) -- (5.10,-0.72)
+    node[midway,below] {$E[X]=1/S_r$ trials, expected time $v/S_r$};
+  \draw[<->] (6.0,0.12) -- (12.3,0.12) node[midway,below] {$u$};
+  \node[align=center,font=\scriptsize] at (6.15,-1.55)
+    {$S=\dfrac{u}{u+v/S_r}$ when reservation carries no message data};
+\end{tikzpicture}

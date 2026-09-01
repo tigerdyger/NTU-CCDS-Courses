@@ -1,0 +1,187 @@
+% Actual class: 04
+% Slide decks: M1-L7 LAN-Ethernet-and-Its-Evolutions (2026); M1-L8 LAN-WLAN (2026)
+% Exact scope: L7 pp. 1--43; L8 pp. 1--47
+% NTULearn supplement: classroom recording transcript, used only to verify coverage and emphasis
+% Human verified: Yes
+
+\section{第 04 节课：Ethernet 与 WLAN}
+\label{lecture:SC2008-L04}
+
+\lecturemeta
+  {SC2008-L04}
+  {2026-09-01}
+  {M1-L7 LAN-Ethernet-and-Its-Evolutions (2026)；M1-L8 LAN-WLAN (2026)}
+  {L7 pp.~1--43；L8 pp.~1--47}
+  {课堂录像字幕（用于确认两讲完整覆盖及 examinable emphasis；原文未入库）}
+  {已确认（2026-09-01）}
+
+\subsection{本讲主线与考试权重}
+
+Ethernet（以太网）与 IEEE 802.11 WLAN（无线局域网）都解决 shared medium（共享介质）的接入问题，但物理条件决定了不同策略：经典 shared Ethernet 能在发送时检测 collision，采用 CSMA/CD 与 BEB；WLAN 受 attenuation（衰减）和 hidden terminals（隐藏终端）影响，无法可靠检测 collision，改用 CSMA/CA 与可选的 RTS/CTS reservation。MARP 再把 contention cost（竞争开销）摊销到较长的 collision-free data phase。
+
+课堂录像明确将 Ethernet 的 MAC performance calculation 与 WLAN 的 MARP calculation 作为主要 examinable 内容；history、physical variants、802.11 physical layer 与 protocol evolution 只保留理解核心机制所需的结论。
+
+\lecturetopic{SC2008-L04-T01}{Ethernet Frame 与 MAC Addressing}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/ethernet-frame-format}}
+  \caption{Classic Ethernet frame format。课程的 64--1518 B MAC-frame length 不包括 Preamble 与 SFD。}
+  \label{fig:sc2008-l04-ethernet-frame}
+\end{figure}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{2.2cm}X@{}}
+  \toprule
+  Field & Length & Function \\
+  \midrule
+  Preamble + SFD & $7+1$ B & Receiver clock synchronization 与 start-frame delimiter；不计入 MAC-frame length \\
+  DA + SA & $6+6$ B & 48-bit destination/source MAC addresses \\
+  Length/Type & 2 B & 指示 payload length 或 upper-layer protocol，完成 demultiplexing \\
+  Data + Padding & 46--1500 B & Payload；不足 46 B 时 padding 以满足 minimum frame size \\
+  FCS & 4 B & 对 DA 至 Data/Padding 执行 CRC error detection \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+因此 classic untagged Ethernet 有
+\[
+  \boxed{L_{\min}=64\ \text{B}},
+  \qquad
+  \boxed{L_{\max}=1518\ \text{B}},
+  \qquad
+  \boxed{\text{payload}_{\max}=1500\ \text{B}}.
+\]
+不要把 maximum payload 误写成 whole-frame maximum。
+
+Destination address 的 I/G bit 是 first octet 的 least significant bit：$0$ 表示 individual/unicast，$1$ 表示 group/multicast；\texttt{FF:FF:FF:FF:FF:FF} 是 broadcast。书写成 hexadecimal 时，可检查 first octet 的第二个 hex digit：偶数为 unicast，奇数为 multicast，但应先排除全 \texttt{FF} 的 broadcast。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L04-E01}{讲义例题：MAC Address Classification}。
+
+\lecturetopic{SC2008-L04-T02}{CSMA/CD、64-byte Minimum 与 Jam Signal}
+
+Classic shared half-duplex Ethernet 使用 1-persistent CSMA/CD：channel idle 时立即发送；busy 时持续监听并在变 idle 后立即发送；transmission 期间继续检测 collision。检测到 collision 后 abort frame、发送 jam signal，再进入 random backoff。现代 switched full-duplex Ethernet 的 links 不共享 collision domain，通常不再运行 CSMA/CD，但 frame format 与 64-byte minimum 仍被保留。
+
+若 maximum one-way propagation delay 为 $\tau$，data rate 为 $R$，sender 必须在最坏 collision indication 返回前仍在发送：
+\[
+  T_{\mathrm{frame}}=\frac{L}{R}\ge 2\tau,
+  \qquad
+  \boxed{L_{\min}\ge2R\tau}.
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.86\textwidth}{!}{\input{figures/csma-cd-timing}}
+  \caption{Worst-case collision detection：远端在源信号到达前一瞬间发送，源端最迟在 $2\tau$ 检测 collision。}
+  \label{fig:sc2008-l04-csma-cd-timing}
+\end{figure}
+
+Classic 10 Mbps Ethernet 规定 slot time 为 $51.2\ \mu\mathrm{s}$，因此
+\[
+  L_{\min}=(10\times10^6)(51.2\times10^{-6})
+  =512\ \text{bits}=64\ \text{B}.
+\]
+其中 64 B 可写成 $14$ B header $+46$ B minimum data/pad $+4$ B FCS。Jam signal 用来使 collision 足够明显，而不是修复损坏 frame；本讲计算按 48-bit jam signal 处理。
+
+\textbf{已学理论例题：}\relatedexercise{SC2008-L03-E03}{CSMA/CD Minimum Frame Length}。
+
+\lecturetopic{SC2008-L04-T03}{Binary Exponential Backoff 与 Ethernet Domains}
+
+第 $n$ 次 collision 后，BEB（Binary Exponential Backoff，二进制指数退避）令 station 独立均匀选择
+\[
+  K\in\{0,1,\ldots,2^n-1\},
+  \qquad
+  \boxed{T_{\mathrm{backoff}}=K\times51.2\ \mu\mathrm{s}}.
+\]
+Exponent 在 $n=10$ 后封顶，故最大 $K=1023$；一个 frame 通常在 16 次失败后放弃。$K$ 决定当前 retrial 的随机等待，16 次是 maximum retry count，两者不能混淆。对两个 stations、$m$ 个等概率 slots，二者再次选中相同 slot 的概率为
+\[
+  \boxed{P(\text{collision})=\frac{1}{m}}.
+\]
+BEB 先用较小 range 追求低 delay；若 collision 持续则扩大 range，逐渐以更多 idle time 换取更高 collision-resolution probability。
+
+例如 third collision 后 $K\in\{0,\ldots,7\}$：指定 station 选到 $K=7$ 的概率为 $1/8$，maximum backoff delay 为 $7(51.2\ \mu\mathrm{s})=358.4\ \mu\mathrm{s}$。这与 ``最多尝试 16 次'' 是两个不同概念。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L04-E02}{讲义例题：BEB Retrial Probability}。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}XX@{}}
+  \toprule
+  Device & Collision domain & Broadcast domain \\
+  \midrule
+  Repeater / Hub & 不隔离；向其他 ports 重复 signal & 不隔离 \\
+  Bridge / Layer-2 Switch & 每个 segment/port 隔离 collision；full-duplex link 可完全避免 collision & 默认仍转发 broadcast；同一 VLAN 通常仍属一个 broadcast domain \\
+  Router & 隔离 & 通常隔离；是否转发特殊 broadcast 取决于 configuration \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\lecturetopic{SC2008-L04-T04}{WLAN、CSMA/CA 与 Hidden/Exposed Terminals}
+
+Infrastructure mode（基础设施模式）让 stations 经 AP（Access Point，接入点）通信；一个 AP 与覆盖区内 stations 构成 BSS（Basic Service Set），多个 BSS 经 distribution system 连接成 ESS（Extended Service Set）。Ad hoc mode（自组织模式）则允许 stations 直接组成 distributed network。
+
+Wireless link 会受到 path loss、interference 与 multipath propagation。Transmitter 的本地发射信号远强于远端 received signal，加上 hidden terminal，使 station 无法在 transmission 期间可靠判断 receiver 处是否 collision，因此 IEEE 802.11 DCF 使用 CSMA/CA 而非 CSMA/CD。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/wlan-hidden-terminal-rts-cts}}
+  \caption{Hidden terminal 与 RTS--CTS--DATA--ACK：B 的 CTS 使听得到 B 的其他 stations 设置 NAV 并 defer。}
+  \label{fig:sc2008-l04-hidden-terminal}
+\end{figure}
+
+若 A、C 互相听不到但都能向 B 发送，两者可能同时判断 channel idle，并在 B 处 collision。RTS/CTS 先用 short control frames 预约：sender 发 RTS，receiver 广播 CTS；其他听到 CTS 的 stations 按 NAV（Network Allocation Vector）保持 silent，随后完成 DATA 与 ACK。RTS 仍可能 collision，因此 collision avoidance 不是 collision elimination，只是尽量避免 long data-frame collision。
+
+Exposed terminal（暴露终端）是 opportunity wasting：C 因听到 A$\to$B 而停止向 D 发送，即使 C$\to$D 与 A$\to$B 本可并行且不会在各自 receiver 处 collision。RTS/CTS 能缓解 hidden terminal，却不能完全恢复这类 spatial reuse。
+
+802.11 frame 可使用最多四个 address fields；ordinary infrastructure forwarding 常使用三个地址，把 wireless receiver/transmitter 与 distribution-system destination 分开。该格式和 physical generations 在本讲标为 non-examinable。
+
+\lecturetopic{SC2008-L04-T05}{MARP Utilization 与 Amortization}
+
+MARP（Multi-Access Reservation Protocol，多路访问预约协议）把 transmission window 分为 contention-based reservation 与 collision-free data transmission 两个 phases。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/marp-reservation-window}}
+  \caption{MARP transmission window：平均需 $1/S_r$ 次 reservation trials，reservation overhead 为 $v/S_r$。}
+  \label{fig:sc2008-l04-marp-window}
+\end{figure}
+
+设每个 reservation trial 成功概率为 $S_r$、长度为 $v$，直到第一次成功所需次数为 $X$。在 independent identical trials（独立同分布试验）假设下，
+\[
+  P(X=k)=S_r(1-S_r)^{k-1},
+  \qquad
+  \boxed{E[X]=\frac{1}{S_r}},
+  \qquad
+  \boxed{E[T_{\mathrm{reservation}}]=\frac{v}{S_r}}.
+\]
+
+若 message transmission time 为 $u$：
+\[
+\boxed{
+  S=
+  \begin{cases}
+    \displaystyle\frac{u}{u+v/S_r},
+      & \text{reservation 不携带 message data},\\[0.9em]
+    \displaystyle\frac{u}{(u-v)+v/S_r},
+      & \text{成功的 reservation 携带 $v$ 单位 message data}.
+  \end{cases}}
+\]
+第二式假设 $u\ge v$，失败 trials 不贡献 useful data，只有成功 reservation 中的 $v$ 计入 message。增大 $u$ 或 $S_r$、减小 $v$ 都可提高 utilization；本质是把短 reservation cost amortize（摊销）到较长的 collision-free phase。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L04-E03}{讲义例题：MARP Utilization}。
+
+\subsection{一分钟回顾}
+
+\[
+\boxed{
+\begin{gathered}
+L_{\mathrm{Ethernet}}=64\text{--}1518\ \text{B},\qquad
+L_{\min}\ge2R\tau,\\
+T_{\mathrm{backoff}}=K(51.2\ \mu\mathrm{s}),\quad
+K\in\{0,\ldots,2^n-1\},\\
+E[X_{\mathrm{MARP}}]=1/S_r,\qquad
+S_{\mathrm{MARP}}=\frac{u}{u+v/S_r}
+\quad\text{(no data in reservation)}.
+\end{gathered}}
+\]

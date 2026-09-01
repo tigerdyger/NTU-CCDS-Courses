@@ -1,0 +1,32 @@
+\begin{tikzpicture}[x=1cm,y=1cm,>=Latex,font=\small]
+  \tikzset{
+    station/.style={draw,rounded corners,minimum width=1.05cm,minimum height=0.68cm,fill=blue!10},
+    ap/.style={draw,very thick,circle,minimum size=0.82cm,fill=orange!18}
+  }
+
+  \node[station] (A) at (0,3.9) {A};
+  \node[ap]      (B) at (5.3,3.9) {B};
+  \node[station] (C) at (10.6,3.9) {C};
+  \draw[<->,thick,noteBlue] (A) -- (B) node[midway,above] {hear each other};
+  \draw[<->,thick,noteBlue] (B) -- (C) node[midway,above] {hear each other};
+  \draw[dashed,thick,ntuRed] (A.south east) to[bend right=24]
+    node[midway,below,text=ntuRed] {A and C cannot hear each other} (C.south west);
+
+  \coordinate (At) at (0,1.65);
+  \coordinate (Bt) at (5.3,1.65);
+  \coordinate (Ct) at (10.6,1.65);
+  \draw[->] (At) -- +(0,-4.2) node[below] {time};
+  \draw[->] (Bt) -- +(0,-4.2) node[below] {time};
+  \draw[->] (Ct) -- +(0,-4.2) node[below] {time};
+  \node[above] at (At) {A};
+  \node[above] at (Bt) {B};
+  \node[above] at (Ct) {C};
+
+  \draw[->,very thick,noteBlue] (0,1.25) -- (5.3,0.75) node[midway,above,sloped] {RTS};
+  \draw[->,very thick,orange!85!black] (5.3,0.35) -- (0,-0.15) node[midway,above,sloped] {CTS};
+  \draw[->,very thick,orange!85!black] (5.3,0.35) -- (10.6,-0.15) node[midway,above,sloped] {CTS};
+  \draw[very thick,gray!55] (10.6,-0.15) -- (10.6,-2.85);
+  \node[anchor=west,align=left,font=\scriptsize] at (10.8,-1.45) {NAV: C defers};
+  \draw[->,very thick,green!55!black] (0,-0.70) -- (5.3,-1.30) node[midway,above,sloped] {DATA};
+  \draw[->,very thick,ntuRed] (5.3,-1.85) -- (0,-2.35) node[midway,above,sloped] {ACK};
+\end{tikzpicture}

@@ -1,0 +1,18 @@
+\begin{tikzpicture}[x=0.82cm,y=0.9cm,>=Latex,font=\small]
+  \def\h{1.1}
+  \draw[fill=gray!12]    (0,0) rectangle (2.2,\h) node[midway] {Preamble};
+  \draw[fill=gray!18]    (2.2,0) rectangle (3.2,\h) node[midway] {SFD};
+  \draw[fill=blue!12]    (3.2,0) rectangle (4.8,\h) node[midway] {DA};
+  \draw[fill=blue!12]    (4.8,0) rectangle (6.4,\h) node[midway] {SA};
+  \draw[fill=orange!18]  (6.4,0) rectangle (7.8,\h) node[midway] {L/T};
+  \draw[fill=green!13]   (7.8,0) rectangle (12.2,\h) node[midway] {Data + Padding};
+  \draw[fill=red!12]     (12.2,0) rectangle (13.7,\h) node[midway] {FCS};
+
+  \foreach \x/\lab in {1.1/7 B,2.7/1 B,4.0/6 B,5.6/6 B,7.1/2 B,10.0/46--1500 B,12.95/4 B}
+    \node[below,font=\scriptsize] at (\x,-0.08) {\lab};
+
+  \draw[<->,thick,noteBlue] (3.2,1.48) -- (13.7,1.48)
+    node[midway,above,font=\scriptsize] {MAC frame: 64--1518 B};
+  \draw[<->,thick,black!65] (0,-0.65) -- (3.2,-0.65)
+    node[midway,below,font=\scriptsize] {synchronization; excluded from MAC-frame length};
+\end{tikzpicture}
