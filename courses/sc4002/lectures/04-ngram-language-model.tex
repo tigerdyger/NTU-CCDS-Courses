@@ -1,0 +1,122 @@
+% Actual class: 04
+% Released material: Week 4 N-gram Language Model
+% Exact released scope: pp. 1--33
+% Video supplement: Week 4 lecture transcript checked locally; not included in repository
+% Human verified: Full coverage and representative check answers confirmed in discussion
+
+\section{第 04 节课：N-gram Language Model}
+\label{lecture:SC4002-L04}
+
+\lecturemeta
+  {SC4002-L04}
+  {2026-09-02}
+  {Week 4 N-gram Language Model (2026)}
+  {pp.~1--33；整份讲义}
+  {Week 4 课堂视频字幕已作本地核对，未收入仓库}
+  {课堂范围及代表题答案已确认（2026-09-02）}
+
+\subsection{本讲主线}
+
+Language Model（语言模型，LM）为 token sequence（词元序列）分配 probability（概率），也可根据 history/context（历史／上下文）预测 next token（下一词元）。N-gram LM 用有限长度的 context 近似完整历史，再以 corpus counts（语料计数）估计条件概率；实际使用还必须处理 evaluation（评价）、data sparsity（数据稀疏）与 zero probability（零概率）。
+
+\lecturetopic{SC4002-L04-T01}{从 Chain Rule 到 N-gram Approximation}
+
+任意序列的 joint probability（联合概率）可由精确的 chain rule（链式法则）分解：
+\[
+  P(w_{1:n})=\prod_{k=1}^{n}P(w_k\mid w_{1:k-1}).
+\]
+完整 history 很难由有限语料可靠估计，因此 N-gram LM 使用 Markov assumption（马尔可夫假设）：
+\[
+  P(w_k\mid w_{1:k-1})
+  \approx P(w_k\mid w_{k-N+1:k-1}).
+\]
+Bigram（二元模型）只保留前一个 token，trigram（三元模型）保留前两个。Chain rule 是数学恒等式；丢弃早期 context 才是 modeling approximation（建模近似）。较大的 $N$ 能利用更长的局部依赖，却使参数规模与稀疏性迅速增加。
+
+\lecturetopic{SC4002-L04-T02}{Maximum-Likelihood Estimation 与 Sentence Probability}
+
+Bigram 的 maximum-likelihood estimate（最大似然估计，MLE）为
+\[
+  \hat P(w_k\mid w_{k-1})
+  =\frac{C(w_{k-1},w_k)}{C(w_{k-1})},
+\]
+即在 context $w_{k-1}$ 已出现的条件下，后接 $w_k$ 的相对频率。对每个固定 context $h$，必须有
+\[
+  \sum_{w\in V}\hat P(w\mid h)=1.
+\]
+
+Sentence-boundary tokens（句界词元）\texttt{<s>} 与 \texttt{</s>} 分别让模型学习首词分布和停止概率。Bigram sentence probability 为
+\[
+  P(w_{1:n})\approx
+  P(w_1\mid\langle s\rangle)
+  \prod_{k=2}^{n}P(w_k\mid w_{k-1})
+  P(\langle{/}s\rangle\mid w_n).
+\]
+大量小概率相乘可能造成 numerical underflow（数值下溢），因此实际计算使用
+\[
+  \log P(w_{1:n})=\sum_k\log P(w_k\mid h_k).
+\]
+
+\textbf{对应例题：}\relatedexercise{SC4002-L04-E01}{Mini-corpus 的 Bigram 概率}。
+
+\lecturetopic{SC4002-L04-T03}{Intrinsic / Extrinsic Evaluation 与 Perplexity}
+
+Extrinsic evaluation（外部评价）把 LM 放入 speech recognition、machine translation 等 downstream task（下游任务）并检查最终指标；intrinsic evaluation（内部评价）直接检查模型为 unseen text（未见文本）分配的概率。数据通常按 $8{:}1{:}1$ 分为 training、development 与 test set；hyperparameters（超参数）在 development set 上选择，test set 只用于最终评价。
+
+对含 $M$ 个预测 token 的测试序列 $W$，perplexity（困惑度）定义为
+\[
+  \operatorname{PP}(W)=P(W)^{-1/M}
+  =\left[\prod_{k=1}^{M}P(w_k\mid h_k)\right]^{-1/M}.
+\]
+它可理解为模型每一步的 effective branching factor（有效分支数）：在相同 test corpus、tokenization 与 vocabulary 约定下，perplexity 越低越好。不同预处理条件下的数值不可直接比较；intrinsic improvement 也不保证 downstream performance 一定提升。
+
+\lecturetopic{SC4002-L04-T04}{OOV 与 Unseen N-gram：两种零概率}
+
+Out-of-vocabulary word（词表外词，OOV）可通过预先固定 vocabulary，并把训练和测试中的词表外 token 映射为 \texttt{<UNK>} 来处理。Vocabulary 可由先验知识或 frequency threshold（频率阈值）确定；Zipf's law（齐普夫定律）意味着自然语言存在大量低频词。
+
+\texttt{<UNK>} 不能解决另一种问题：两个词都在 vocabulary 中，但它们的组合从未出现。例如
+\[
+  C(\texttt{denied offer})=0
+  \quad\Longrightarrow\quad
+  \hat P(\texttt{offer}\mid\texttt{denied})=0.
+\]
+任一因子为零都会使整句概率为零、perplexity 发散；这类 unseen N-gram（未见 N 元组合）需要 smoothing（平滑）。
+
+\lecturetopic{SC4002-L04-T05}{Smoothing、Backoff 与 Interpolation}
+
+Laplace / add-one smoothing（拉普拉斯／加一平滑）为每个可能的 next token 增加一个 pseudo-count（伪计数）：
+\[
+  P_{\mathrm{Laplace}}(w\mid h)
+  =\frac{C(h,w)+1}{C(h)+|V|}.
+\]
+分母增加 $|V|$，因为 vocabulary 中每个候选词都增加了 $1$。更一般的 add-$k$ smoothing 为
+\[
+  P_{\mathrm{add}\text{-}k}(w\mid h)
+  =\frac{C(h,w)+k}{C(h)+k|V|},\qquad 0<k<1.
+\]
+Add-one 往往从高频事件搬走过多 probability mass；add-$k$ 较温和，但也不是高质量 N-gram LM 的首选。
+
+Backoff（回退）在高阶 N-gram 缺乏证据时退到低阶模型；正规的模型还需 discounting（折扣）和 backoff weights（回退权重）以保持归一化。Interpolation（插值）则始终混合不同阶数：
+\[
+  \hat P(w_k\mid w_{k-2},w_{k-1})
+  =\lambda_1P(w_k)
+  +\lambda_2P(w_k\mid w_{k-1})
+  +\lambda_3P(w_k\mid w_{k-2},w_{k-1}),
+\]
+其中 $\lambda_i\ge0$ 且 $\sum_i\lambda_i=1$，系数在 development set 上调整。讲义还列出 Kneser--Ney smoothing，但本讲没有展开其推导。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L04-E02}{Zero Probability 与 Additive Smoothing}。
+
+\lecturetopic{SC4002-L04-T06}{由条件分布进行 Text Generation}
+
+Unigram generation（基于一元模型的生成）每一步独立从 $P(w)$ 采样，无法保持上下文。Bigram generation 先从 $P(w_1\mid\langle s\rangle)$ 采样首词，再反复从 $P(w_k\mid w_{k-1})$ 采样，直至得到 \texttt{</s>}。它能产生局部搭配，却难以保持 long-range dependency（长距离依赖）与全句语义。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.92\textwidth}{!}{\input{figures/ngram-language-model-pipeline}}
+  \caption{N-gram language model 从 corpus counts 到 scoring（评分）与 generation（生成）的流程。}
+  \label{fig:sc4002-l04-pipeline}
+\end{figure}
+
+\subsection{一分钟回顾}
+
+Chain rule 精确分解 sequence probability，N-gram assumption 用有限 context 换取可估计性。MLE 从 corpus counts 得到条件概率，perplexity 在统一测试条件下衡量模型对未见文本的预测难度。\texttt{<UNK>} 处理 OOV，smoothing 处理已知词构成的 unseen N-gram；backoff 与 interpolation 进一步组合不同阶数。最后，同一条件分布既可用于 sentence scoring，也可逐步采样生成文本。

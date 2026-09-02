@@ -1,0 +1,20 @@
+\begin{tikzpicture}[
+  >=Latex,
+  node distance=7mm and 14mm,
+  box/.style={draw=noteBlue, rounded corners, align=center, inner sep=6pt,
+              text width=4.1cm, fill=blue!4},
+  result/.style={draw=ntuRed, rounded corners, align=center, inner sep=6pt,
+                 text width=4.2cm, fill=red!4},
+  arrow/.style={->, thick, noteBlue}
+]
+  \node[box] (corpus) {Training corpus\\（训练语料）};
+  \node[box, below=of corpus] (counts) {$N$-gram counts\\$C(h,w)$ 与 $C(h)$};
+  \node[box, below=of counts] (model) {Conditional distribution\\（条件分布）$\hat P(w\mid h)$\\MLE $+$ smoothing};
+  \node[result, below left=of model] (score) {Sequence scoring\\（序列评分）\\log probability\\perplexity};
+  \node[result, below right=of model] (generate) {Sampling\\（采样）\\逐词生成直到 \texttt{</s>}};
+
+  \draw[arrow] (corpus) -- (counts);
+  \draw[arrow] (counts) -- (model);
+  \draw[arrow] (model) -- (score);
+  \draw[arrow] (model) -- (generate);
+\end{tikzpicture}

@@ -1,0 +1,95 @@
+% Lecture example set: SC4002-L04
+% Source: Week 4 N-gram Language Model
+% Question classification: E01 lecture worked example; E02 lecture example with self-contained extension
+% Human verified: Answers completed and checked in discussion
+
+\exercisemeta
+  {SC4002-L04-EX}
+  {2026-09-02}
+  {Week 4 N-gram Language Model pp.~11, 24--27；E02(b) 为自编检验例}
+  {两题答案已完成并订正}
+  {已确认（2026-09-02）}
+
+\exercisequestion{SC4002-L04-E01}{Mini-corpus 的 Bigram 概率}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4002-L04-T02}{Maximum-Likelihood Estimation 与 Sentence Probability}
+
+\subsubsection*{题目（讲义 worked example 改编）}
+
+给定 corpus：
+\begin{center}
+\ttfamily
+<s> I am Sam </s>\\
+<s> Sam I am </s>\\
+<s> I do not like green eggs and ham </s>
+\end{center}
+使用 unsmoothed MLE bigram model，求
+\[
+  P(\texttt{I}\mid\texttt{<s>}),\quad
+  P(\texttt{am}\mid\texttt{I}),\quad
+  P(\texttt{</s>}\mid\texttt{am}),
+\]
+并计算模型赋予新序列 \texttt{<s> I am </s>} 的概率。
+
+\begin{workedsolution}
+三个句子中有两个以 \texttt{I} 开始；\texttt{I} 共作为 context 出现三次，其中两次后接 \texttt{am}；\texttt{am} 共出现两次，其中一次后接句尾。因此
+\[
+  P(\texttt{I}\mid\texttt{<s>})=\frac{2}{3},\qquad
+  P(\texttt{am}\mid\texttt{I})=\frac{2}{3},\qquad
+  P(\texttt{</s>}\mid\texttt{am})=\frac{1}{2}.
+\]
+虽然完整句子 \texttt{I am} 未作为独立训练句出现，它的每个 bigram 都出现过，所以
+\[
+  P(\texttt{<s> I am </s>})
+  =\frac{2}{3}\cdot\frac{2}{3}\cdot\frac{1}{2}
+  =\frac{2}{9}.
+\]
+这也说明 N-gram LM 能重组局部见过的片段，而不只是记忆完整训练句。
+\end{workedsolution}
+
+\textbf{检查点：}分母始终是给定 context 的 count；计算完整句子时不要漏掉句首与句尾概率。
+
+\exercisequestion{SC4002-L04-E02}{Zero Probability 与 Additive Smoothing}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4002-L04-T04}{OOV 与 Unseen N-gram：两种零概率}；
+\relatedtopic{SC4002-L04-T05}{Smoothing、Backoff 与 Interpolation}
+
+\subsubsection*{题目}
+
+\begin{enumerate}[label=(\alph*)]
+  \item （讲义 worked example 改编）已知 $C(\texttt{I})=2533$、$C(\texttt{I want})=827$、$|V|=1446$。分别求 MLE 与 Laplace-smoothed 的 $P(\texttt{want}\mid\texttt{I})$。
+  \item （自编检验例）若 $|V|=1000$、$C(h)=9$、$C(h,w)=0$，分别求 Laplace smoothing 与 $k=0.1$ 的 add-$k$ smoothing 概率。
+  \item 说明把低频词映射为 \texttt{<UNK>} 后，为何已知词组成的 unseen bigram 仍可能得到零概率。
+\end{enumerate}
+
+\begin{workedsolution}
+\textbf{(a)} MLE 为
+\[
+  \hat P(\texttt{want}\mid\texttt{I})
+  =\frac{827}{2533}\approx0.3265.
+\]
+Laplace smoothing 为
+\[
+  P_{\mathrm{Laplace}}(\texttt{want}\mid\texttt{I})
+  =\frac{827+1}{2533+1446}
+  =\frac{828}{3979}\approx0.2081.
+\]
+明显下降说明 add-one 从已见高频事件中搬走了较多 probability mass。
+
+\textbf{(b)} 对 unseen continuation（未见后继词），两种结果分别为
+\[
+\begin{aligned}
+  P_{\mathrm{Laplace}}(w\mid h)
+    &=\frac{1}{9+1000}=\frac{1}{1009},\\
+  P_{\mathrm{add}\text{-}0.1}(w\mid h)
+    &=\frac{0.1}{9+0.1\times1000}
+      =\frac{0.1}{109}=\frac{1}{1090}.
+\end{aligned}
+\]
+
+\textbf{(c)} \texttt{<UNK>} 只合并 vocabulary 外的 tokens。若 $h$ 与 $w$ 各自都在 vocabulary 中，它们不会被替换；组合 $C(h,w)=0$ 时，unsmoothed MLE 仍给出 $P(w\mid h)=0$，必须另用 smoothing、backoff 或 interpolation。
+\end{workedsolution}
+
+\textbf{检查点：}add-$k$ 的分子加 $k$，分母应加 $k|V|$；只在分母加 $k$ 无法保持概率归一化。
