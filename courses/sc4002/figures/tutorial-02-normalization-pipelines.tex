@@ -1,0 +1,28 @@
+\begin{tikzpicture}[
+  node distance=7mm and 8mm,
+  box/.style={draw=noteBlue, rounded corners=2pt, align=center, minimum height=8mm,
+              font=\small,
+              text width=2.55cm, fill=blue!4},
+  result/.style={draw=ntuRed, rounded corners=2pt, align=center, minimum height=8mm,
+                 font=\small,
+                 text width=2.55cm, fill=red!4},
+  arrow/.style={-{Latex[length=2mm]}, thick, draw=noteBlue}
+]
+  \node[box] (web) {Web page\\visible text};
+  \node[box, right=of web] (segment) {sentence segmentation\\与 tokenization};
+  \node[box, right=of segment] (forms) {raw tokens\\lemmas / stems};
+  \node[result, right=of forms] (counts) {sentence、type\\lemma、stem counts};
+
+  \draw[arrow] (web) -- (segment);
+  \draw[arrow] (segment) -- (forms);
+  \draw[arrow] (forms) -- (counts);
+
+  \node[box, below=11mm of web] (mention) {detected mention\\\texttt{sgs3}, \texttt{i9300}};
+  \node[box, right=of mention] (surface) {surface normalization\\与 alias expansion};
+  \node[box, right=of surface] (candidate) {candidate generation\\与 contextual scoring};
+  \node[result, right=of candidate] (canonical) {canonical entity\\或 ambiguous};
+
+  \draw[arrow] (mention) -- (surface);
+  \draw[arrow] (surface) -- (candidate);
+  \draw[arrow] (candidate) -- (canonical);
+\end{tikzpicture}

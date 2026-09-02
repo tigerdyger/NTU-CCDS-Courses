@@ -1,0 +1,185 @@
+% Tutorial set: 02
+% Source: Tutorial 2: Text Normalization, PDF pp. 1--2
+% Session date: 2026-09-02
+% Human verified: Yes
+
+\subsection{Tutorial 02：Text Normalization}
+\label{tutorial:SC4002-TUT02}
+
+\exercisemeta
+  {SC4002-TUT02}
+  {2026-09-02}
+  {Tutorial 2: Text Normalization，PDF pp.~1--2，Questions 1--5}
+  {五题均已讨论并订正；Q4 保存可复现参考实现，未对任意外部网页实测}
+  {已确认（2026-09-02）}
+
+\exercisequestion{SC4002-TUT02-Q01}{修复 Greedy Word Segmentation 的失败}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L02-T02}{Tokenization：处理单元由任务决定}
+
+\subsubsection*{题目}
+
+给定 lexicon（词典）与无空格 string（字符串），从左向右反复选择当前位置能匹配的 longest dictionary word（最长词典词）。使用
+\[
+  \texttt{thetablesdownthere},
+  \qquad
+  D=\{\texttt{the, table, down, there, bled, own}\}
+\]
+说明该算法为何失败，并讨论修复方法。
+
+\begin{checkedsolution}
+Greedy matching（贪心匹配）得到
+\[
+  \texttt{the}\mid\texttt{table}\mid\texttt{sdownthere},
+\]
+pointer（指针）在 \texttt{s} 处无法继续。把 \texttt{tables} 加入 lexicon 可修复当前例子，但不是通用方案。
+
+不能简单地在切分前对整串做 lemmatization（词形还原），因为 lemmatizer 通常先需要知道 \texttt{tables} 的 token boundary（词元边界）。更稳健的方法是把 morphological analysis（形态分析）整合进 segmenter，使其识别
+\[
+  \texttt{tables}=\texttt{table}+\texttt{s},
+\]
+并使用 backtracking/DP（回溯／动态规划）搜索完整路径，同时加入 unknown-word penalty（未知词惩罚）或 character/subword fallback（字符／子词回退）。DP 只能重新组合已有候选；若没有 morphology 或 OOV handling（未登录词处理），本题仍不存在覆盖 \texttt{s} 的完整词典路径。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT02-Q02}{Hashtag 的 Single-word Detection 与 Segmentation}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L02-T02}{Tokenization：处理单元由任务决定}
+
+\subsubsection*{题目}
+
+英文 hashtag（标签）可能是单词，如 \texttt{\#music}；也可能是去掉空格的 phrase（短语），例如
+\[
+  \texttt{\#universitylife}.
+\]
+在可访问 English dictionary（英文词典）的条件下：(i) 如何判断 hashtag 是否可能是一个单词；(ii) 给出两种把无空格 phrase 切成英文单词的方法。
+
+\begin{checkedsolution}
+去掉 \texttt{\#} 后进行 exact dictionary lookup（精确词典查询）。命中只说明“存在单词解释”，不保证该解释唯一，因为同一 character sequence（字符序列）也可能存在多词切分。
+
+Dictionary-based search（基于词典的搜索）可用 greedy matching with backtracking（带回溯的贪心匹配）或 DP 枚举所有完整切分；普通 greedy algorithm（贪心算法）可能因局部最长选择而漏掉全局可行解。若多个切分均合法，可用 word frequency（词频）或 language model（语言模型）评分：
+\[
+  \hat{w}_{1:k}
+  =\arg\max_{w_1\cdots w_k=s}
+    \sum_{i=1}^{k}\log P(w_i),
+\]
+或用 n-gram/contextual probability（n 元／上下文概率）替代独立词概率，再由 DP/Viterbi（动态规划／维特比算法）寻找最高分路径。CamelCase（驼峰式大小写）可作为额外边界提示，但不能处理全小写 hashtag。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT02-Q03}{Spelling Checker 的三阶段结构}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L03-T01}{Minimum Edit Distance（最小编辑距离）}
+
+\subsubsection*{题目}
+
+简述 spelling checker（拼写检查器）的实现方法。
+
+\begin{checkedsolution}
+一个基本系统包含：
+\begin{enumerate}
+  \item error detection（错误检测）：判断输入是否可能拼错；
+  \item candidate generation（候选生成）：从 lexicon 中产生 edit distance 较小的候选；
+  \item candidate ranking（候选排序）：结合 edit cost、word frequency 与 context 选择结果。
+\end{enumerate}
+Minimum edit distance 主要用于第二步，也可作为第三步的 ranking feature（排序特征）。Noisy-channel model（噪声信道模型）写为
+\[
+  \hat{w}=\arg\max_w P(w\mid x)
+  =\arg\max_w P(x\mid w)P(w),
+\]
+其中 $P(x\mid w)$ 描述正确词 $w$ 被误写成输入 $x$ 的 error model（错误模型），$P(w)$ 描述候选词或其 context（上下文）的可能性。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT02-Q04}{网页 Text-normalization Pipeline}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L02-T01}{Corpus、Type、Token、Lemma 与 Wordform}；
+\relatedtopic{SC4002-L02-T04}{Word Normalization：统一形式与信息损失}；
+\relatedtopic{SC4002-L02-T05}{Sentence Segmentation}
+
+\subsubsection*{题目}
+
+编写程序：(1) 下载给定 URL 的网页并抽取文本；(2) 切分并统计 sentences（句子）；(3) 切分 tokens（词元）并统计 token types（不同词元类型）；(4) 求 lemmas（词形）并统计 lemma types；(5) stemming（词干提取）并统计不同 stems。用示例 URL（如 Wikipedia 页面）验证结果，可使用 NLTK 等 NLP packages（自然语言处理软件包）。
+
+\begin{checkedsolution}
+以下实现使用 \texttt{requests}、\texttt{BeautifulSoup} 与 NLTK。运行前需安装对应 packages，并准备 NLTK 的 sentence tokenizer、POS tagger 与 WordNet data。任意网页的正文结构不同，因此抽取规则仍可能需要 site-specific adjustment（站点特定调整）。
+
+{\footnotesize
+\begin{verbatim}
+import requests
+from bs4 import BeautifulSoup
+from nltk import pos_tag, sent_tokenize, word_tokenize
+from nltk.corpus import wordnet
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+
+def wn_pos(tag):
+    return {"J": wordnet.ADJ, "V": wordnet.VERB,
+            "N": wordnet.NOUN, "R": wordnet.ADV}.get(tag[0], wordnet.NOUN)
+
+def analyse_url(url):
+    response = requests.get(url, timeout=15,
+                            headers={"User-Agent": "SC4002-tutorial/1.0"})
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
+    ignored = ["script", "style", "noscript", "nav", "header", "footer"]
+    for node in soup(ignored):
+        node.decompose()
+    root = soup.find("article") or soup.find("main") or soup.body or soup
+    text = " ".join(root.stripped_strings)
+
+    sentences = sent_tokenize(text)
+    raw_tokens = word_tokenize(text)
+    words = [t for t in raw_tokens if any(ch.isalnum() for ch in t)]
+
+    tagged = pos_tag(words)
+    lemmatizer, stemmer = WordNetLemmatizer(), PorterStemmer()
+    lemmas = [lemmatizer.lemmatize(t.lower(), wn_pos(tag))
+              for t, tag in tagged]
+    stems = [stemmer.stem(t.lower()) for t in words]
+
+    return {
+        "sentences": len(sentences),
+        "raw_tokens": len(raw_tokens),
+        "raw_token_types": len(set(raw_tokens)),
+        "normalized_word_types": len({t.lower() for t in words}),
+        "lemma_types": len(set(lemmas)),
+        "stem_types": len(set(stems)),
+    }
+\end{verbatim}
+}
+
+程序同时报告 raw token types（保留大小写和标点）与 normalized word types（小写化且排除独立标点），从而明确统计口径。不能在 tokenization 前直接删除所有 periods（句点），否则 \texttt{p.m.}、\texttt{U.S.} 等 abbreviations（缩写）会被破坏。POS-aware lemmatization（词性感知的词形还原）比把所有 tokens 默认当作 nouns（名词）更可靠；stemming 输出则不保证为合法单词。复现实验还应保存 URL、访问日期、抽取规则与 package versions（软件包版本）。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT02-Q05}{Phone Mention 的 Entity Normalization}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L02-T04}{Word Normalization：统一形式与信息损失}
+
+\subsubsection*{题目}
+
+论坛用户会用 \texttt{Desire} [HTC Desire]、\texttt{X10} [Sony Ericsson Xperia X10]、\texttt{OneX} [HTC One X]、\texttt{s3} [Samsung Galaxy SIII]、\texttt{ip 5} [Apple iPhone 5]、\texttt{note 2} [Samsung Galaxy Note II]、\texttt{920} [Nokia Lumia 920] 等非正式名称指代手机；同一产品还可能出现 \texttt{galaxy s3}、\texttt{s3 lte}、\texttt{sgs3}、\texttt{i9300} 等 variants（变体）。假设 mentions（指称）已经识别，说明如何把它们映射到 formal product names（正式产品名称）。
+
+\begin{checkedsolution}
+本题是 entity normalization/entity linking（实体规范化／实体链接），不是 mention detection（指称检测）。可靠 pipeline 为：
+\begin{enumerate}
+  \item surface normalization（表面规范化）：统一大小写、空格、连字符、Roman/Arabic numerals（罗马／阿拉伯数字），并展开已知缩写；
+  \item candidate generation（候选生成）：从正式产品 catalog（目录）与 alias table（别名表）检索候选；
+  \item candidate scoring（候选评分）：结合 exact alias、edit/token similarity（编辑／词元相似度）、model-number match（型号匹配）、context 与 alias-frequency prior（别名频率先验）；
+  \item threshold/abstention（阈值／拒绝）：证据不足或多个候选接近时返回 family-level entity、\texttt{ambiguous} 或 \texttt{unknown}，不强行猜测。
+\end{enumerate}
+
+\texttt{sgs3} 主要依赖 alias/abbreviation mapping（别名／缩写映射），frequency 只能作为 prior；\texttt{i9300} 可由 exact model-number match 高置信映射；\texttt{s3 lte} 没有具体 model number，应结合 catalog attributes、region、carrier 与其他 contextual words（上下文词）区分地区型号。论坛中的 mention frequency（指称频数）说明别名常用程度，但不能单独证明 canonical identity（规范实体身份）。
+\end{checkedsolution}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/tutorial-02-normalization-pipelines}}
+  \caption{Q4 的网页统计 pipeline 与 Q5 的 entity-normalization pipeline。}
+  \label{fig:sc4002-tut02-pipelines}
+\end{figure}
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1--Q2 说明 dictionary matching 必须处理 global segmentation（全局切分）、morphology 与 ambiguity（歧义）；Q3 将 edit distance 放入 candidate generation/ranking；Q4 要先声明 token/type 的统计口径；Q5 则要求把表面相似度、catalog evidence（目录证据）与 context 结合，并保留拒绝判断。
