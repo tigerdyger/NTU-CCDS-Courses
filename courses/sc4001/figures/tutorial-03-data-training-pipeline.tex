@@ -1,0 +1,36 @@
+\begin{tikzpicture}[
+  node distance=5mm,
+  flowbox/.style={
+    draw=noteBlue,
+    rounded corners=2pt,
+    align=center,
+    text width=5.15cm,
+    minimum height=8mm,
+    fill=noteBlue!5,
+    font=\small
+  },
+  warningbox/.style={
+    flowbox,
+    draw=ntuRed,
+    fill=ntuRed!5
+  },
+  flowarrow/.style={-{Latex[length=2mm]}, thick, draw=noteBlue}
+]
+  \node[font=\bfseries, text=noteBlue] (q2title) {Q2: Linnerud regression};
+  \node[flowbox, below=2mm of q2title] (q2data) {20 samples\\3 inputs $\rightarrow$ 3 continuous targets};
+  \node[flowbox, below=of q2data] (q2split) {Split first: 15 training / 5 test};
+  \node[warningbox, below=of q2split] (q2scale) {Fit scalers using training data only\\then transform both subsets};
+  \node[flowbox, below=of q2scale] (q2model) {$3\rightarrow3$ sigmoid regression\\direct gradient / autograd};
+  \node[flowbox, below=of q2model] (q2eval) {Inverse-transform predictions\\report per-target MSE and $R^2$};
+
+  \node[font=\bfseries, text=noteBlue, right=15mm of q2title] (q3title) {Q3: Iris classification};
+  \node[flowbox, below=2mm of q3title] (q3data) {150 samples\\4 features $\rightarrow$ 3 classes};
+  \node[flowbox, below=of q3data] (q3split) {Split first: 90 training / 60 test};
+  \node[warningbox, below=of q3split] (q3centre) {Compute mean from training data only\\use it to centre both subsets};
+  \node[flowbox, below=of q3centre] (q3model) {Linear layer produces raw logits\\\texttt{CrossEntropyLoss} adds log-softmax};
+  \node[flowbox, below=of q3model] (q3eval) {Compare batch sizes\\loss, accuracy and elapsed time};
+
+  \foreach \a/\b in {q2data/q2split,q2split/q2scale,q2scale/q2model,q2model/q2eval,
+                       q3data/q3split,q3split/q3centre,q3centre/q3model,q3model/q3eval}
+    \draw[flowarrow] (\a) -- (\b);
+\end{tikzpicture}

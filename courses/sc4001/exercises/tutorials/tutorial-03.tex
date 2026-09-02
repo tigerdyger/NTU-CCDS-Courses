@@ -1,0 +1,260 @@
+% Tutorial set: 03
+% Source: Tutorial 3, Neuron Layers, Questions 1--3
+% Reference: Tutorial 3 reference solutions, slides 1--37
+% Session date: 2026-09-02
+% Human verified: Yes; numerical conventions and reference-code inconsistencies corrected
+
+\subsection{Tutorial 03：Neuron Layers、Regression Pipeline 与 Mini-batch Training}
+\label{tutorial:SC4001-TUT03}
+
+\exercisemeta
+  {SC4001-TUT03}
+  {2026-09-02}
+  {Tutorial 3：Neuron Layers，Questions 1--3；官方参考解答用于核对}
+  {三题已完成；订正 loss scaling、data leakage、dataset split、learning rate 与 Softmax 用法}
+  {已确认（2026-09-02）}
+
+\exercisequestion{SC4001-TUT03-Q01}{Two-output Sigmoid Layer：Forward Pass 与 Gradient Update}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4001-L03-T01}{Weight Matrix 与 Batch Forward}；
+\relatedtopic{SC4001-L03-T02}{Single-layer Backpropagation、GD 与 SGD}；
+\relatedtopic{SC4001-L03-T03}{Perceptron Layer 与 Square-error Gradient}
+
+\subsubsection*{题目}
+
+使用下列八个 samples（样本）训练一个 three-input, two-output sigmoid layer（三输入、双输出 Sigmoid 层）：
+\begin{center}
+\small
+\begin{tabular}{@{}crrrrr@{}}
+  \toprule
+  Sample & $x_1$ & $x_2$ & $x_3$ & $d_1$ & $d_2$ \\
+  \midrule
+  1 & 0.77 & 0.02 & 0.63 & 0.37 & 0.47 \\
+  2 & 0.75 & 0.50 & 0.22 & 0.36 & 0.38 \\
+  3 & 0.20 & 0.76 & 0.17 & 0.35 & 0.25 \\
+  4 & 0.09 & 0.69 & 0.95 & 0.48 & 0.42 \\
+  5 & 0.00 & 0.51 & 0.81 & 0.36 & 0.29 \\
+  6 & 0.61 & 0.72 & 0.29 & 0.44 & 0.52 \\
+  7 & 0.92 & 0.71 & 0.54 & 0.60 & 0.52 \\
+  8 & 0.14 & 0.37 & 0.67 & 0.28 & 0.37 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+初始 parameters（参数）为
+\[
+  \bm W_0=
+  \begin{bmatrix}
+    0.03&0.04\\
+    0.01&0.04\\
+    0.02&0.04
+  \end{bmatrix},\qquad
+  \bm b_0=\begin{bmatrix}0\\0\end{bmatrix},\qquad
+  \alpha=0.1.
+\]
+要求展示一次 training iteration（训练迭代），训练至 convergence（收敛），并比较 outputs（输出）与 targets（目标值）。
+
+\begin{checkedsolution}
+令 $\bm X\in\mathbb R^{8\times3}$、$\bm W\in\mathbb R^{3\times2}$、$\bm b\in\mathbb R^2$，则 batch forward pass（批量前向传播）为
+\[
+  \bm U=\bm X\bm W+\bm 1\bm b^{\mathsf T},
+  \qquad \bm Y=\sigma(\bm U).
+\]
+参考解答采用 summed square-error gradient（平方误差求和梯度）的以下缩放约定：
+\[
+  \bm G=(\bm Y-\bm D)\odot\bm Y\odot(1-\bm Y),
+\]
+\[
+  \boxed{\bm W\leftarrow\bm W-\alpha\bm X^{\mathsf T}\bm G},
+  \qquad
+  \boxed{\bm b\leftarrow\bm b-\alpha\bm G^{\mathsf T}\bm 1}.
+\]
+以第一个 sample 检查 forward pass：
+\[
+  \bm u_1=(0.0359,\ 0.0568),\qquad
+  \bm y_1\approx(0.5090,\ 0.5142),
+\]
+\[
+  \bm g_1=(\bm y_1-\bm d_1)\odot\bm y_1\odot(1-\bm y_1)
+  \approx(0.0347,\ 0.0110).
+\]
+把八个 samples 的 gradients 一次求和后，第一轮约得到
+\[
+  \bm W_1\approx
+  \begin{bmatrix}
+    0.02&0.04\\
+    0.00&0.03\\
+    0.01&0.03
+  \end{bmatrix},
+  \qquad
+  \bm b_1\approx
+  \begin{bmatrix}-0.02\\-0.02\end{bmatrix}.
+\]
+
+参考运行在 10000 epochs 后给出
+\[
+  \bm W\approx
+  \begin{bmatrix}
+    1.08&1.14\\
+    1.42&0.40\\
+    1.15&0.84
+  \end{bmatrix},
+  \qquad
+  \bm b\approx
+  \begin{bmatrix}-2.24\\-1.57\end{bmatrix}.
+\]
+对应结果为：
+\begin{center}
+\small
+\begin{tabular}{@{}crrrr@{}}
+  \toprule
+  Sample & $d_1$ & $\hat y_1$ & $d_2$ & $\hat y_2$ \\
+  \midrule
+  1 & 0.37 & 0.34 & 0.47 & 0.46 \\
+  2 & 0.36 & 0.39 & 0.38 & 0.42 \\
+  3 & 0.35 & 0.32 & 0.25 & 0.29 \\
+  4 & 0.48 & 0.48 & 0.42 & 0.40 \\
+  5 & 0.36 & 0.36 & 0.29 & 0.34 \\
+  6 & 0.44 & 0.45 & 0.52 & 0.42 \\
+  7 & 0.60 & 0.59 & 0.52 & 0.55 \\
+  8 & 0.28 & 0.31 & 0.37 & 0.33 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+参考报告的 MSE 约为 $0.001$。
+
+\textbf{Loss convention（损失约定）：}上面的 $\bm G$ 对应 $\tfrac12\sum_{p,k}(y_{pk}-d_{pk})^2$。若把 loss 写成 $\frac1P\sum_{p,k}(d_{pk}-y_{pk})^2$，gradient 应多出 $2/P$；若使用 PyTorch 默认的 \texttt{MSELoss(reduction="mean")}，则多出 $2/(PK)$。这些常数会改变 effective learning rate（有效学习率）和训练轨迹，但不改变同一数据上未正则化问题的 optimum（最优点）。复现参考数值时必须沿用参考解答的缩放约定。
+\end{checkedsolution}
+
+\exercisequestion{SC4001-TUT03-Q02}{Linnerud Multi-output Regression：Direct Gradient 与 Autograd}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4001-L03-T01}{Weight Matrix 与 Batch Forward}；
+\relatedtopic{SC4001-L03-T02}{Single-layer Backpropagation、GD 与 SGD}；
+\relatedtopic{SC4001-L03-T03}{Perceptron Layer 与 Square-error Gradient}
+
+\subsubsection*{题目}
+
+Linnerud dataset（Linnerud 数据集）含 20 个 samples：inputs（输入）为 Chins、Situps、Jumps，continuous targets（连续目标）为 Weight、Waist、Pulse。按 $75\%:25\%$ 划分 training/test sets（训练/测试集），对 inputs 做 standardization（标准化）、对 targets 做 min--max scaling（最小--最大缩放），训练 $3\rightarrow3$ sigmoid regression layer。分别使用 direct gradient calculation（直接计算梯度）与 PyTorch autograd（自动微分），比较 learning curves、training time、epochs、per-target MSE 与 $R^2$，并判断哪个 target 最容易预测。
+
+\begin{checkedsolution}
+正确的数据处理顺序见图~\ref{fig:sc4001-tut03-pipeline}。必须先 split，再只使用 training set 拟合 scalers；若先对完整 dataset 计算 mean、standard deviation、minimum 或 maximum，test-set information（测试集信息）就会泄漏进训练流程。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/tutorial-03-data-training-pipeline}}
+  \caption{Q2 与 Q3 的无数据泄漏训练流程。红框中的统计量只能由 training data 得到。}
+  \label{fig:sc4001-tut03-pipeline}
+\end{figure}
+
+记训练集 input mean 与 standard deviation 为 $\bm\mu_X,\bm s_X$，target minimum 与 range 为 $\bm m_D,\bm r_D$：
+\[
+  \tilde{\bm X}=\frac{\bm X-\bm\mu_X}{\bm s_X},
+  \qquad
+  \tilde{\bm D}=\frac{\bm D-\bm m_D}{\bm r_D}.
+\]
+模型为
+\[
+  \tilde{\bm Y}=\sigma(\tilde{\bm X}\bm W+\bm1\bm b^{\mathsf T}),
+  \qquad
+  \hat{\bm D}=\tilde{\bm Y}\odot\bm r_D+\bm m_D.
+\]
+Direct gradient 与 autograd 在相同 initialization、loss reduction、learning rate、batching 和 stopping rule 下应给出相同 gradient；二者的差异在于 gradient 的取得方式，而不是模型不同。
+
+参考解答的一次运行结果如下；MSE 已还原到各 target 的原始单位：
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}lXX@{}}
+  \toprule
+  Method & MSE: Weight, Waist, Pulse & $R^2$: Weight, Waist, Pulse \\
+  \midrule
+  Direct gradient
+    & $(407.07,\ 1.21,\ 22.40)$
+    & $(-15.16,\ 0.54,\ -11.23)$ \\
+  Autograd
+    & $(356.95,\ 1.61,\ 21.12)$
+    & $(-3.18,\ 0.07,\ -11.91)$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+其中
+\[
+  R^2=1-\frac{\sum_i(d_i-\hat d_i)^2}{\sum_i(d_i-\bar d)^2}.
+\]
+$R^2=1$ 表示 perfect prediction（完美预测），$R^2=0$ 等价于始终使用 test targets 的 mean baseline（均值基线），$R^2<0$ 表示还不如该 baseline。两个方法中最大的 $R^2$ 都对应 \boxed{\text{Waist}}，因此在本次 split 下 Waist 最容易预测。
+
+不能仅按 MSE 数值比较三个 targets，因为 Weight、Waist 与 Pulse 的 units（单位）和 numerical scales（数值尺度）不同；$R^2$ 是更合适的 dimensionless comparison（无量纲比较）。测试集只有 5 个 samples，因此 $R^2$ 对 split 非常敏感，结论并不稳定。
+
+参考页报告 direct/autograd 每次更新约 $0.018/0.0324$ ms、训练 10000/50000 epochs，但两段实现采用了不同 learning rates，且 timing 取决于 hardware 与 implementation，不能据此断言 direct gradient 普遍更快或收敛更早。
+\end{checkedsolution}
+
+\exercisequestion{SC4001-TUT03-Q03}{Iris Classification：Cross-entropy 与 Batch-size Comparison}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4001-L03-T01}{Weight Matrix 与 Batch Forward}；
+\relatedtopic{SC4001-L03-T02}{Single-layer Backpropagation、GD 与 SGD}；
+\relatedtopic{SC4001-L03-T04}{Softmax、Cross-entropy 与 Logit Gradient}；
+\relatedtopic{SC4001-L03-T05}{Softmax Decision Boundaries}
+
+\subsubsection*{题目}
+
+Iris dataset（鸢尾花数据集）含 150 个 four-feature samples（四特征样本）和三个 classes（类别）。按 90 training / 60 test 划分，使用 training mean 对两组数据做 mean correction（均值中心化），训练一个 four-input, three-output linear classifier（四输入、三输出线性分类器）。设置 learning rate $0.01$、batch size 16、epochs 1000，记录 training/test loss 与 accuracy；再比较 batch sizes $2,4,8,16,24,32,64$ 的收敛表现和耗时。
+
+\begin{checkedsolution}
+Linear layer 输出 raw logits（原始未归一化分数）
+\[
+  \bm z=\bm W\bm x+\bm b,
+\]
+而 class probabilities（类别概率）为
+\[
+  p_k=\frac{e^{z_k}}{\sum_j e^{z_j}}.
+\]
+对 one-hot target $\bm d$，cross-entropy（交叉熵）为
+\[
+  J=-\sum_k d_k\log p_k,
+  \qquad
+  \frac{\partial J}{\partial\bm z}=\bm p-\bm d.
+\]
+PyTorch 的 \texttt{CrossEntropyLoss} 已在内部完成
+\[
+  \texttt{log\_softmax}+\text{negative log-likelihood（负对数似然）}.
+\]
+因此 training model 应直接输出 raw logits，不应在最后再显式添加 \texttt{Softmax}。Inference（推理）时若只需要 class label，直接对 logits 做 \texttt{argmax} 即可；需要概率时才额外计算 Softmax。
+
+正确的核心训练顺序为：
+\begin{enumerate}
+  \item 先把 150 个 samples split 为 90 training 与 60 test，即 \texttt{test\_size=0.4}；
+  \item 只用 training set 计算 feature mean $\bm\mu_{\mathrm{train}}$，再令 $\bm X_{\mathrm{train}}-\bm\mu_{\mathrm{train}}$ 与 $\bm X_{\mathrm{test}}-\bm\mu_{\mathrm{train}}$；
+  \item 对每个 mini-batch 依次执行 \texttt{zero\_grad}、forward、\texttt{CrossEntropyLoss}、\texttt{backward}、optimizer \texttt{step}；
+  \item 用相同的 trained parameters（训练后参数）分别评估 training/test loss 与 accuracy。
+\end{enumerate}
+
+若 \texttt{loss.item()} 是当前 batch 的 mean loss，则 epoch loss 可用
+\[
+  \frac{\sum_{mathcal B}|\mathcal B|J_{\mathcal B}}{N}
+\]
+计算；也可以在所有 batch 等大时对 batch means 取均值。不能把 ``batch mean 的总和'' 再除以 dataset size，否则会多除一个与 batch size 有关的因子。
+
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}p{3.0cm}XX@{}}
+  \toprule
+  Item & 题目要求 / 正确实现 & 参考代码中的问题 \\
+  \midrule
+  Dataset split & 90 training / 60 test，\texttt{test\_size=0.4} & 使用 $0.2$，变成 120/30 \\
+  Mean correction & split 后只由 training data 求 mean & split 前对完整 dataset 中心化，产生 data leakage \\
+  Learning rate & $0.01$ & 结果页改用 $0.1$ \\
+  Output layer & raw logits $+$ \texttt{CrossEntropyLoss} & 显式 Softmax 后再输入 \texttt{CrossEntropyLoss} \\
+  Loss accumulation & 按 sample 数加权或对 batches 取均值 & batch means 求和后除以 sample 数 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+因此参考页中的最终 weights、$95\%$ test accuracy 与 ``batch size 4 最优'' 是该参考实现的一次 run（运行），并没有严格回答原题的 90/60 split 与 learning rate $0.01$，不应当作可复现的标准答案。
+
+Batch size 较小时，每个 epoch 的 parameter updates 更多、gradient noise（梯度噪声）更大；较大时 gradient 更稳定，但 updates 更少，且实际速度取决于 vectorization、hardware 与 data-loader overhead。应在固定 random seeds、split、initialization、optimizer 和 epoch/step budget 后重复实验，再比较 mean 与 variance，而不能从一次 run 宣称某个 batch size 普遍最好。
+\end{checkedsolution}
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1 的主线是 matrix-form forward pass（矩阵形式前向传播）与 backpropagation（反向传播）；Q2 的重点是 multi-output regression（多输出回归）中的无数据泄漏 preprocessing（预处理）和 $R^2$；Q3 则要掌握 raw logits、cross-entropy 及公平的 batch-size comparison。Loss reduction、data split 和 preprocessing statistics 都属于实验定义，必须与模型参数一起记录。
