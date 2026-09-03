@@ -1,0 +1,109 @@
+% Actual class: 07
+% Slide deck: Part 4 (Process Synchronization)
+% Exact scope: pp. 1--13; substantive content pp. 3--13
+% Video supplement: Part 4.1 and Part 4.2 complete; Part4 Animation pp. 2--22
+% Human verified: Yes
+
+\section{第 07 节课：Race Condition 与 Critical-Section Properties}
+\label{lecture:SC2005-L07}
+
+\lecturemeta
+  {SC2005-L07}
+  {2026-09-03}
+  {Part 4 (Process Synchronization)；Part4 Animation}
+  {主讲义 pp.~1--13（实质内容 pp.~3--13）；动画 pp.~2--22}
+  {Part 4.1 Race Condition 与 Part 4.2 Critical Section Properties 完整}
+  {已确认（2026-09-03）}
+
+\subsection{本讲主线}
+
+Concurrent processes（并发进程）访问 shared data（共享数据）且至少有一个 write 时，非原子的 read--modify--write 可能产生 race condition（竞态条件）。正确做法是识别 critical section（临界区），并由 entry/exit protocol 约束危险的 interleavings；一个合格方案必须同时满足 mutual exclusion、progress 与 bounded waiting。
+
+\lecturetopic{SC2005-L07-T01}{Concurrent Access 与 Race Condition}
+
+\keyidea{Race condition 的判据不是“使用了多个进程”，而是程序结果依赖 concurrent operations 的具体 timing 或 interleaving。}
+
+Concurrency 可以来自 single-core 上的 context switches，也可以来自 multicore 上的真实 parallel execution。共享数据若只被读取通常没有冲突；一旦存在未同步的 write，执行结果就可能随顺序变化：
+\[
+  \boxed{\text{concurrency}+\text{shared state}+\text{at least one write}
+  \Longrightarrow\text{race risk}.}
+\]
+Synchronization（同步）的目标不是把整个程序串行化，而是排除会破坏 data consistency（数据一致性）的 interleavings。
+
+\lecturetopic{SC2005-L07-T02}{Bounded Buffer 与 Lost Update}
+
+讲义使用 single-producer/single-consumer bounded buffer（单生产者、单消费者有界缓冲区）：\texttt{buffer} 与 \texttt{counter} 是 shared data；\texttt{in} 仅由 producer 更新，\texttt{out} 仅由 consumer 更新。两侧分别执行
+\[
+  \texttt{counter++},\qquad \texttt{counter--}.
+\]
+源代码的一次 increment 并不天然 atomic，可近似分解为
+\[
+  r_P\gets counter,\qquad r_P\gets r_P+1,\qquad counter\gets r_P,
+\]
+decrement 同理。当初值为 $5$ 时，一次生产和一次消费在 serial execution 下应得到 $5$；若两侧都先读到旧值 $5$，最后写入者会覆盖另一方的结果，最终可能是 $4$ 或 $6$。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.86\textwidth}{!}{\input{figures/race-condition-interleaving}}
+  \caption{讲义 pp.~8--9 的 lost-update interleaving。每次 load/store 即使各自 atomic，完整 read--modify--write 仍可被打断。}
+  \label{fig:sc2005-l07-race}
+\end{figure}
+
+因此该例所有可能 final values 为
+\[
+  \boxed{counter\in\{4,5,6\}}.
+\]
+Race condition 不代表每次都得到错误值；得到 $5$ 的某些运行仍然不构成正确性保证。\texttt{volatile} 只涉及 compiler-visible access，不能把多条操作合成 atomic transaction。
+
+\textbf{对应讲义例题：}\relatedexercise{SC2005-L07-E01}{Producer--Consumer 的 lost update}。
+
+\lecturetopic{SC2005-L07-T03}{Critical-Section Problem 与 Generic Structure}
+
+Critical section 是访问 shared data、且相关 accesses 中至少有一个 write 的 code segment；它不是 shared variable 或 resource 本身。需要保护的是逻辑上不可分割的 shared-state transition，而不是任意一条孤立的 load/store。
+
+每个 process 的 generic structure 为
+\[
+  \text{entry section}\rightarrow
+  \text{critical section}\rightarrow
+  \text{exit section}\rightarrow
+  \text{remainder section}.
+\]
+Entry section 请求进入，exit section 释放权限或通知等待者；remainder section 不访问需要互斥保护的共享状态，应尽量保持并发。Critical section 过大会降低 concurrency，过小则无法覆盖完整的不变量更新。
+
+\lecturetopic{SC2005-L07-T04}{Mutual Exclusion、Progress 与 Bounded Waiting}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/critical-section-properties}}
+  \caption{Critical-section protocol 及三个独立的正确性要求。}
+  \label{fig:sc2005-l07-properties}
+\end{figure}
+
+\begin{center}
+\small
+\begin{tabularx}{0.98\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}XX@{}}
+  \toprule
+  Property & Formal requirement & Prevents / detects \\
+  \midrule
+  Mutual exclusion（互斥）
+    & 一个 process 位于相关 critical section 时，其他 process 不可同时进入
+    & Concurrent writes 与 state corruption；属于 safety property \\
+  Progress（进展性）
+    & Critical section 为空且存在 requests 时，下一位的选择不能无限推迟
+    & 所有人都无法前进或资源空闲却无故阻塞；关注 system-wide liveness \\
+  Bounded waiting（有限等待）
+    & 某 process 请求后，其他 processes 在它之前进入的次数存在有限上界
+    & Starvation；关注单个 requester 的 fairness \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+三者不能互相替代：永久关闭入口可以 vacuously 满足 mutual exclusion，却违反 progress；若系统不断允许 $P_0$ 进入而让 $P_1$ 永久等待，则 mutual exclusion 与 progress 均可满足，但 bounded waiting 失败。Bound 通常限制“被其他进程超越多少次”，不等于固定 wall-clock time。
+
+讲义假设各 process 在 critical/remainder sections 中最终会继续运行，但不假设相对速度。若 process 在 critical section 内 crash 且永不释放资源，则假设已经失效，需要额外的 fault-tolerance mechanism。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L07-E02}{三个性质的独立性}；\relatedexercise{SC2005-L07-E03}{Atomic read/write 是否足够}。
+
+\subsection{一分钟回顾}
+
+Race condition 来自 shared-state operations 的危险 interleaving，单条源代码并不必然 atomic。Critical section 是需要作为整体保护的代码段，entry/exit sections 实现同步协议。Mutual exclusion 保证不会同时进入，progress 保证系统在可前进时作出选择，bounded waiting 保证特定 requester 不被无限超越；一个正确方案必须同时满足三者。

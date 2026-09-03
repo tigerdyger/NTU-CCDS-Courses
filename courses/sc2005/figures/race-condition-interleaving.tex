@@ -1,0 +1,33 @@
+\begin{tikzpicture}[
+  >=Latex,
+  event/.style={draw=noteBlue,rounded corners=2pt,fill=blue!6,minimum width=4.2cm,minimum height=0.72cm,align=center,font=\small},
+  write/.style={event,draw=ntuRed,fill=red!6},
+  memory/.style={draw=black!65,rounded corners=2pt,fill=black!4,minimum width=2.4cm,minimum height=0.72cm,align=center,font=\small},
+  flow/.style={->,thick,draw=black!65},
+  lane/.style={font=\bfseries,text=noteBlue}
+]
+  \node[lane] at (-3.6,0.55) {Producer};
+  \node[lane] at (3.6,0.55) {Consumer};
+  \node[memory] (start) at (0,0) {$counter=5$};
+
+  \node[event] (p1) at (-3.6,-1.15) {$r_P\gets counter=5$};
+  \node[event] (p2) at (-3.6,-2.15) {$r_P\gets r_P+1=6$};
+  \node[event] (c1) at (3.6,-3.15) {$r_C\gets counter=5$};
+  \node[event] (c2) at (3.6,-4.15) {$r_C\gets r_C-1=4$};
+  \node[write] (p3) at (-3.6,-5.15) {$counter\gets r_P$};
+  \node[memory] (six) at (0,-5.15) {$counter=6$};
+  \node[write] (c3) at (3.6,-6.15) {$counter\gets r_C$};
+  \node[memory,draw=ntuRed,very thick,fill=red!8] (four) at (0,-6.15) {$counter=4$};
+
+  \draw[flow] (start) -- (p1);
+  \draw[flow] (p1) -- (p2);
+  \draw[flow] (p2) -- (c1);
+  \draw[flow] (c1) -- (c2);
+  \draw[flow] (c2) -- (p3);
+  \draw[flow] (p3) -- (six);
+  \draw[flow] (six) -- (c3);
+  \draw[flow] (c3) -- (four);
+
+  \node[font=\small,align=center,text=ntuRed] at (0,-7.05)
+    {Expected: $5$\qquad Actual: $4$\\Producer's increment is overwritten};
+\end{tikzpicture}

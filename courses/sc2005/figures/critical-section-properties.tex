@@ -1,0 +1,28 @@
+\begin{tikzpicture}[
+  >=Latex,
+  phase/.style={draw=noteBlue,very thick,rounded corners=3pt,fill=blue!6,minimum width=3.2cm,minimum height=0.82cm,align=center},
+  critical/.style={phase,draw=ntuRed,fill=red!7},
+  property/.style={draw=black!65,rounded corners=3pt,fill=black!3,text width=6.7cm,minimum height=1.08cm,align=left,font=\small,inner sep=5pt},
+  flow/.style={->,thick,draw=noteBlue}
+]
+  \node[phase] (entry) at (0,0) {Entry section};
+  \node[critical] (cs) at (0,-1.55) {Critical section};
+  \node[phase] (exit) at (0,-3.10) {Exit section};
+  \node[phase] (remainder) at (0,-4.65) {Remainder section};
+
+  \draw[flow] (entry) -- (cs);
+  \draw[flow] (cs) -- (exit);
+  \draw[flow] (exit) -- (remainder);
+  \draw[flow] (remainder.west) to[out=180,in=180,looseness=1.35] (entry.west);
+
+  \node[property] (mutex) at (6.1,0)
+    {\textbf{Mutual exclusion (safety)}\\At most one process is in the critical section.};
+  \node[property] (progress) at (6.1,-2.05)
+    {\textbf{Progress (system liveness)}\\Empty section $+$ pending requests $\Rightarrow$ choose a next process in finite time.};
+  \node[property] (bounded) at (6.1,-4.15)
+    {\textbf{Bounded waiting (per-process fairness)}\\After a request, the number of overtakes is finite.};
+
+  \draw[-{Latex[length=2mm]},dashed,draw=black!55] (entry.east) -- (mutex.west);
+  \draw[-{Latex[length=2mm]},dashed,draw=black!55] (entry.east) -- (progress.west);
+  \draw[-{Latex[length=2mm]},dashed,draw=black!55] (entry.east) -- (bounded.west);
+\end{tikzpicture}

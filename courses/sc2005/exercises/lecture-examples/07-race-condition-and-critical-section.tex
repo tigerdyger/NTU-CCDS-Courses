@@ -1,0 +1,64 @@
+% Related lecture: SC2005-L07
+% Source: Part 4 (Process Synchronization), pp. 8--13; Part4 Animation pp. 2--22
+% Human verified: Yes
+
+\exercisemeta
+  {SC2005-L07-EX}
+  {2026-09-03}
+  {Part 4 pp.~8--13；Part4 Animation pp.~2--22；课堂检查题}
+  {题干、interleavings、性质判断与答案均已核对}
+  {已确认（2026-09-03）}
+
+\exercisequestion{SC2005-L07-E01}{Producer--Consumer 的 Lost Update}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L07-T02}{Bounded Buffer 与 Lost Update}
+
+\subsubsection*{题目（Lecture Example）}
+
+共享变量初始为 $counter=5$。Producer 执行一次 \texttt{counter++}，Consumer 执行一次 \texttt{counter--}；每个操作均分解为 load、local arithmetic 与 store。回答：
+\begin{enumerate}
+  \item 两个完整操作 serial execution 时，最终值是什么？
+  \item 两侧都先读取 $5$ 时，最终可能得到哪些错误值？
+  \item 所有可能 final values 是什么？
+\end{enumerate}
+
+\begin{checkedsolution}
+Serial execution 的两种顺序都是 $5+1-1=5$ 或 $5-1+1=5$。若两侧都读取旧值，Producer 的 local result 为 $6$，Consumer 的为 $4$：Consumer 最后 store 会覆盖 increment，得到 $4$；Producer 最后 store 会覆盖 decrement，得到 $6$。因此
+\[
+  \boxed{counter\in\{4,5,6\}}.
+\]
+错误来自 stale reads 与 last-writer overwrite；不是 arithmetic 本身出错。
+\end{checkedsolution}
+
+\textbf{检查点：}列出每个 process 内不可改变的 program order，再枚举跨进程 interleavings；不要把 \texttt{counter++} 当作单条 atomic action。
+
+\exercisequestion{SC2005-L07-E02}{三个 Critical-Section Properties 的独立性}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L07-T04}{Mutual Exclusion、Progress 与 Bounded Waiting}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+某同步算法保证同一时刻最多一个 process 进入 critical section；只要 $P_0$ 持续请求，算法就总是选择 $P_0$，使已经请求的 $P_1$ 永远无法进入。分别判断 mutual exclusion、progress 与 bounded waiting。
+
+\begin{checkedsolution}
+Mutual exclusion 满足，因为不存在 simultaneous entry；progress 满足，因为 critical section 空闲且存在请求时，系统仍会选择 $P_0$ 进入；bounded waiting 不满足，因为 $P_1$ 在提出请求后可被 $P_0$ 无限次超越，即发生 starvation。
+\end{checkedsolution}
+
+\textbf{检查点：}Progress 只问“系统是否继续前进”，bounded waiting 才问“某一个 requester 是否最终轮到”。
+
+\exercisequestion{SC2005-L07-E03}{Atomic Read/Write 是否足够？}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L07-T01}{Concurrent Access 与 Race Condition}；\relatedtopic{SC2005-L07-T03}{Critical-Section Problem 与 Generic Structure}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+假设每次 memory read 与 memory write 单独都是 atomic。能否据此保证下面两个 concurrent compound operations（并发复合操作）正确？说明理由。
+\[
+  \texttt{counter++},\qquad \texttt{counter--}.
+\]
+
+\begin{checkedsolution}
+不能。Increment/decrement 是由多个 atomic operations 组成的 compound read--modify--write。另一个 process 仍可在 load 与 store 之间插入操作，使双方读取同一旧值并覆盖彼此结果。必须让完整 read--modify--write atomic，或用 entry/exit protocol 保护包含它的 critical section。
+\end{checkedsolution}
+
+\textbf{检查点：}Atomic components 不推出 atomic composition；检查保护范围是否覆盖共享不变量的完整更新。
