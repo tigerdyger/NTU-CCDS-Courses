@@ -1,0 +1,117 @@
+% Lecture example set: SC4001-L04
+% Sources: L4_summary pp. 13--17
+% Human verified: Yes
+
+\exercisemeta
+  {SC4001-L04-EX}
+  {2026-09-04}
+  {L4\_summary pp.~13--17：Worked Example 1}
+  {题干参数、forward values 与全部 gradients 已重新计算；tanh derivative 已订正}
+  {已确认（2026-09-04）}
+
+\exercisequestion{SC4001-L04-E01}{Summary Worked Example：三层 FFN 的一次 Backpropagation}
+
+\textbf{对应知识点：}
+\relatedtopic{SC4001-L04-T02}{Two-layer FFN：Single-sample Backpropagation}；
+\relatedtopic{SC4001-L04-T04}{General DNN：逐层递推的 Backpropagation}
+
+\subsubsection*{题目（Summary Worked Example）}
+
+考虑 architecture（网络结构）$[2,3,2,1]$。两个 hidden layers（隐藏层）使用 tanh activation（双曲正切激活），output neuron（输出神经元）使用 sigmoid activation，并配合 binary cross-entropy（二元交叉熵）。给定
+\[
+  W^1=\begin{bmatrix}
+    3.2&-2.4&-2.1\\
+    -1.2&-1.4&2.6
+  \end{bmatrix},\quad
+  W^2=\begin{bmatrix}
+    3.0&0.0\\
+    -2.4&-4.2\\
+    -3.0&2.5
+  \end{bmatrix},\quad
+  W^3=\begin{bmatrix}2.0\\-1.0\end{bmatrix},
+\]
+所有 bias entries（偏置项）均为 $0.5$。对 $\bm x=(1,2)^{\mathsf T}$、target $d=0$，计算一次 forward pass（前向计算）及所有 parameter gradients（参数梯度）。
+
+\begin{checkedsolution}
+Forward pass：
+\[
+  \bm u^1=(W^1)^{\mathsf T}\bm x+\bm b^1
+  =\begin{bmatrix}1.3\\-4.7\\3.6\end{bmatrix},
+  \qquad
+  \bm h^1=\tanh(\bm u^1)
+  \approx\begin{bmatrix}0.8617\\-0.9998\\0.9985\end{bmatrix},
+\]
+\[
+  \bm u^2=(W^2)^{\mathsf T}\bm h^1+\bm b^2
+  \approx\begin{bmatrix}2.4892\\7.1956\end{bmatrix},
+  \qquad
+  \bm h^2\approx\begin{bmatrix}0.9863\\1.0000\end{bmatrix},
+\]
+\[
+  u^3=(W^3)^{\mathsf T}\bm h^2+b^3\approx1.4727,
+  \qquad
+  y=\sigma(u^3)\approx0.8135,
+\]
+\[
+  J=-d\ln y-(1-d)\ln(1-y)\approx\boxed{1.6791}.
+\]
+
+Tanh 的正确 derivative（导数）为 $1-h^2$：
+\[
+  (f^1)'(\bm u^1)\approx
+  \begin{bmatrix}0.257433\\0.000331\\0.002982\end{bmatrix},
+  \qquad
+  (f^2)'(\bm u^2)\approx
+  \begin{bmatrix}0.027162\\0.00000225\end{bmatrix}.
+\]
+令 $\bm\delta^l=\nabla_{\bm u^l}J$。Sigmoid--cross-entropy 给出
+\[
+  \delta^3=y-d\approx0.813460.
+\]
+逐层 backpropagate（反向传播）：
+\[
+  \bm\delta^2
+  =W^3\delta^3\odot(f^2)'(\bm u^2)
+  \approx\begin{bmatrix}0.044191\\-0.00000183\end{bmatrix},
+\]
+\[
+  \bm\delta^1
+  =W^2\bm\delta^2\odot(f^1)'(\bm u^1)
+  \approx\begin{bmatrix}
+    0.034129\\-0.0000351\\-0.0003953
+  \end{bmatrix}.
+\]
+因此 output layer gradients 为
+\[
+  \nabla_{W^3}J=\bm h^2\delta^3
+  \approx\begin{bmatrix}0.802336\\0.813459\end{bmatrix},
+  \qquad
+  \nabla_{b^3}J\approx0.813460.
+\]
+第二个 hidden layer 的 gradients 为
+\[
+  \nabla_{W^2}J=\bm h^1(\bm\delta^2)^{\mathsf T}
+  \approx
+  \begin{bmatrix}
+    0.038080&-0.00000158\\
+    -0.044184&0.00000183\\
+    0.044125&-0.00000183
+  \end{bmatrix},
+  \qquad
+  \nabla_{\bm b^2}J=\bm\delta^2.
+\]
+第一个 hidden layer 的 gradients 为
+\[
+  \nabla_{W^1}J=\bm x(\bm\delta^1)^{\mathsf T}
+  \approx
+  \begin{bmatrix}
+    0.034129&-0.0000351&-0.0003953\\
+    0.068257&-0.0000702&-0.0007907
+  \end{bmatrix},
+  \qquad
+  \nabla_{\bm b^1}J=\bm\delta^1.
+\]
+每个 gradient matrix 与对应 $W^l$ 同形，这是最直接的 shape check（形状检查）。
+\end{checkedsolution}
+
+\textbf{自检：}若误用 $h(1-h^2)$，第一层第一个 derivative 会从正的 $0.2574$ 变为约 $0.2219$，并使后续 gradients 全部偏离；先单独检查 activation derivative，再检查 gradient shape。

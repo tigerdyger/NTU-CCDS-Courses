@@ -1,0 +1,44 @@
+\begin{tikzpicture}[
+  >=Latex,
+  activation/.style={draw=noteBlue, rounded corners, thick, fill=blue!6,
+    minimum width=2.65cm, minimum height=1.05cm, align=center},
+  preactivation/.style={draw=black!65, rounded corners, thick, fill=black!3,
+    minimum width=3.05cm, minimum height=1.05cm, align=center},
+  grad/.style={draw=ntuRed, rounded corners, thick, fill=red!5,
+    minimum width=2.35cm, minimum height=0.9cm, align=center},
+  rulebox/.style={draw=ntuRed!70, rounded corners, fill=red!3,
+    text width=4.45cm, minimum height=0.95cm, align=center},
+  param/.style={draw=black!45, rounded corners, fill=white,
+    minimum width=5.3cm, minimum height=1.05cm, align=center}
+]
+  \node[activation] (hprev) at (0,2.25)
+    {$H^{l-1}$\\previous activations};
+  \node[preactivation] (ul) at (4.15,2.25)
+    {$U^l=H^{l-1}W^l+B^l$};
+  \node[activation] (hl) at (8.30,2.25)
+    {$H^l=f^l(U^l)$};
+
+  \draw[->, very thick, noteBlue] (hprev) --
+    node[above, font=\small] {affine} (ul);
+  \draw[->, very thick, noteBlue] (ul) --
+    node[above, font=\small] {$f^l$} (hl);
+  \node[above=0.55cm of ul, text=noteBlue, font=\bfseries]
+    {forward propagation};
+
+  \node[grad] (dnext) at (8.60,0.15)
+    {$\Delta^{l+1}=\nabla_{U^{l+1}}J$};
+  \node[rulebox] (rule) at (4.70,0.15)
+    {$\Delta^l=\Delta^{l+1}(W^{l+1})^{\mathsf T}$\\[-0.1em]
+     $\odot\,(f^l)'(U^l)$};
+  \node[grad] (dl) at (0.80,0.15)
+    {$\Delta^l=\nabla_{U^l}J$};
+  \draw[->, very thick, ntuRed] (dnext) -- (rule);
+  \draw[->, very thick, ntuRed] (rule) -- (dl);
+
+  \node[param] (parameter) at (5.60,-1.55)
+    {$\nabla_{W^l}J=(H^{l-1})^{\mathsf T}\Delta^l$
+     \qquad
+     $\nabla_{\bm b^l}J=(\Delta^l)^{\mathsf T}\bm1_P$};
+  \node[right=0.25cm of parameter, font=\small, align=left]
+    {parameter\\gradients};
+\end{tikzpicture}

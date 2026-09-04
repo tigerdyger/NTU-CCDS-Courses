@@ -1,0 +1,194 @@
+% Actual class: 04
+% Slide decks: 4_dnn; L4_summary
+% Exact scope: 4_dnn pp. 1--65; L4_summary pp. 1--22
+% Video supplement: Lecture4_Part1 and Lecture4_Part2; durations confirmed, no standalone subtitle track
+% Human verified: Yes
+
+\section{第 04 节课：Deep Neural Networks 与 Backpropagation}
+\label{lecture:SC4001-L04}
+
+\lecturemeta
+  {SC4001-L04}
+  {2026-09-04}
+  {4\_dnn；L4\_summary}
+  {主讲义 pp.~1--65；Summary pp.~1--22}
+  {Lecture4\_Part1（60:00）与 Lecture4\_Part2（23:43）；视频时长已核对，公式与例题以课件为准}
+  {已确认（2026-09-04；检查题完成，tanh derivative 已按正确定义订正）}
+
+\subsection{本讲主线}
+
+Feedforward neural network（前馈神经网络）把多个 neuron layers（神经元层）串联起来；backpropagation（反向传播）则应用 chain rule（链式法则），从 output layer（输出层）向前逐层传递 local gradient（局部梯度）。核心不是背诵每一层的展开式，而是掌握两步：
+\[
+  \boxed{\text{先求 }\Delta^l=\nabla_{U^l}J}
+  \qquad\Longrightarrow\qquad
+  \boxed{\nabla_{W^l}J=(H^{l-1})^{\mathsf T}\Delta^l}.
+\]
+
+\lecturetopic{SC4001-L04-T01}{Chain Rule 与 Computational Graph}
+
+若 vector function（向量函数）$\bm y=f(\bm x)$，scalar loss（标量损失）$J=g(\bm y)$，则
+\[
+  \boxed{\nabla_{\bm x}J
+    =\left(\frac{\partial\bm y}{\partial\bm x}\right)^{\mathsf T}
+      \nabla_{\bm y}J}.
+\]
+Computational graph（计算图）中的 forward propagation（前向传播）计算 activations（激活值）和 loss；backpropagation 沿相反方向把 downstream gradient（下游梯度）乘以当前运算的 local derivative（局部导数）。同一个变量若沿多条路径影响 $J$，各路径贡献必须相加。
+
+\textbf{判断标准：}forward graph 中的每一条依赖边，在 backward pass（反向阶段）都会贡献一个 chain-rule factor（链式法则因子）；gradient 的 shape（形状）必须与被求导变量相同。
+
+\lecturetopic{SC4001-L04-T02}{Two-layer FFN：Single-sample Backpropagation}
+
+设 input（输入）$\bm x\in\mathbb R^n$，hidden layer（隐藏层）宽度为 $M$，output dimension（输出维数）为 $K$：
+\[
+  \bm z=W^{\mathsf T}\bm x+\bm b,
+  \quad \bm h=g(\bm z),
+  \quad \bm u=V^{\mathsf T}\bm h+\bm c,
+  \quad \bm y=f(\bm u),
+\]
+其中 $W\in\mathbb R^{n\times M}$、$V\in\mathbb R^{M\times K}$。令 $\bm\delta_u=\nabla_{\bm u}J$，则
+\[
+  \boxed{\bm\delta_z
+  =\nabla_{\bm z}J
+  =(V\bm\delta_u)\odot g'(\bm z)}.
+\]
+两层参数 gradient（梯度）为
+\[
+  \boxed{\nabla_VJ=\bm h\bm\delta_u^{\mathsf T}},
+  \quad \boxed{\nabla_{\bm c}J=\bm\delta_u},
+  \quad \boxed{\nabla_WJ=\bm x\bm\delta_z^{\mathsf T}},
+  \quad \boxed{\nabla_{\bm b}J=\bm\delta_z}.
+\]
+
+Output layer 的 $\bm\delta_u$ 由 activation--loss pairing（激活函数与损失函数组合）决定：
+\begin{center}
+\small
+\begin{tabularx}{0.92\textwidth}{@{}lXX@{}}
+  \toprule
+  Output setting & Loss & $\bm\delta_u$ \\
+  \midrule
+  Linear regression（线性回归） & half square error & $\bm y-\bm d$ \\
+  Sigmoid binary classification（二分类） & binary cross-entropy & $y-d$ \\
+  Softmax multiclass classification（多分类） & cross-entropy & $\bm y-\bm t$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{对应例题：}\relatedexercise{SC4001-L04-E01}{Summary Worked Example：三层 FFN 的一次 Backpropagation}。
+
+\lecturetopic{SC4001-L04-T03}{Batch Backpropagation 与 Shape Check}
+
+把 $P$ 个 samples（样本）按行组成 $X\in\mathbb R^{P\times n}$：
+\[
+  Z=XW+B,\qquad H=g(Z),\qquad U=HV+C,\qquad Y=f(U).
+\]
+若 $\Delta_U=\nabla_UJ\in\mathbb R^{P\times K}$，则
+\[
+  \boxed{\Delta_Z=(\Delta_UV^{\mathsf T})\odot g'(Z)}
+  \in\mathbb R^{P\times M},
+\]
+\[
+  \boxed{\nabla_VJ=H^{\mathsf T}\Delta_U},
+  \quad
+  \boxed{\nabla_{\bm c}J=\Delta_U^{\mathsf T}\bm1_P},
+  \quad
+  \boxed{\nabla_WJ=X^{\mathsf T}\Delta_Z},
+  \quad
+  \boxed{\nabla_{\bm b}J=\Delta_Z^{\mathsf T}\bm1_P}.
+\]
+例如 $X:5\times4$、$W:4\times3$ 时，$Z$ 与 $\Delta_Z$ 均为 $5\times3$，但
+\[
+  X^{\mathsf T}\Delta_Z:(4\times5)(5\times3)=4\times3,
+\]
+所以 $\nabla_WJ$ 与 $W$ 同形；batch dimension（批次维度）已在乘法中求和消去。若 $J$ 定义为 mean loss（平均损失）而非 summed loss（求和损失），上述 batch gradients 还需除以 $P$。
+
+\lecturetopic{SC4001-L04-T04}{General DNN：逐层递推的 Backpropagation}
+
+对 depth（深度）为 $L$ 的 DNN，令 $\bm h^0=\bm x$，并对 $l=1,\ldots,L$ 定义
+\[
+  \bm u^l=(W^l)^{\mathsf T}\bm h^{l-1}+\bm b^l,
+  \qquad
+  \bm h^l=f^l(\bm u^l).
+\]
+先由 output activation 与 loss 得到 $\bm\delta^L=\nabla_{\bm u^L}J$，再对 $l=L-1,\ldots,1$ 反向递推：
+\[
+  \boxed{\bm\delta^l
+  =\bigl(W^{l+1}\bm\delta^{l+1}\bigr)
+    \odot (f^l)'(\bm u^l)}.
+\]
+每层参数共用同一个 outer-product（外积）结构：
+\[
+  \boxed{\nabla_{W^l}J
+  =\bm h^{l-1}(\bm\delta^l)^{\mathsf T}},
+  \qquad
+  \boxed{\nabla_{\bm b^l}J=\bm\delta^l}.
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/dnn-forward-backward}}
+  \caption{第 $l$ 层的 forward propagation（蓝）与 batch backpropagation（红）。先求 local error signal $\Delta^l$，再得到该层 parameter gradients。}
+  \label{fig:sc4001-l04-forward-backward}
+\end{figure}
+
+\textbf{易错点：}若 $h=\tanh(u)$，则
+\[
+  \boxed{\frac{\mathrm dh}{\mathrm du}=1-h^2},
+\]
+而不是 $h(1-h^2)$。后者会改变符号和 gradient magnitude（梯度大小），使整个 backward pass 错误。
+
+\lecturetopic{SC4001-L04-T05}{Preprocessing、Width、Depth 与 Parameter Count}
+
+不同 input features（输入特征）的 scale（尺度）差异过大会使 optimization（优化）变得病态。常见 preprocessing（预处理）为
+\[
+  \text{min--max scaling: }\quad
+  \widetilde x_i=\frac{x_i-x_{i,\min}}{x_{i,\max}-x_{i,\min}},
+\]
+\[
+  \text{standardization: }\quad
+  \widetilde x_i=\frac{x_i-\mu_i}{\sigma_i}.
+\]
+所有 $\mu_i,\sigma_i,x_{i,\min},x_{i,\max}$ 必须只由 training set（训练集）估计，再原样用于 validation/test set（验证集/测试集），否则产生 data leakage（数据泄漏）。Linear output（线性输出）常把 target 标准化；sigmoid 或 tanh output 则应把 target 映射到 activation range（激活值域）。
+
+Width（宽度）和 depth 都是 hyperparameters（超参数）。增大它们通常提高 representation capacity（表示能力），同时增加参数量、计算量和 overfitting（过拟合）风险；并非越深越好。若 architecture（网络结构）为
+\[
+  [n_0,n_1,\ldots,n_L],
+\]
+则 trainable parameter count（可训练参数量）为
+\[
+  \boxed{N_{\mathrm{param}}
+    =\sum_{l=1}^{L}(n_{l-1}+1)n_l},
+\]
+其中加一项来自每个 neuron 的 bias。例：$[8,10,5,1]$ 的 depth 为 $3$，含 two hidden layers（两个隐藏层），参数量为
+\[
+  9\times10+11\times5+6\times1
+  =90+55+6=\boxed{151}.
+\]
+
+课件中的 California Housing（加州住房）例子以 $8$ 个 variables（变量）预测一个连续输出；Fashion-MNIST 将 $28\times28$ grayscale image（灰度图）展平为 $784$ 维输入，并输出 $10$ 类 probabilities（概率）。它们分别展示了 regression 与 classification 中网络宽度、深度和 preprocessing 的作用。
+
+\FloatBarrier
+\lecturetopic{SC4001-L04-T06}{Mini-batch SGD 与 Batch Size}
+
+设 training set size（训练集大小）为 $P$，batch size（批量大小）为 $B$：
+\begin{center}
+\small
+\begin{tabularx}{0.92\textwidth}{@{}lXX@{}}
+  \toprule
+  Setting & 每个 epoch 的更新次数 & 特点 \\
+  \midrule
+  $B=1$：SGD & $P$ & gradient noisy（梯度噪声大），更新频繁 \\
+  $1<B<P$：mini-batch SGD & $\lceil P/B\rceil$ & 兼顾矩阵并行与随机性 \\
+  $B=P$：full-batch GD & $1$ & gradient 稳定，但更新少、内存需求大 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+每个 epoch 开始应 shuffle（打乱）training samples，再依次取 batches。增大 $B$ 可提高 matrix-computation efficiency（矩阵计算效率），但会减少每个 epoch 的 parameter updates，并可能需要更多 memory（内存）。因此 batch size 是需要用 validation performance（验证表现）和硬件约束共同选择的 hyperparameter。
+
+若 $P=1000$，则 $B=1,100,1000$ 时每个 epoch 分别更新
+\[
+  \boxed{1000,\ 10,\ 1\text{ 次}}.
+\]
+
+\subsection{一分钟回顾}
+
+Backpropagation 是 chain rule 在 computational graph 上的系统应用：先从 output layer 得到 $\delta^L$，再按 $\delta^l=(W^{l+1}\delta^{l+1})\odot(f^l)'(u^l)$ 逐层向前传播。参数 gradient 始终由 ``上一层 activation $\times$ 本层 local error'' 构成。Batch 形式只把多个 samples 合并进矩阵，gradient 仍必须与参数同形。Preprocessing、width、depth 与 batch size 都会影响训练，但它们是需要由数据规模和 validation performance 决定的 hyperparameters。
