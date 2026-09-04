@@ -1,0 +1,49 @@
+\begin{tikzpicture}[
+  >=Latex,
+  state/.style={draw=noteBlue,rounded corners=1.5pt,thick,minimum width=11mm,minimum height=9mm,align=center,inner sep=1.2pt,font=\small},
+  goal/.style={state,draw=ntuRed,double,double distance=1.2pt},
+  edge/.style={draw=black!75,thick},
+  cost/.style={fill=white,inner sep=1pt,font=\scriptsize}
+]
+  \node[state] (S) at (0,0) {S\\[-1mm]{\scriptsize $h=3$}};
+  \node[state] (A) at (-5,-1.55) {A\\[-1mm]{\scriptsize $h=3$}};
+  \node[state] (B) at (0,-1.55) {B\\[-1mm]{\scriptsize $h=2$}};
+  \node[state] (C) at (5,-1.55) {C\\[-1mm]{\scriptsize $h=1$}};
+
+  \node[state] (D) at (-7.2,-3.10) {D\\[-1mm]{\scriptsize $h=1$}};
+  \node[state] (E) at (-5.0,-3.10) {E\\[-1mm]{\scriptsize $h=3$}};
+  \node[state] (F) at (-2.8,-3.10) {F\\[-1mm]{\scriptsize $h=1$}};
+  \node[state] (H) at (0,-3.10) {H\\[-1mm]{\scriptsize $h=2$}};
+  \node[state] (J) at (3.9,-3.10) {J\\[-1mm]{\scriptsize $h=1$}};
+  \node[state] (K) at (6.5,-3.10) {K\\[-1mm]{\scriptsize $h=1$}};
+
+  \node[state] (L) at (-8.2,-4.75) {L\\[-1mm]{\scriptsize $h=2$}};
+  \node[state] (M) at (-6.2,-4.75) {M\\[-1mm]{\scriptsize $h=1$}};
+  \node[goal] (N) at (-3.8,-4.75) {N\\[-1mm]{\scriptsize $h=0$}};
+  \node[state] (P) at (-1.8,-4.75) {P\\[-1mm]{\scriptsize $h=5$}};
+  \node[goal] (Q) at (1.9,-4.75) {Q\\[-1mm]{\scriptsize $h=0$}};
+  \node[state] (R) at (3.7,-4.75) {R\\[-1mm]{\scriptsize $h=2$}};
+  \node[state] (T) at (5.3,-4.75) {T\\[-1mm]{\scriptsize $h=3$}};
+  \node[state] (U) at (7.2,-4.75) {U\\[-1mm]{\scriptsize $h=1$}};
+
+  \draw[edge] (S) -- node[cost,above,sloped] {1} (A);
+  \draw[edge] (S) -- node[cost,right] {2} (B);
+  \draw[edge] (S) -- node[cost,above,sloped] {3} (C);
+  \draw[edge] (A) -- node[cost,above,sloped] {3} (D);
+  \draw[edge] (A) -- node[cost,right] {3} (E);
+  \draw[edge] (A) -- node[cost,above,sloped] {2} (F);
+  \draw[edge] (B) -- node[cost,right] {1} (H);
+  \draw[edge] (C) -- node[cost,left] {1} (J);
+  \draw[edge] (C) -- node[cost,above,sloped] {2} (K);
+  \draw[edge] (D) -- node[cost,above,sloped] {1} (L);
+  \draw[edge] (D) -- node[cost,above,sloped] {3} (M);
+  \draw[edge] (F) -- node[cost,above,sloped] {4} (N);
+  \draw[edge] (F) -- node[cost,above,sloped] {4} (P);
+  \draw[edge] (J) -- node[cost,above,sloped] {2} (Q);
+  \draw[edge] (J) -- node[cost,left] {3} (R);
+  \draw[edge] (J) -- node[cost,above,sloped] {1} (T);
+  \draw[edge] (K) -- node[cost,above,sloped] {1} (U);
+
+  \node[font=\scriptsize,align=center] at (0,-5.65)
+    {node box 第二行：heuristic $h(n)$；edge label：step cost；\textcolor{ntuRed}{double box：goal}};
+\end{tikzpicture}

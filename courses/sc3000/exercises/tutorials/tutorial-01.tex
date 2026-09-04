@@ -1,0 +1,181 @@
+% Tutorial set: 01
+% Source: T1-Search, p. 1, Questions 1.1--1.3
+% Reference: T1-Search-Solution, pp. 1--3
+% Session date: 2026-09-04
+% Human verified: Answers and queue orders checked against the reference solution
+
+\subsection{Tutorial 01：Searching for a Solution}
+\label{tutorial:SC3000-TUT01}
+
+\exercisemeta
+  {SC3000-TUT01}
+  {2026-09-04}
+  {T1-Search，p.~1，Questions 1.1--1.3；官方参考解答 pp.~1--3}
+  {算法选择、A* 与 weighted A* 的 queue order 均已核对}
+  {已确认（2026-09-04）}
+
+\exercisequestion{SC3000-TUT01-Q01}{根据问题性质选择 Search Algorithm}
+
+\textbf{对应讲义：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L02-T01}{General Search 与评价标准}
+  \item \relatedtopic{SC3000-L02-T02}{Uninformed Search Strategies}
+  \item \relatedtopic{SC3000-L02-T03}{Heuristic、Greedy 与 A*}
+\end{itemize}
+
+\subsubsection*{题目}
+
+分别为下列情形选择最合适的 search algorithm（搜索算法），并说明理由：
+\begin{enumerate}[label=(\alph*)]
+  \item Search space 很大、branching factor 很大，且可能存在 infinite paths；没有 heuristic；要求找到包含最少 states 的 goal path。
+  \item State space 含大量 cycles，edge costs 不同；没有 heuristic；要求 minimum-total-cost path。
+  \item Search tree 深度固定、所有 goals 都在最底层；有 heuristic；只要求尽快找到任意 goal，不要求最优。
+\end{enumerate}
+
+\begin{checkedsolution}
+\begin{enumerate}[label=(\alph*)]
+  \item \boxed{\text{Iterative Deepening Search (IDS)}}。BFS 的 frontier 在 large branching factor 下消耗过多内存；DFS 可能陷入 infinite path。IDS 逐步增加 depth limit，在 unit step cost 下找到最浅 goal，同时保持接近 DFS 的空间开销。
+  \item \boxed{\text{Uniform-Cost Search (UCS/Dijkstra)}}。Varying edge costs 要求按 cumulative path cost $g(n)$ 排序；graph search 还需用 repeated-state checking 处理 cycles。
+  \item \boxed{\text{Greedy Best-First Search}}。只要求尽快找到任意 goal，因此按最小 $h(n)$ 优先、让 heuristic 直接引导搜索；它通常不保证 optimality。
+\end{enumerate}
+\end{checkedsolution}
+
+\textbf{检查点：}“最少 states”对应 minimum depth；“shortest path”若同时给出 varying costs，通常指 minimum total cost。Hill climbing 没有 backtracking，可能找不到 goal，不能直接替代 Greedy Best-First graph search。
+
+\exercisequestion{SC3000-TUT01-Q02}{Standard A*：Expansion Order 与 Heuristic Quality}
+
+\textbf{对应讲义：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L02-T01}{General Search 与评价标准}
+  \item \relatedtopic{SC3000-L02-T03}{Heuristic、Greedy 与 A*}
+\end{itemize}
+
+\subsubsection*{题目}
+
+对图~\ref{fig:sc3000-tut01-search-tree} 使用 standard A*：对每个 generated node 计算
+\[
+  f(n)=g(n)+h(n),
+\]
+写出 node expansion order、generated/expanded node counts、最终 solution path 与 cost，并评价 heuristic。Children 按字母顺序生成；相同 $f$ 的 nodes 按 FIFO 从 priority queue 中取出；goal 在从 queue 取出时检测。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/tutorial01-search-tree}}
+  \caption{Tutorial 1 Question 1.2 的 annotated search tree（根据题图重绘）。边上数字为 step cost；双框为 goal。}
+  \label{fig:sc3000-tut01-search-tree}
+\end{figure}
+
+\begin{checkedsolution}
+每次 expand frontier 中 $f$ 最小的 node；平局时不能忽略题设的 FIFO rule。下表中下标表示对应 priority。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}cclX@{}}
+  \toprule
+  Step & Pop & Newly generated & OPEN after insertion（从左到右取出） \\
+  \midrule
+  1 & $S_3$ & $A_4,B_4,C_4$ & $A_4,B_4,C_4$ \\
+  2 & $A_4$ & $D_5,E_7,F_4$ & $B_4,C_4,F_4,D_5,E_7$ \\
+  3 & $B_4$ & $H_5$ & $C_4,F_4,D_5,H_5,E_7$ \\
+  4 & $C_4$ & $J_5,K_6$ & $F_4,D_5,H_5,J_5,K_6,E_7$ \\
+  5 & $F_4$ & $N_7,P_{12}$ & $D_5,H_5,J_5,K_6,E_7,N_7,P_{12}$ \\
+  6 & $D_5$ & $L_7,M_8$ & $H_5,J_5,K_6,E_7,N_7,L_7,M_8,P_{12}$ \\
+  7 & $H_5$ & --- & $J_5,K_6,E_7,N_7,L_7,M_8,P_{12}$ \\
+  8 & $J_5$ & $Q_6,R_9,T_8$ & $K_6,Q_6,E_7,N_7,L_7,M_8,T_8,R_9,P_{12}$ \\
+  9 & $K_6$ & $U_7$ & $Q_6,E_7,N_7,L_7,U_7,M_8,T_8,R_9,P_{12}$ \\
+  10 & $Q_6$ & goal & stop \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+虽然 $K$ 与新生成的 $Q$ 都有 $f=6$，但 $K$ 更早进入 queue，故先展开。最终
+\[
+  \boxed{S,A,B,C,F,D,H,J,K,Q}
+\]
+为 expansion order，solution 为
+\[
+  \boxed{S\to C\to J\to Q},
+  \qquad C=3+1+2=\boxed{6}.
+\]
+按参考答案的计数约定，initial node 计入 generated，取出的 goal 计入 expanded，因此
+\[
+  \boxed{18\text{ generated}},
+  \qquad
+  \boxed{10\text{ expanded}}.
+\]
+
+该 $h$ 是 optimistic/admissible（乐观/可采纳）且在这棵树上 consistent，因此 A* 返回 optimal solution；但估计普遍偏低、区分能力弱，许多无关 nodes 的 $f\le C^*$，所以搜索接近 exhaustive search。这里的 ``poor heuristic'' 指 guidance 较弱，不是指它破坏 optimality。
+\end{checkedsolution}
+
+\textbf{检查点：}A* 应在 goal 作为 frontier 最小项被取出时终止，而不是在 goal 刚被生成时终止；tie-breaking rule 会改变 expansion count，但不改变本题的最终最优 cost。
+
+\exercisequestion{SC3000-TUT01-Q03}{Weighted A*：速度与 Optimality 的权衡}
+
+\textbf{对应讲义：}
+\relatedtopic{SC3000-L02-T03}{Heuristic、Greedy 与 A*}
+
+\subsubsection*{题目}
+
+对同一搜索树使用 weighted A*，令
+\[
+  f_w(n)=g(n)+w h(n),\qquad w=2.
+\]
+写出 expansion order、generated/expanded counts 与所得 solution，并说明 weighted A* 在本题及一般情况下的优缺点。
+
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}cclX@{}}
+  \toprule
+  Step & Pop & Newly generated & OPEN after insertion \\
+  \midrule
+  1 & $S_6$ & $A_7,B_6,C_5$ & $C_5,B_6,A_7$ \\
+  2 & $C_5$ & $J_6,K_7$ & $B_6,J_6,A_7,K_7$ \\
+  3 & $B_6$ & $H_7$ & $J_6,A_7,K_7,H_7$ \\
+  4 & $J_6$ & $Q_6,R_{11},T_{11}$ & $Q_6,A_7,K_7,H_7,R_{11},T_{11}$ \\
+  5 & $Q_6$ & goal & stop \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+因此
+\[
+  \boxed{\text{expansion order}=S,C,B,J,Q},
+\]
+\[
+  \boxed{10\text{ generated}},
+  \qquad
+  \boxed{5\text{ expanded}}.
+\]
+本题仍得到 $S\to C\to J\to Q$、cost $6$；这只是本例的结果，不能推出 weighted A* 一般保证 optimality。
+
+\begin{center}
+\small
+\begin{tabularx}{0.92\textwidth}{@{}lccX@{}}
+  \toprule
+  Algorithm & Generated & Expanded & 本题结果 \\
+  \midrule
+  Standard A* & 18 & 10 & optimal cost $6$ \\
+  Weighted A*，$w=2$ & 10 & 5 & 同样得到 cost $6$，但一般不保证最优 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+增大 $w$ 会放大 heuristic term，通常减少搜索量，却可能让低 $h$、高真实代价的路径过早胜出：
+\[
+  w=1\Rightarrow\text{standard A*},
+  \qquad
+  w\to\infty\Rightarrow\text{行为趋近 Greedy Best-First Search}.
+\]
+课程所称 complete 仍依赖 finite branching、positive lower-bounded step costs 等常规条件。参考解答图中节点旁写出的 $6,4,2$ 实际是 $2h(n)$，不是原始 $h(n)$；其 $f_w$ 计算不受影响。
+\end{checkedsolution}
+
+\textbf{检查点：}“本题碰巧仍最优”与“算法保证最优”是两回事；评价算法必须区分 empirical outcome（本例结果）与 theoretical guarantee（理论保证）。
+
+\subsubsection*{本次 Tutorial 收口}
+
+\begin{itemize}
+  \item Q1：先从 completeness、optimality、cost type、cycles、depth 与 memory 判断算法；
+  \item Q2：standard A* 按 $g+h$ 排序，goal 被取出时才终止，并严格执行 FIFO tie-breaking；
+  \item Q3：weighted A* 用 $g+wh$ 交换 search effort 与 optimality guarantee，不能由一个成功案例推出普遍最优。
+\end{itemize}
