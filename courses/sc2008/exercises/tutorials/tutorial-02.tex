@@ -1,0 +1,189 @@
+% Tutorial set: 02
+% Source: Part 1-Tutorial 2-Questions, pp. 1--2 (PDF pp. 1--2), Questions 1--4
+% Session date: 2026-09-04
+% Human verified: Yes
+
+\subsection{Tutorial 02：Flow Control、Selective Reject 与双向 ACK}
+\label{tutorial:SC2008-TUT02}
+
+\exercisemeta
+  {SC2008-TUT02}
+  {2026-09-04}
+  {Part 1-Tutorial 2-Questions，pp.~1--2（PDF pp.~1--2），Questions 1--4}
+  {四题的模型、数值和 sequence-number states 均已核对}
+  {已确认（2026-09-04）}
+
+\exercisequestion{SC2008-TUT02-Q01}{由目标 Throughput 反推 Window Size}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L02-T02}{Stop-and-Wait 与 Sliding Window Flow Control}
+
+\subsubsection*{题目}
+
+一条 $64$ kbps leased line（租用线路）使用 3-bit sequence number（3 位序列号）的 link-layer protocol。平均 frame length 为 $80$ bytes，one-way propagation delay 为 $10$ ms，error probability 可忽略。求保证 throughput 至少为 $32$ kbps 的 minimum window size（最小窗口大小）。
+
+\begin{checkedsolution}
+\[
+  T_{\mathrm{frame}}=\frac{80\times8}{64{,}000}=10\ \mathrm{ms},
+  \qquad
+  a=\frac{T_{\mathrm{prop}}}{T_{\mathrm{frame}}}=1.
+\]
+因此
+\[
+  U=\min\!\left(1,\frac{N}{1+2a}\right)
+   =\min\!\left(1,\frac N3\right).
+\]
+要求 $64U\ge32$，即 $N\ge1.5$。Window size 必须为整数，故
+\[
+  \boxed{N_{\min}=2},
+  \qquad
+  S=64\times\frac23\approx\boxed{42.67\ \mathrm{kbps}}.
+\]
+题目提示为 flow control（流量控制）且忽略差错；所需窗口也远小于 3-bit numbering 的任何相关协议上限。
+\end{checkedsolution}
+
+\textbf{检查点：}求 minimum integer window 时必须向上取整，并把所得 $N$ 代回 throughput inequality（吞吐量不等式）验证。
+
+\exercisequestion{SC2008-TUT02-Q02}{串联链路中的 Buffer Stability}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L02-T02}{Stop-and-Wait 与 Sliding Window Flow Control}
+
+\subsubsection*{题目}
+
+Frames 从 A 经 B 转发到 C。A--B 距离为 $2000$ km、physical rate 为 $100$ kbps，并采用 window size $N=3$ 的 sliding-window protocol；B--C 距离为 $500$ km，并采用 Stop-and-Wait。两条链路的 propagation delay 均为 $10\ \mu\mathrm{s/km}$，frame length 为 $1000$ bits；线路 full duplex，ACK transmission time 与 processing delay 忽略。求使 B 的 buffer 不会持续增长的 minimum B--C transmission rate。
+
+\begin{checkedsolution}
+A--B 链路满足
+\[
+  T_{\mathrm{frame},AB}=\frac{1000}{100{,}000}=10\ \mathrm{ms},
+  \qquad
+  T_{\mathrm{prop},AB}=2000\times10\ \mu\mathrm{s}=20\ \mathrm{ms}.
+\]
+故 $a_{AB}=2$，B 的 average incoming rate（平均输入速率）为
+\[
+  S_{AB}=100\min\!\left(1,\frac{3}{1+2(2)}\right)
+  =\boxed{60\ \mathrm{kbps}}.
+\]
+
+令 B--C transmission rate 为 $R$。该链路的 one-way propagation delay 为 $5$ ms，Stop-and-Wait throughput 为
+\[
+  S_{BC}
+  =\frac{1000}{1000/R+2(0.005)}.
+\]
+Buffer stability（缓冲区稳定）要求长期 outgoing rate 不小于 incoming rate：
+\[
+  \frac{1000}{1000/R+0.010}\ge60{,}000.
+\]
+解得
+\[
+  \boxed{R_{BC,\min}=150\ \mathrm{kbps}}.
+\]
+Full duplex 表示 ACK 不占用正向带宽，但 Stop-and-Wait 仍必须等待 ACK 返回，因此 round-trip propagation delay（往返传播时延）不能删去。
+\end{checkedsolution}
+
+\textbf{检查点：}这里应比较两段链路的 effective throughput（有效吞吐量），不能只令 B--C physical rate 等于 A--B 的 $100$ kbps。
+
+\exercisequestion{SC2008-TUT02-Q03}{Selective-Reject ARQ 的 Utilization 与编号空间}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L02-T05}{Go-Back-N 与 Selective Reject ARQ}
+
+\subsubsection*{题目}
+
+一条 $100$ kbps link 的 frame length 为 $25$ bytes；两端相距 $5$ km，propagation delay 为 $3$ ms/km，average frame error probability 为 $P=0.2$。采用 Selective-Reject ARQ：
+\begin{enumerate}[label=(\alph*)]
+  \item window size $N=10$ 时，求 link utilization；
+  \item 求使 utilization 最大的 minimum window size，以及 header 中至少需要的 sequence-number bits。
+\end{enumerate}
+
+\begin{checkedsolution}
+\[
+  T_{\mathrm{frame}}=\frac{25\times8}{100{,}000}=2\ \mathrm{ms},
+  \qquad
+  T_{\mathrm{prop}}=5\times3=15\ \mathrm{ms},
+  \qquad a=7.5.
+\]
+课程采用
+\[
+  U_{\mathrm{SR}}
+  =(1-P)\min\!\left(1,\frac{N}{1+2a}\right).
+\]
+当 $N=10$ 时，
+\[
+  U_{\mathrm{SR}}
+  =0.8\times\frac{10}{16}
+  =\boxed{0.5=50\%}.
+\]
+要令 window factor 达到 1，minimum window 为
+\[
+  \boxed{N_{\min}=1+2a=16}.
+\]
+Selective Reject 要求 $N\le2^{k-1}$，因此
+\[
+  16\le2^{k-1}
+  \quad\Longrightarrow\quad
+  \boxed{k_{\min}=5\ \mathrm{bits}}.
+\]
+即使窗口已填满 pipeline（流水线），error factor 仍使最大 utilization 为 $1-P=80\%$。
+\end{checkedsolution}
+
+\textbf{检查点：}SR 的 sequence-number space 必须至少容纳两个互不重叠的窗口；该限制用于避免编号回绕歧义，与差错发生概率大小无关。
+
+\exercisequestion{SC2008-TUT02-Q04}{双向 Information Frame、RR 与 SREJ}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L02-T01}{ACK 与 Data Link Layer 的控制目标}；
+\relatedtopic{SC2008-L02-T05}{Go-Back-N 与 Selective Reject ARQ}
+
+\subsubsection*{题目}
+
+协议使用三类 frames：$I(i,j)$ 是 Information Frame，其中 $i$ 为当前 sender sequence，$j$ 表示该 sender 下一步期待从对方收到 frame $j$；$RR(j)$ 是独立 ACK；$SREJ(j)$ 请求只重传 frame $j$。Sequence number 使用 3 bits，并按 modulo $8$ 循环。补全题给的两个 time-sequence diagrams（时序图），并在发生 error 时继续画到恢复完成。
+
+\begin{checkedsolution}
+必须分别维护 A、B 的 send sequence（发送序号）和 next expected receive sequence（下一期待接收序号）。第二字段 $j$ 是 cumulative acknowledgement（累计确认）：它表示 frames 至 $j-1$ 已按序收到，而不是“最后收到的编号”。完整时序如下。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/tutorial02-duplex-arq}}
+  \caption{Tutorial 2 Question 4 的完整时序。蓝色为正常 information frames，红色为丢帧后的 selective retransmission；虚线表示恢复后重新进入正常发送。}
+  \label{fig:sc2008-tut02-duplex-arq}
+\end{figure}
+
+图 (a) 从上至下为
+\[
+  \boxed{I(0,0),\ I(1,0),\ RR(1),\ I(2,0),\ I(3,0),\
+  I(4,0),\ I(0,4),\ I(5,1)}.
+\]
+$I(0,4)$ 中的 $4$ 表示 B 此时已按序收到 A 的 frames $0$--$3$；A 收到 B 的 frame $0$ 后，下一帧才把自己的 receive sequence 更新为 $1$。
+
+图 (b) 从上至下为
+\[
+  \boxed{I(4,3),\ I(5,3)\text{ lost},\ I(3,5),\
+  I(6,4),\ I(7,4),\ SREJ(5)}.
+\]
+B 已收到 frame $4$，但 frame $5$ 丢失；Selective Reject receiver 会缓存 out-of-order frames $6,7$ 并请求
+\[
+  SREJ(5).
+\]
+A 只重传
+\[
+  \boxed{I(5,4)}.
+\]
+B 收到后即可按序交付 $5,6,7$，next expected sequence 按 modulo $8$ 回到 $0$，所以返回
+\[
+  \boxed{RR(0)}.
+\]
+若 B 同时有反向数据，可用 $I(4,0)$ piggyback 该 ACK；图中继续画出的 $I(0,4)$ 表示 A 已获确认并恢复正常发送。
+\end{checkedsolution}
+
+\textbf{检查点：}丢失的 frame 不更新 receiver state；SR 收到 out-of-order frame 时缓存但不跨过缺口推进 cumulative ACK。只有缺失的 frame 到达后，next expected sequence 才能一次跳过已缓存的连续区间。
+
+\subsubsection*{本次 Tutorial 收口}
+
+\begin{itemize}
+  \item Q1：用 target throughput 反推 sliding-window size；
+  \item Q2：比较串联链路的 incoming rate 与 outgoing rate；
+  \item Q3：同时检查 SR pipeline utilization 与 $N\le2^{k-1}$ 的编号空间限制；
+  \item Q4：分别维护双方的 send sequence 与 next expected receive sequence，并只在 frame 实际到达后更新接收状态。
+\end{itemize}
