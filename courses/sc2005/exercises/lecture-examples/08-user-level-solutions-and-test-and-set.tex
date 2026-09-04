@@ -1,0 +1,70 @@
+% Related lecture: SC2005-L08
+% Source: Part 4 (Process Synchronization), pp. 16--27; Part4 Animation pp. 23--43
+% Human verified: Yes
+
+\exercisemeta
+  {SC2005-L08-EX}
+  {2026-09-04}
+  {Part 4 pp.~16--27；Part4 Animation pp.~23--43；课堂检查题}
+  {题干、执行状态、性质判断与答案均已核对}
+  {已确认（2026-09-04）}
+
+\exercisequestion{SC2005-L08-E01}{Strict Alternation 的 Progress Violation}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L08-T01}{Algorithm 1：Strict Alternation}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+Algorithm 1 当前满足 $\texttt{turn}=0$。$P_0$ 正在执行长时间 I/O，并不想进入 critical section；$P_1$ 此时提出进入请求。$P_1$ 能否进入？该情形违反哪个 correctness property？
+
+\begin{checkedsolution}
+$P_1$ 在 \texttt{while(turn != 1)} 中等待，不能进入。虽然 critical section 空闲且只有 $P_1$ 请求，决定下一位的过程仍被不参与竞争的 $P_0$ 无限推迟，因此违反 progress。Mutual exclusion 并未被破坏；问题来自 unnecessary strict alternation。
+\end{checkedsolution}
+
+\textbf{检查点：}Critical section 空闲并不自动推出 progress；还需确认未申请的 process 是否能阻止 requester。
+
+\exercisequestion{SC2005-L08-E02}{Peterson 状态判断与有限等待}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L08-T03}{Algorithm 3：Peterson's Algorithm}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+Peterson's algorithm 当前状态为
+\[
+  \texttt{flag[0]}=\texttt{flag[1]}=\texttt{true},\qquad \texttt{turn}=1.
+\]
+判断谁能进入 critical section，并说明等待方何时可以进入。若获胜方退出后立即再次请求，能否继续抢在等待方之前？
+
+\begin{checkedsolution}
+$P_0$ 的等待条件 \texttt{flag[1] \&\& turn==1} 为 true，故等待；$P_1$ 的条件 \texttt{flag[0] \&\& turn==0} 为 false，故 $P_1$ 进入。
+
+$P_1$ 退出时必须先执行 \texttt{flag[1]=false}，于是 $P_0$ 的等待条件变为 false。即使 $P_1$ 马上再次申请，也必须依次执行 \texttt{flag[1]=true} 与 \texttt{turn=0}，把 priority 交给 $P_0$；因此 $P_1$ 不能再次超越，waiting bound 为 $1$。
+\end{checkedsolution}
+
+\textbf{检查点：}先把每个 process 的本地 $i,k$ 代入完整 while condition；\texttt{turn} 指向的是被让予 priority 的 process。
+
+\exercisequestion{SC2005-L08-E03}{Atomic TestAndSet 与 Starvation}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L08-T04}{Synchronization Hardware 与 TestAndSet}；\relatedtopic{SC2005-L08-T05}{TestAndSet 的性质与 Starvation}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+共享 \texttt{lock} 初始为 false，$P_0$ 与 $P_1$ 几乎同时执行 \texttt{TestAndSet(\&lock)}：
+\begin{enumerate}
+  \item 两次调用可能分别返回什么？为什么不能都返回 false？
+  \item 为什么普通 TestAndSet lock 不满足 bounded waiting？
+\end{enumerate}
+
+\begin{checkedsolution}
+两个合法结果是
+\[
+  (P_0,P_1)=(\texttt{false},\texttt{true})
+  \quad\text{或}\quad
+  (\texttt{true},\texttt{false}).
+\]
+两个 atomic read--modify--write operations 必须具有一致的先后顺序：先执行者读取 false 并同时写入 true，后执行者只能读取 true，所以不可能出现 $(\texttt{false},\texttt{false})$。
+
+普通 lock 没有 queue、ticket 或 waiting order。一次 release 后，所有 contenders 重新竞争，刚释放的 process 也可能立即 reacquire；某个等待者可被无限次超越，产生 starvation。因此它满足 progress，却不满足 bounded waiting。
+\end{checkedsolution}
+
+\textbf{检查点：}Atomicity 只保证每次竞争有唯一 winner，不提供 fairness；不要由 mutual exclusion 推出 bounded waiting。

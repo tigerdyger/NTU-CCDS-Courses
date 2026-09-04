@@ -1,0 +1,150 @@
+% Actual class: 08
+% Slide deck: Part 4 (Process Synchronization)
+% Exact scope: pp. 14--27
+% Video supplement: Part 4.3 and Part 4.4 complete; Part4 Animation pp. 23--43
+% Human verified: Yes
+
+\section{第 08 节课：User-Level Solutions 与 TestAndSet}
+\label{lecture:SC2005-L08}
+
+\lecturemeta
+  {SC2005-L08}
+  {2026-09-04}
+  {Part 4 (Process Synchronization)；Part4 Animation}
+  {主讲义 pp.~14--27；动画 pp.~23--43}
+  {Part 4.3 User-Level Algorithms 与 Part 4.4 OS-Level/TestAndSet 完整}
+  {已确认（2026-09-04）}
+
+\subsection{本讲主线}
+
+在上一讲的三个 correctness properties（正确性性质）下，本讲依次检验三种只依赖 shared variables（共享变量）的 two-process protocols（双进程协议）：\texttt{turn} 只表达轮次，\texttt{flag[]} 只表达进入意愿，Peterson's algorithm 将二者结合并解决同时竞争。随后用 atomic TestAndSet（原子测试并置）实现 lock；它保证 mutual exclusion 与 progress，但普通实现没有等待次序，因而不保证 bounded waiting。
+
+\lecturetopic{SC2005-L08-T01}{Algorithm 1：Strict Alternation}
+
+\keyidea{单个 \texttt{turn} 能保证互斥，却把“有权进入”错误地等同于“想要进入”。}
+
+对 $P_i$，令 $P_k$ 表示另一个 process。共享整数 \texttt{turn} 初始为 $0$：
+\[
+  \texttt{while (turn != i);}\quad
+  \text{critical section}\quad
+  \texttt{turn = k;}\quad
+  \text{remainder section}.
+\]
+\texttt{turn} 在当前 process 离开 critical section 前不会改变，所以两者不能同时进入，mutual exclusion 成立。在 fair execution（公平执行）假设下，双方严格交替，另一个 process 至多超越一次，故讲义判定 bounded waiting 成立。
+
+但该方案违反 progress：若 $\texttt{turn}=0$，$P_0$ 长时间停留在 remainder section，而 $P_1$ 请求进入，则 critical section 即使空闲，$P_1$ 也只能等待不感兴趣的 $P_0$ 先交出轮次。这种 strict alternation（严格轮流）施加了并非共享数据正确性所需的顺序。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L08-E01}{Strict Alternation 的 Progress Violation}。
+
+\lecturetopic{SC2005-L08-T02}{Algorithm 2：Interest Flags}
+
+\keyidea{\texttt{flag[i]} 能表示“$P_i$ 想进入”，但两个 processes 同时表态时没有 tie-breaker（平局裁决）。}
+
+共享布尔数组初始为 $\texttt{flag[0]}=\texttt{flag[1]}=\texttt{false}$：
+\[
+  \texttt{flag[i] = true;}\quad
+  \texttt{while (flag[k]);}\quad
+  \text{critical section}\quad
+  \texttt{flag[i] = false;}.
+\]
+若一个 process 已经进入，则其 flag 保持为 true，另一方不能通过 entry section，故 mutual exclusion 成立。若二者依次执行
+\[
+  P_0:\ \texttt{flag[0]=true},\qquad
+  P_1:\ \texttt{flag[1]=true},
+\]
+则双方都在等待对方的 flag 变回 false；无人能到达 exit section，形成 deadlock（死锁），因此 progress 失败。某 process 设置 flag 后，另一方不能再次进入，故讲义仍判定 bounded waiting 成立；这不补救 system-wide progress 的失败。
+
+\lecturetopic{SC2005-L08-T03}{Algorithm 3：Peterson's Algorithm}
+
+\keyidea{\texttt{flag[]} 表达进入意愿，\texttt{turn} 只在双方同时有意愿时打破平局。}
+
+Peterson's algorithm 的 entry/exit protocol 为
+\[
+\begin{aligned}
+  &\texttt{flag[i] = true;}\\
+  &\texttt{turn = k;}\\
+  &\texttt{while (flag[k] \&\& turn == k);}\qquad\text{(entry)}\\
+  &\text{critical section}\\
+  &\texttt{flag[i] = false;}\qquad\text{(exit)}.
+\end{aligned}
+\]
+执行 \texttt{turn=k} 表示：若双方同时竞争，$P_i$ 主动把 priority（优先权）让给 $P_k$。只有一方有意愿时，另一方 flag 为 false，等待条件立即失败；双方都有意愿时，\texttt{turn} 的最后一次写入只会使其中一方等待。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/peterson-contention-flow}}
+  \caption{Peterson's algorithm 的一次同时竞争。最后写入 \texttt{turn=0} 的 $P_1$ 把优先权让给 $P_0$。}
+  \label{fig:sc2005-l08-peterson}
+\end{figure}
+
+三个性质可直接检验：
+\begin{itemize}
+  \item \textbf{Mutual exclusion：}若双方都在 critical section，则 flags 都为 true；$P_0$ 通过循环要求 $\texttt{turn}\ne1$，$P_1$ 通过循环要求 $\texttt{turn}\ne0$，与 \texttt{turn} 只能取 $0$ 或 $1$ 矛盾。
+  \item \textbf{Progress：}只有一方请求时立即进入；双方请求时，最后的 \texttt{turn} 值选出唯一一方等待，不会发生 Algorithm 2 的 deadlock。
+  \item \textbf{Bounded waiting：}若 $P_i$ 正在等待，$P_k$ 至多先进入一次；$P_k$ 再次申请时必须写 \texttt{turn=i}，从而把优先权交给 $P_i$，overtake bound（超越次数上界）为 $1$。
+\end{itemize}
+
+该证明依赖 two-process model、atomic reads/writes 与课程采用的 sequentially consistent ordering（顺序一致内存序）。现代 compiler/CPU 可能 reorder memory operations；实际实现需要 atomic variables 与合适的 memory ordering。若把 \texttt{turn=k} 与 \texttt{flag[i]=true} 对调，证明也不再成立。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L08-E02}{Peterson 状态判断与有限等待}。
+
+\lecturetopic{SC2005-L08-T04}{Synchronization Hardware 与 TestAndSet}
+
+\keyidea{TestAndSet 把 read--modify--write 做成一个不可分割的 hardware operation；最先读到旧值 false 的 process 同时把 lock 设为 true。}
+
+讲义以如下伪代码描述 TestAndSet 的语义：
+\[
+\begin{aligned}
+  rv &\gets *target,\\
+  *target &\gets \texttt{true},\\
+  \text{return }rv.
+\end{aligned}
+\]
+三步整体是 atomic operation，而不是三条可交错的普通 C statements。共享变量 \texttt{lock} 初始为 false：
+\[
+  \texttt{while (TestAndSet(\&lock));}\quad
+  \text{critical section}\quad
+  \texttt{lock = false;}.
+\]
+第一个调用者读到 false、同时写入 true，循环结束并 acquire lock；其他调用者只读到 true，持续 busy waiting。Holder 离开时把 \texttt{lock} 写回 false，即 release lock。
+
+在 multicore processor 上，“禁止当前 core 的 interrupt/context switch”本身不足以保证 atomicity，因为其他 cores 仍可能访问同一 memory word；TestAndSet 的关键是硬件对 concurrent cores 提供不可分割且一致的 read--modify--write 顺序。
+
+\lecturetopic{SC2005-L08-T05}{TestAndSet 的性质与 Starvation}
+
+\begin{itemize}
+  \item \textbf{Mutual exclusion：}只有一个 atomic TestAndSet 能观察到旧值 false；在 holder release 前，其余调用都返回 true。
+  \item \textbf{Progress：}锁空闲时，第一个完成 TestAndSet 的 contender（竞争者）会立即进入，不会因为彼此表态而 deadlock。
+  \item \textbf{Bounded waiting：}不满足。普通 TestAndSet lock 没有 queue 或 arrival order；释放后所有等待者重新竞争，同一 process 可以连续获胜。
+\end{itemize}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/test-and-set-starvation}}
+  \caption{TestAndSet 的 starvation interleaving。$P_0$ 每次恢复后先 release 再 reacquire；$P_1$ 的时间片始终落在 \texttt{lock=true} 的区间。}
+  \label{fig:sc2005-l08-tas-starvation}
+\end{figure}
+
+该时间线中系统始终有人进入 critical section，所以 progress 成立；但 $P_1$ 可被无限次超越，发生 starvation，故 bounded waiting 失败。所有方案中的空循环也会消耗 CPU，属于 busy waiting；后续 semaphore 将进一步区分 spinning 与 blocking wait。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L08-E03}{Atomic TestAndSet 与 Starvation}。
+
+\subsection{方案对比}
+
+\begin{center}
+\small
+\begin{tabularx}{0.98\textwidth}{@{}>{\raggedright\arraybackslash}p{2.9cm}>{\centering\arraybackslash}p{1.6cm}>{\centering\arraybackslash}p{1.35cm}>{\centering\arraybackslash}p{1.75cm}X@{}}
+  \toprule
+  Solution & Mutual exclusion & Progress & Bounded waiting & Failure mode / boundary \\
+  \midrule
+  Algorithm 1：\texttt{turn} & 是 & 否 & 是 & Strict alternation；不感兴趣者阻塞 requester \\
+  Algorithm 2：\texttt{flag[]} & 是 & 否 & 是 & 同时设置 flags 会 deadlock \\
+  Peterson：\texttt{flag[]} $+$ \texttt{turn} & 是 & 是 & 是 & Two-process；依赖 atomic access 与 memory ordering \\
+  TestAndSet：\texttt{lock} & 是 & 是 & 否 & 无等待次序，可 starvation；busy waiting \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{一分钟回顾}
+
+Algorithm 1 只有轮次，违反 progress；Algorithm 2 只有意愿，同时申请会 deadlock。Peterson's algorithm 用 flags 记录意愿、用 turn 裁决平局，在课程假设下满足全部三个 properties。TestAndSet 由硬件原子化 read--modify--write，可构造简单 lock 并满足 mutual exclusion 与 progress，但无公平队列，因而可能 starvation 且不满足 bounded waiting。

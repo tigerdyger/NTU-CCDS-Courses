@@ -1,0 +1,35 @@
+\begin{tikzpicture}[
+  >=Latex,
+  action/.style={draw=noteBlue,very thick,rounded corners=3pt,fill=blue!6,text width=4.2cm,minimum height=1.05cm,align=center,font=\small},
+  wait/.style={action,draw=ntuRed,fill=red!7},
+  enter/.style={action,draw=green!45!black,fill=green!7},
+  state/.style={draw=black!65,rounded corners=3pt,fill=black!4,text width=4.2cm,minimum height=1.05cm,align=center,font=\small},
+  flow/.style={->,thick,draw=black!65},
+  lane/.style={font=\bfseries,text=noteBlue}
+]
+  \node[lane] at (-4.2,0.7) {$P_0$};
+  \node[lane] at (4.2,0.7) {$P_1$};
+
+  \node[action] (p0request) at (-4.2,-0.25)
+    {\texttt{flag[0]=true}\par\texttt{turn=1}};
+  \node[action] (p1request) at (4.2,-0.25)
+    {\texttt{flag[1]=true}\par\texttt{turn=0} (last write)};
+
+  \node[state] (shared) at (0,-1.75)
+    {$flag[0]=flag[1]=true$\par$turn=0$};
+  \node[enter] (p0enter) at (-4.2,-3.25)
+    {\texttt{flag[1] \&\& turn==1}\par$=false\Rightarrow$ enter};
+  \node[wait] (p1wait) at (4.2,-3.25)
+    {\texttt{flag[0] \&\& turn==0}\par$=true\Rightarrow$ wait};
+  \node[action] (p0exit) at (-4.2,-4.75)
+    {exit: \texttt{flag[0]=false}};
+  \node[enter] (p1enter) at (4.2,-4.75)
+    {condition becomes false\par$\Rightarrow$ enter};
+
+  \draw[flow] (p0request) -- (shared);
+  \draw[flow] (p1request) -- (shared);
+  \draw[flow] (shared) -- (p0enter);
+  \draw[flow] (shared) -- (p1wait);
+  \draw[flow] (p0enter) -- (p0exit);
+  \draw[flow] (p0exit) -- node[below,sloped,font=\scriptsize]{release} (p1enter);
+\end{tikzpicture}

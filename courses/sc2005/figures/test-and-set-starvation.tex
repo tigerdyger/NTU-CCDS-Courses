@@ -1,0 +1,31 @@
+\begin{tikzpicture}[
+  >=Latex,
+  run/.style={draw=green!45!black,fill=green!9,minimum height=1.0cm,align=center,font=\small},
+  spin/.style={draw=ntuRed,fill=red!8,minimum height=1.0cm,align=center,font=\small},
+  flow/.style={->,thick,draw=black!65}
+]
+  \node[font=\bfseries,text=noteBlue,anchor=east] at (-0.2,0) {$P_0$};
+  \node[font=\bfseries,text=noteBlue,anchor=east] at (-0.2,-1.45) {$P_1$};
+
+  \node[run,anchor=west,minimum width=3.0cm] (p0a) at (0,0)
+    {acquire $+$ CS};
+  \node[spin,anchor=west,minimum width=3.0cm] (p1a) at (3.0,-1.45)
+    {spin\\$lock=true$};
+  \node[run,anchor=west,minimum width=3.0cm] (p0b) at (6.0,0)
+    {release\\$+$ reacquire};
+  \node[spin,anchor=west,minimum width=3.0cm] (p1b) at (9.0,-1.45)
+    {spin again\\$lock=true$};
+  \node[run,anchor=west,minimum width=1.5cm] (p0c) at (12.0,0) {CS};
+
+  \draw[flow] (0,-2.35) -- (13.8,-2.35) node[right,font=\small]{time};
+  \foreach \x in {0,3,6,9,12} {
+    \draw[black!45] (\x,-2.25) -- (\x,-2.45);
+  }
+  \draw[dashed,draw=black!45] (3,-0.55) -- (3,-1.0);
+  \draw[dashed,draw=black!45] (6,-1.95) -- (6,-0.55);
+  \draw[dashed,draw=black!45] (9,-0.55) -- (9,-1.0);
+  \draw[dashed,draw=black!45] (12,-1.95) -- (12,-0.55);
+
+  \node[align=center,font=\small,text=ntuRed] at (6.9,-3.05)
+    {$P_1$ is scheduled only while the lock is held; no queue records that it waited first.};
+\end{tikzpicture}
