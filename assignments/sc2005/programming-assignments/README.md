@@ -1,3 +1,3 @@
 # SC2005 编程作业
 
-目前没有已整理的 Lab、PA 或课程项目。
+- [`lab-01/`](lab-01/)：`SC2005-LAB01` — Exploring xv6 and Adding a System Call
