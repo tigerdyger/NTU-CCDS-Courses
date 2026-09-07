@@ -1,0 +1,22 @@
+\begin{tikzpicture}[
+  >=Latex,
+  node distance=1.3cm and 1.55cm,
+  box/.style={draw=noteBlue,rounded corners,thick,align=center,minimum height=1.05cm,minimum width=3.2cm,fill=noteBlue!5},
+  result/.style={draw=ntuRed,rounded corners,thick,align=center,minimum height=1.05cm,minimum width=3.2cm,fill=ntuRed!5},
+  flow/.style={->,thick}
+]
+  \node[box] (model) {Known model\\$P(s'\mid s,a),R(s,a,s')$};
+  \node[box,right=of model] (planning) {Bellman backups\\VI / PI};
+  \node[result,right=of planning] (optimal) {$V^*$ and $\pi^*$};
+
+  \node[box,below=of model] (experience) {Sampled experience\\complete episodes};
+  \node[box,right=of experience] (mc) {Monte Carlo\\sample-average returns};
+  \node[result,right=of mc] (learned) {$V^\pi$ prediction\\$Q^\pi,\pi$ control};
+
+  \draw[flow] (model) -- (planning);
+  \draw[flow] (planning) -- (optimal);
+  \draw[flow] (experience) -- (mc);
+  \draw[flow] (mc) -- (learned);
+  \draw[flow,dashed] (learned.south) to[out=-35,in=-145,looseness=1.35]
+    node[below,align=center]{policy improvement\\changes future experience} (experience.south);
+\end{tikzpicture}

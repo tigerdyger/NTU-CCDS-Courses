@@ -1,0 +1,124 @@
+% Lecture example set: SC3000-L04
+% Sources: CZ3005 Module 4 pp. 26--31; CZ3005 Module 5 pp. 7--19; discussion check
+% Human verified: Yes
+
+\clearpage
+\exercisemeta
+  {SC3000-L04-EX}
+  {2026-09-07}
+  {Module 4 pp.~26--31；Module 5 pp.~7--19；自编检查题}
+  {答案已根据讲义与讨论核对}
+  {已确认（2026-09-07）}
+
+\exercisequestion{SC3000-L04-E01}{讲义三状态 MDP 的 Value Iteration}
+
+\textbf{对应知识点：}
+\relatedtopic{SC3000-L04-T01}{Value Iteration}
+
+\subsubsection*{题目}
+
+讲义的 MDP 有 states $s_0,s_1,s_2$，每个 state 有 actions $a_0,a_1$。初始化 $V_0=(0,0,0)^\top$。其中在 $(s_1,a_0)$ 下，以 $0.7$ 概率转移到 $s_0$ 并获得 reward $5$，其余两条转移概率为 $0.1,0.2$ 且 reward 为 $0$。计算 $Q_1(s_1,a_0)$，并概述后续迭代与 policy extraction（策略提取）。
+
+\begin{checkedsolution}
+由于 $V_0(s')=0$，第一轮 future-value terms 全为零：
+\[
+  Q_1(s_1,a_0)
+  =0.7(5+\gamma\cdot0)+0.1(0+\gamma\cdot0)
+   +0.2(0+\gamma\cdot0)
+  =\boxed{3.5}.
+\]
+对每个 $(s,a)$ 进行相同计算，再令 $V_1(s)=\max_a Q_1(s,a)$。讲义数值迭代到第 65 轮约为
+\[
+  V(s_0)=8.022,
+  \qquad V(s_1)=11.162,
+  \qquad V(s_2)=8.915.
+\]
+最后在每个 state 选择使 Bellman backup 最大的 action，即
+\[
+  \pi^*(s)=\arg\max_a Q^*(s,a).
+\]
+\end{checkedsolution}
+
+\subsubsection*{自编检验题}
+
+\textbf{已知条件：}在 state $s$ 选择 action $a$ 后，确定获得 $\boxed{\text{reward}=2}$ 并进入 $V_i(s')=4$ 的 state；$\gamma=0.5$。另一个 action 的 Q-value 为 $3.5$。则
+\[
+  Q_{i+1}(s,a)=2+0.5\times4=\boxed{4}>3.5,
+\]
+故选择 action $a$。这里的 $2$ 是题目直接给出的 reward 数值，不是名为 ``reward2'' 的变量。
+
+\textbf{检查点：}先区分 immediate reward 与 discounted future value，再对同一 state 的 actions 取最大值。
+
+\clearpage
+\exercisequestion{SC3000-L04-E02}{一维 Grid World 的 First-Visit MC Prediction}
+
+\textbf{对应知识点：}
+\relatedtopic{SC3000-L04-T04}{First-Visit Monte Carlo Prediction}
+
+\subsubsection*{题目}
+
+在 $1\times4$ Grid World（网格世界）中，robot 从 $cell_2$ 出发，到达 terminal $cell_4$ 时 reward 为 $10$；其余每次移动 reward 为 $-1$，$\gamma=0.9$。讲义给出三条 episodes：
+\[
+  \begin{aligned}
+    &cell_2\to cell_3\to cell_4,\\
+    &cell_2\to cell_3\to cell_2\to cell_3\to cell_4,\\
+    &cell_2\to cell_1\to cell_2\to cell_3\to cell_4.
+  \end{aligned}
+\]
+用 First-Visit MC 估计 $V(cell_2)$。
+
+\begin{checkedsolution}
+三条 episodes 中，均从 $cell_2$ 的第一次出现开始计算：
+\[
+  G^{(1)}=-1+0.9(10)=8,
+\]
+\[
+  G^{(2)}=G^{(3)}
+  =-1-0.9-0.9^2+10(0.9)^3
+  =4.58.
+\]
+因此
+\[
+  \widehat V(cell_2)
+  =\frac{8+4.58+4.58}{3}
+  =\boxed{5.72}.
+\]
+讲义用同样方法得到
+\[
+  \widehat V(cell_1)=6.2,
+  \qquad \widehat V(cell_3)=8.73.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}同一 episode 内 state 重复出现时，First-Visit MC 只使用第一次出现处的 return；Every-Visit MC 才会使用每次出现处的 return。
+
+\clearpage
+\exercisequestion{SC3000-L04-E03}{Grid World 的 MC Action Value 与 Epsilon-Soft 选择}
+
+\textbf{对应知识点：}
+\relatedtopic{SC3000-L04-T05}{Monte Carlo Control 与 Epsilon-Soft Policy}
+
+\subsubsection*{题目}
+
+沿用上一题的三条 episodes。估计 $Q(cell_2,\text{right})$，再说明如何由 Q-table 改进 policy。若某 state 只有两个 actions 且 $\varepsilon=0.2$，求 greedy action 与另一个 action 的选择概率。
+
+\begin{checkedsolution}
+三条 episodes 中，$(cell_2,\text{right})$ 首次出现后的 returns 分别为
+\[
+  8,\qquad 4.58,\qquad 8.
+\]
+第三条 episode 第一次到达 $cell_2$ 时选择 left，不属于目标 pair；应从之后真正出现 $(cell_2,\text{right})$ 的位置计算。因此
+\[
+  \widehat Q(cell_2,\text{right})
+  =\frac{8+4.58+8}{3}
+  =\boxed{6.86}.
+\]
+讲义示例 Q-table 在 $cell_1,cell_2,cell_3$ 上均支持选择 right。加入 exploration 后，
+\[
+  P(a_{\mathrm{greedy}})=1-0.2+\frac{0.2}{2}=\boxed{0.9},
+  \qquad
+  P(a_{\mathrm{other}})=\frac{0.2}{2}=\boxed{0.1}.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}$V$ 的 MC estimate 本身不需要 model；但仅凭 $V(s)$ 无法在 model-free setting 下直接比较 actions，因此 control 学习 $Q(s,a)$。

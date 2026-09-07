@@ -1,0 +1,131 @@
+% Actual class: 04
+% Slide decks: CZ3005 Module 4_Markov Decision Process; CZ3005 Module 5_Reinforcement Learning
+% Exact scope: Module 4 pp. 25--39; Module 5 pp. 1--19, aligned with the Week 5 schedule
+% NTULearn supplement: None
+% Human verified: Concepts discussed and checks completed
+
+\section{第 04 节课：MDP 2 与 Reinforcement Learning 1}
+\label{lecture:SC3000-L04}
+
+\lecturemeta
+  {SC3000-L04}
+  {2026-09-07}
+  {CZ3005 Module 4；CZ3005 Module 5}
+  {Module 4 pp.~25--39；Module 5 pp.~1--19（对应 Week 5 schedule）}
+  {无}
+  {知识内容已讨论并通过检查题}
+
+\subsection{本讲主线}
+
+已知 transition model（转移模型）$P$ 与 reward model（奖励模型）$R$ 时，Value Iteration（价值迭代）和 Policy Iteration（策略迭代）可直接求解 MDP。模型未知时，Reinforcement Learning（强化学习，RL）改从 experience（经验）中估计 value。本讲首先完成两种 dynamic programming（动态规划）方法，再进入基于完整 episodes（回合）的 Monte Carlo prediction（蒙特卡洛预测）与 control（控制）。
+
+\lecturetopic{SC3000-L04-T01}{Value Iteration}
+
+Value Iteration 对所有 states 反复执行 Bellman optimality backup（贝尔曼最优备份）：
+\[
+  Q_{i+1}(s,a)=\sum_{s'}P(s'\mid s,a)
+  \left[R(s,a,s')+\gamma V_i(s')\right],
+  \qquad
+  \boxed{V_{i+1}(s)=\max_a Q_{i+1}(s,a)}.
+\]
+$V_0(s)=0$ 是方便的初始化，但不是唯一选择。对 finite discounted MDP（有限折扣 MDP），若 rewards 有界且 $0\le\gamma<1$，Bellman optimality operator（贝尔曼最优算子）是 contraction（压缩映射），故迭代收敛到唯一的 $V^*$。实际实现常以
+\[
+  \max_s\left|V_{i+1}(s)-V_i(s)\right|<\varepsilon
+\]
+作为停止条件。收敛后提取 optimal policy（最优策略）：
+\[
+  \pi^*(s)=\arg\max_a\sum_{s'}P(s'\mid s,a)
+  \left[R(s,a,s')+\gamma V^*(s')\right].
+\]
+
+\textbf{对应例题：}\relatedexercise{SC3000-L04-E01}{讲义三状态 MDP 的 Value Iteration}。
+
+\lecturetopic{SC3000-L04-T02}{Policy Iteration}
+
+Policy Iteration 交替执行两步：
+
+\begin{enumerate}
+  \item Policy evaluation（策略评估）：固定 $\pi$，求其 value function；
+  \item Policy improvement（策略改进）：依据当前 value 对每个 state 重新选择最佳 action。
+\end{enumerate}
+
+对 deterministic policy（确定性策略），evaluation equation 为
+\[
+  V^\pi(s)=\sum_{s'}P(s'\mid s,\pi(s))
+  \left[R(s,\pi(s),s')+\gamma V^\pi(s')\right].
+\]
+得到稳定的 $V^\pi$ 后，执行
+\[
+  \pi_{\mathrm{new}}(s)=\arg\max_{a\in A(s)}
+  \sum_{s'}P(s'\mid s,a)
+  \left[R(s,a,s')+\gamma V^\pi(s')\right].
+\]
+若所有 states 上 $\pi_{\mathrm{new}}(s)=\pi(s)$，policy 已稳定并达到 optimal。Value Iteration 每个 sweep（扫描）只做一次 optimality backup；Policy Iteration 则先把固定 policy 评估到足够稳定，再整体改进。比较两者的数值结果时，必须使用相同的 $P,R$ 与 $\gamma$。
+
+\lecturetopic{SC3000-L04-T03}{从 Model-Based Planning 到 Model-Free RL}
+
+Value/Policy Iteration 属于 model-based planning（基于模型的规划）：计算 action value 时直接使用已知 $P$ 与 $R$。Model-free RL（无模型强化学习）不显式知道 transition probabilities，而是从实际或模拟产生的 trajectories（轨迹）中学习 policy/value。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.84\textwidth}{!}{\input{figures/planning-to-monte-carlo}}
+  \caption{已知模型时由 Bellman backups 规划；模型未知时由 sampled episodes 估计 value，并通过 policy improvement 形成 control。}
+  \label{fig:sc3000-l04-planning-to-mc}
+\end{figure}
+
+Monte Carlo（蒙特卡洛，MC）使用完整 episode 的 sampled return（采样回报），不需要 $P$；但必须等到 episode 终止，且估计通常具有较高 variance（方差）。它与本课程前面讲的 Monte Carlo Tree Search（蒙特卡洛树搜索，MCTS）不是同一个算法。
+
+\lecturetopic{SC3000-L04-T04}{First-Visit Monte Carlo Prediction}
+
+对给定 policy $\pi$，从 state $s$ 的一次访问开始，return 为
+\[
+  G_t=R_t+\gamma R_{t+1}+\gamma^2R_{t+2}+\cdots.
+\]
+Monte Carlo prediction 直接用样本平均估计
+\[
+  V^\pi(s)=\mathbb E_\pi[G_t\mid S_t=s],
+  \qquad
+  \widehat V^\pi(s)=\frac{1}{N(s)}\sum_{k=1}^{N(s)}G_k(s).
+\]
+First-Visit MC（首次访问 MC）在每条 episode 中只记录 state $s$ 第一次出现后的 return；Every-Visit MC（每次访问 MC）记录该 episode 中每次出现后的 returns。二者都估计 $V^\pi$，但样本的选取方式不同。
+
+\textbf{对应例题：}\relatedexercise{SC3000-L04-E02}{一维 Grid World 的 First-Visit MC Prediction}。
+
+\lecturetopic{SC3000-L04-T05}{Monte Carlo Control 与 Epsilon-Soft Policy}
+
+Prediction（预测）只评价固定 policy；control（控制）还要改进 policy。虽然 $V^\pi(s)$ 本身也能在不知道 $P$ 时由 samples 估计，但仅知道 state value 不能直接比较同一 state 的不同 actions；若用 $V$ 做比较，仍需 $P$ 与 $R$ 计算 one-step lookahead（一步前瞻）。因此 model-free control 直接学习
+\[
+  Q^\pi(s,a)=\mathbb E_\pi[G_t\mid S_t=s,A_t=a].
+\]
+即：$V(s)$ 评价 state，$Q(s,a)$ 同时评价 state-action pair（状态-动作对）。
+
+纯 greedy policy（贪心策略）可能永远不尝试当前看来较差的 actions。$\varepsilon$-soft policy（$\varepsilon$-软策略）为所有 actions 保留非零探索概率：
+\[
+  \pi(a\mid s)=
+  \begin{cases}
+    1-\varepsilon+\dfrac{\varepsilon}{|A(s)|}, & a=a^*,\\[5pt]
+    \dfrac{\varepsilon}{|A(s)|}, & a\ne a^*,
+  \end{cases}
+  \qquad a^*=\arg\max_a Q(s,a).
+\]
+First-Visit MC control 的循环是：用当前 $\varepsilon$-soft policy 生成 episode；按每个 $(s,a)$ 的首次出现更新 sample-average $Q$；再作 $\varepsilon$-greedy improvement（$\varepsilon$-贪心改进）。
+
+\textbf{对应例题：}\relatedexercise{SC3000-L04-E03}{Grid World 的 MC Action Value 与 Epsilon-Soft 选择}。
+
+\begin{center}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}lcccX@{}}
+  \toprule
+  Method & 需要 $P,R$ & 学习对象 & 完整 episode & 核心操作 \\
+  \midrule
+  Value Iteration & 是 & $V^*$ & 否 & repeated optimality backups \\
+  Policy Iteration & 是 & $V^\pi,\pi$ & 否 & evaluation 与 improvement 交替 \\
+  MC Prediction & 否 & $V^\pi$ & 是 & average sampled returns \\
+  MC Control & 否 & $Q^\pi,\pi$ & 是 & MC evaluation 与 $\varepsilon$-soft improvement \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{一分钟回顾}
+
+Value Iteration 直接反复应用 Bellman optimality backup；Policy Iteration 分开执行 policy evaluation 与 improvement。两者都依赖已知 model。Monte Carlo RL 用完整 episodes 的 returns 估计 $V$ 或 $Q$，其中 model-free control 学习 $Q(s,a)$ 才能直接比较 actions，并用 $\varepsilon$-soft policy 保持 exploration（探索）。下一部分从 Module 5 p.~20 的 Q-Learning（Q 学习）开始。
