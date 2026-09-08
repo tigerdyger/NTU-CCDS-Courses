@@ -1,0 +1,108 @@
+% Lecture example set: SC4061-L05
+% Sources: L3 pp. 32--45; L4 pp. 1--19; checked discussion on 2026-09-08
+% Human verified: Yes
+
+\clearpage
+
+\exercisemeta
+  {SC4061-L05-EX}
+  {2026-09-08}
+  {L3 (full) Frequency slides pp.~32--45；L4 (full) Edge slides pp.~1--19；课堂讨论中的自编检验例}
+  {四道检验题答案已完成并核对}
+  {已确认（2026-09-08）}
+
+\exercisequestion{SC4061-L05-E01}{Local Edge 的 Fourier/Wavelet Representation}
+
+\textbf{类型：}lecture quiz / self-contained check（基于 L3 p.~32）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L05-T01}{Dense Fourier Spectrum 与 Wavelet Localization}
+
+\subsubsection*{题目}
+
+一幅图像只有两种 intensity，但包含一个局部 sharp boundary。解释为什么它在 spatial domain 很简单，而 Fourier spectrum 仍可能很 dense；并说明 wavelet 相比 Fourier 额外保留了什么信息。
+
+\begin{checkedsolution}
+Fourier basis functions 是覆盖全图的 global sinusoids。局部 abrupt change 无法由少数平滑 modes 表示，需要许多不同 frequencies 的 Fourier coefficients 共同重建，因此 spectrum 可能很 dense。Wavelet 使用 localized、multi-scale basis，其 coefficients 不仅对应 frequency/scale，还保留 approximate spatial location。
+
+这里应说 ``许多 Fourier coefficients/components''，而不是``许多 spectra''：一幅图像只有一个 spectrum，其中包含许多 coefficients。
+\end{checkedsolution}
+
+\textbf{检查点：}DFT 始终可以计算；``可计算''与``该 domain 中表示稀疏、处理方便''不是同一件事。
+
+\exercisequestion{SC4061-L05-E02}{Sobel Gradient 与 Edge Direction}
+
+\textbf{类型：}self-contained check（基于 L4 p.~7）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L05-T05}{Prewitt 与 Sobel Gradient Filters}
+
+\subsubsection*{题目}
+
+对 patch
+\[
+  P=\begin{bmatrix}
+  20&20&20\\
+  20&20&20\\
+  80&80&80
+  \end{bmatrix}
+\]
+使用讲义中的 Sobel kernels，求 $G_x,G_y$、$|\nabla f|$、gradient direction 和 edge direction。
+
+\begin{checkedsolution}
+\[
+  G_x=0,
+\]
+\[
+  G_y=(-20-40-20)+(80+160+80)=240.
+\]
+因此
+\[
+  |\nabla f|=\sqrt{0^2+240^2}=\boxed{240},\qquad
+  \alpha=\operatorname{atan2}(240,0)=\boxed{90^\circ}.
+\]
+Gradient 沿竖直方向，edge tangent 与 gradient 垂直，所以这是 horizontal edge（水平边缘）。
+\end{checkedsolution}
+
+\textbf{检查点：}$G_y$ 响应沿 $y$ 的强度变化，但检测出的 edge 本身沿 $x$ 方向延伸；不要把 gradient direction 与 edge direction 混淆。
+
+\exercisequestion{SC4061-L05-E03}{LoG 的 Smoothing 与 Zero Crossing}
+
+\textbf{类型：}concept check（基于 L4 pp.~9--10）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L05-T06}{Laplacian of Gaussian 与 Zero Crossing}
+
+\subsubsection*{题目}
+
+为什么 LoG 在 second derivative 前引入 Gaussian smoothing？对于 step edge，应使用 response peak 还是 zero crossing 确定 edge location？
+
+\begin{checkedsolution}
+Second derivative 会放大 high-frequency noise；Gaussian smoothing 先衰减噪声，再由 Laplacian 提取 curvature。由于
+\[
+  f*(\nabla^2G_\sigma)=\nabla^2(f*G_\sigma),
+\]
+两步可合并为一次 LoG convolution。Step edge 的 LoG response 在边缘两侧形成正负 lobes，edge centre 位于两者之间的 \boxed{\text{zero crossing}}，而不是任一 peak。
+\end{checkedsolution}
+
+\textbf{检查点：}LoG 的 Gaussian 只降低 sensitivity，不会使二阶导数对噪声完全免疫。
+
+\exercisequestion{SC4061-L05-E04}{Hysteresis Thresholding 的 Strong/Weak Edges}
+
+\textbf{类型：}self-contained check（基于 L4 pp.~17--18）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L05-T07}{Canny Edge Detector}
+
+\subsubsection*{题目}
+
+设 $t_L=40,t_H=100$。Pixel A 的 magnitude 为 $130$；B 为 $70$，并通过 weak-edge chain 与 A 连通；C 为 $70$，但完全孤立；D 为 $20$。Hysteresis thresholding 后哪些 pixels 被保留？
+
+\begin{checkedsolution}
+A 满足 $M\ge t_H$，是 strong edge，直接保留。B 位于双阈值之间，但通过 weak-edge chain 与 strong edge A 连通，因此保留。C 虽然也位于双阈值之间，却没有 strong-edge anchor，删除；D 低于 $t_L$，删除。故最终保留
+\[
+  \boxed{\text{A 和 B}}.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}Weak edge 不是一律保留或删除；关键是它是否通过 connectivity 与 strong edge 相连。

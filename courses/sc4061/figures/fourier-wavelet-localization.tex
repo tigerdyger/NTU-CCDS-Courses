@@ -1,0 +1,37 @@
+\begin{tikzpicture}[x=0.9cm,y=0.78cm,font=\small,>=Latex]
+  \tikzset{
+    axis/.style={->,semithick,gray!75!black},
+    signal/.style={very thick,noteBlue},
+    basis/.style={thick,orange!85!black},
+    support/.style={fill=blue!7,draw=none}
+  }
+
+  \begin{scope}[shift={(0,0)}]
+    \node[font=\bfseries] at (3.1,3.25) {Fourier basis（全局支撑）};
+    \draw[axis] (0,0) -- (6.2,0) node[right] {$x$};
+    \draw[axis] (0,0) -- (0,2.6) node[above] {value};
+    \draw[signal] (0.2,0.35) -- (2.85,0.35) -- (2.85,2.15) -- (5.95,2.15);
+    \draw[basis,samples=80,domain=0.2:5.95]
+      plot (\x,{1.25+0.28*sin(180*\x)});
+    \draw[basis,dashed,samples=80,domain=0.2:5.95]
+      plot (\x,{1.25+0.18*sin(360*\x)});
+    \draw[densely dotted,gray!70] (2.85,0) -- (2.85,2.55);
+    \node[align=center,text=gray!75!black] at (3.1,-0.7)
+      {local discontinuity activates\\many global coefficients};
+  \end{scope}
+
+  \begin{scope}[shift={(8.0,0)}]
+    \node[font=\bfseries] at (3.1,3.25) {Wavelet basis（局部支撑）};
+    \draw[axis] (0,0) -- (6.2,0) node[right] {$x$};
+    \draw[axis] (0,0) -- (0,2.6) node[above] {value};
+    \path[support] (2.0,0.05) rectangle (3.75,2.5);
+    \draw[signal] (0.2,0.35) -- (2.85,0.35) -- (2.85,2.15) -- (5.95,2.15);
+    \draw[basis] (1.95,1.25)
+      .. controls (2.2,1.25) and (2.25,2.25) .. (2.7,2.25)
+      .. controls (3.15,2.25) and (3.2,0.25) .. (3.65,0.25)
+      .. controls (3.9,0.25) and (3.95,1.25) .. (4.2,1.25);
+    \draw[densely dotted,gray!70] (2.85,0) -- (2.85,2.55);
+    \node[align=center,text=gray!75!black] at (3.1,-0.7)
+      {coefficient carries\\scale/frequency and location};
+  \end{scope}
+\end{tikzpicture}

@@ -1,0 +1,30 @@
+\begin{tikzpicture}[font=\small,>=Latex,node distance=0.6cm and 0.75cm]
+  \tikzset{
+    stage/.style={draw=noteBlue,rounded corners=2pt,minimum width=3.0cm,
+      minimum height=1.5cm,align=center,fill=blue!4},
+    arrow/.style={->,very thick,noteBlue}
+  }
+
+  \node[stage] (dog) {DoG filtering\\$G_x,G_y,M,\alpha$};
+  \node[stage,right=of dog] (nms) {Non-maximum\\suppression};
+  \node[stage,right=of nms] (hys) {Hysteresis\\$t_L<t_H$};
+  \node[stage,right=of hys] (map) {Binary edge map\\thin connected edgels};
+  \draw[arrow] (dog) -- (nms);
+  \draw[arrow] (nms) -- (hys);
+  \draw[arrow] (hys) -- (map);
+
+  \draw[very thick,orange!85!black] ($(dog.south west)+(0.35,-0.55)$)
+    .. controls +(0.7,0) and +(-0.7,0) .. ($(dog.south east)+(-0.35,-0.55)$);
+  \draw[very thick,orange!85!black] ($(nms.south)+(0,-0.9)$) -- ($(nms.south)+(0,-0.25)$);
+
+  \foreach \dx/\dotcolor in {-0.75/ntuRed,-0.35/orange!80,0.05/orange!80,0.45/orange!80} {
+    \fill[\dotcolor] ($(hys.south)+(\dx,-0.58)$) circle (2.5pt);
+  }
+  \draw[fill=gray!45] ($(hys.south)+(0.9,-0.58)$) circle (2.5pt);
+  \draw[ntuRed,thick] ($(hys.south)+(0.8,-0.75)$) -- ($(hys.south)+(1.0,-0.41)$);
+
+  \draw[very thick,ntuRed] ($(map.south west)+(0.45,-0.58)$) -- ($(map.south east)+(-0.45,-0.58)$);
+  \node[align=center,text=gray!75!black] at ($(nms.south)!0.5!(hys.south)+(0,-1.45)$)
+    {smooth and differentiate $\rightarrow$ thin the ridge $\rightarrow$ keep strong edges\\
+     and weak chains anchored to them};
+\end{tikzpicture}

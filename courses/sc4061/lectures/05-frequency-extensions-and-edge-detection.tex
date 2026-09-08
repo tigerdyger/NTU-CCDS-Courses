@@ -1,0 +1,154 @@
+% Actual class: 05
+% Slide decks: L3 (full) Frequency slides; L4 (full) Edge slides
+% Exact scope: L3 pp. 32--45 (Part 3); L4 pp. 1--19 (Part 1)
+% NTULearn supplement: transcripts 58735 and 58959
+% Human verified: Yes
+
+\section{第 05 节课：Frequency Extensions and Edge Detection}
+\label{lecture:SC4061-L05}
+
+\lecturemeta
+  {SC4061-L05}
+  {2026-09-08}
+  {L3 (full) Frequency slides；L4 (full) Edge slides}
+  {L3 pp.~32--45（Part 3，其中 p.~32 为 quiz 收尾）；L4 pp.~1--19（Part 1）}
+  {课程视频 L3 Part 3 与 L4 Part 1（字幕 58735、58959 核对）}
+  {已确认（2026-09-08）}
+
+\subsection{本讲主线}
+
+Fourier transform（傅里叶变换）提供 global frequency representation（全局频率表示），但 localized discontinuity（局部不连续）可能激活大量 Fourier coefficients（傅里叶系数）；wavelet transform（小波变换）则同时保留 frequency/scale（频率/尺度）和 approximate location（近似位置）。课程随后从 image enhancement（图像增强）转向 feature extraction（特征提取）：先用 first/second derivatives（一阶/二阶导数）描述 intensity change（强度变化），再由 Sobel、LoG 和 Canny 把变化转为 binary edge map（二值边缘图）。
+
+\lecturetopic{SC4061-L05-T01}{Dense Fourier Spectrum 与 Wavelet Localization}
+
+任意 $M\times N$ image 都可展开为 global Fourier modes：
+\[
+  f(x,y)=\frac{1}{MN}\sum_{u=0}^{M-1}\sum_{v=0}^{N-1}
+  F(u,v)e^{j2\pi(ux/M+vy/N)}.
+\]
+一个 piecewise-constant silhouette（分段常数轮廓）在 spatial domain 可能很简单，但 sharp boundary（尖锐边界）不能由少数平滑、全局支撑的 sinusoids 精确表示，因此 spectrum 往往是 dense（稠密）的。讲义 p.~32 的 ``no zeros'' 应理解为这一典型趋势，不是保证每个 coefficient 都严格非零的定理。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.95\textwidth}{!}{\input{figures/fourier-wavelet-localization}}
+  \caption{Fourier basis 是 global support（全局支撑）；localized wavelet basis 可把 coefficient 与发生位置及尺度联系起来。}
+  \label{fig:sc4061-l05-fourier-wavelet}
+\end{figure}
+
+Wavelet decomposition（小波分解）通常产生 $LL$ approximation（低频近似）以及 $LH,HL,HH$ directional details（方向细节）。它适合同时需要 spatial localization 和 multi-scale frequency information（多尺度频率信息）的 edges 与 textures；但不能据此断言 wavelet 在所有任务上都优于 Fourier。Global periodic structure（全局周期结构）与 shift-invariant convolution（平移不变卷积）仍常在 Fourier domain 更自然。
+
+\textbf{对应例题：}
+\relatedexercise{SC4061-L05-E01}{Local Edge 的 Fourier/Wavelet Representation}。
+
+\lecturetopic{SC4061-L05-T02}{U-Net、Up-sampling 与 Global Modeling}
+
+U-Net 的 encoder（编码器）通过 down-sampling 建立 large receptive field（大感受野）与 multi-scale representation；decoder（解码器）再 up-sample 为 dense output（稠密输出）。Down-sampling 是 many-to-one mapping，会丢失 high-frequency detail，因此普通 interpolation 不能真正恢复被删除的信息；learned decoder 只能依据 training prior（训练先验）估计细节。Skip connections（跳跃连接）把 encoder 中的 high-resolution features 送给 decoder，用来补回定位信息。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.92\textwidth}{!}{\input{figures/cnn-feature-pipeline}}
+  \caption{Classification CNN 与 U-Net-style dense prediction。Skip connection 缓解 down-sampling 带来的 localization loss。}
+  \label{fig:sc4061-l05-unet}
+\end{figure}
+
+课程引用 Deep Fourier Up-Sampling 说明一种思路：spatial interpolation 与 transposed convolution 主要依赖 local neighbourhood，而 Fourier coefficients 控制 global modes。由 convolution theorem，
+\[
+  g=f*h
+  \quad\Longleftrightarrow\quad
+  G(u,v)=F(u,v)H(u,v),
+\]
+frequency-domain operation 能直接建模全局依赖。不过 changing resolution（改变分辨率）不能等同于随意拉伸 spectrum；DFT grid、normalization、periodicity 与 conjugate symmetry 都必须保持一致。Fourier up-sampling 在特定 datasets 上的 PSNR/SSIM 提升是 empirical evidence（实验证据），不是对所有任务有效的普遍保证。
+
+\lecturetopic{SC4061-L05-T03}{Fourier/Wavelet into Deep Learning 的研究逻辑}
+
+本段扩展阅读的重点不是记住论文 architecture，而是理解四步 research workflow：
+\begin{enumerate}
+  \item \textbf{Intuition：}指出 local up-sampling 难以利用 global dependency；
+  \item \textbf{Result：}实现 periodic padding、area/corner interpolation 等候选方案并比较；
+  \item \textbf{Scientific explanation：}分析 resolution change 与 Fourier coefficients 的严格关系，排除偶然提升；
+  \item \textbf{Extension：}若 Fourier 缺乏 localization，引入 Haar wavelet 等同时保存低频结构与高频细节。
+\end{enumerate}
+Wavelet-based down/up-sampling 可把 approximation 与 directional details 分开处理，并在 reconstruction 时重新组合。它为 edges 和 fine structures 提供合适的 inductive bias（归纳偏置），但最终优劣仍需由任务、数据、metric 与 ablation study（消融实验）验证。
+
+\lecturetopic{SC4061-L05-T04}{Image Edges、Gradient 与 Curvature}
+
+Edge（边缘）是一串相互连接的 edgels（边缘元素），通常对应 image intensity 的快速变化。它可能来自 object/depth/material boundary，也可能来自 illumination、texture 或 noise，因此 ``detected edge'' 不必然等于真实 object boundary。
+
+沿垂直于 edge 的方向观察 smooth step profile：edge centre 附近 first derivative 的 magnitude 最大，而 second derivative 改变符号并经过 zero crossing。这里的 curvature 指 intensity profile 的二阶导数，不是边界曲线的 geometric curvature。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/edge-derivative-profiles}}
+  \caption{平滑 step edge 的 intensity、first derivative 与 second derivative。Gradient peak 和 LoG zero crossing 提供两种定位方式。}
+  \label{fig:sc4061-l05-edge-profiles}
+\end{figure}
+
+二维 gradient 为
+\[
+  \nabla f=\begin{bmatrix}G_x\\G_y\end{bmatrix},\qquad
+  M=\sqrt{G_x^2+G_y^2},\qquad
+  \alpha=\operatorname{atan2}(G_y,G_x).
+\]
+$\alpha$ 是 intensity 增长最快的 gradient direction，与 edge tangent direction（边缘切向）垂直。Edge processing 的完整流程为 edge filtering $\rightarrow$ edgel detection $\rightarrow$ edgel linking；本节只到前两步，linking 留待下一讲。
+
+\lecturetopic{SC4061-L05-T05}{Prewitt 与 Sobel Gradient Filters}
+
+讲义采用的 Sobel kernels 可写为
+\[
+  K_x=\begin{bmatrix}-1&0&1\\-2&0&2\\-1&0&1\end{bmatrix},\qquad
+  K_y=\begin{bmatrix}-1&-2&-1\\0&0&0\\1&2&1\end{bmatrix}.
+\]
+$K_x$ 计算 $x$ 方向的 intensity change，因而响应 vertical edge；$K_y$ 响应 horizontal edge。整体改变 kernel sign 只会把 gradient direction 旋转 $180^\circ$，不改变 magnitude 或 edge location。
+
+Sobel 可分解为 central difference 与正交方向的 $[1,2,1]$ smoothing，因而比单纯两像素差分稳定。常用快速幅值近似为
+\[
+  \sqrt{G_x^2+G_y^2}\approx |G_x|+|G_y|.
+\]
+它仍有 noise sensitivity、response strength 不一以及 broad/thick edge response 三个问题。
+
+\textbf{对应例题：}
+\relatedexercise{SC4061-L05-E02}{Sobel Gradient 与 Edge Direction}。
+
+\lecturetopic{SC4061-L05-T06}{Laplacian of Gaussian 与 Zero Crossing}
+
+Laplacian（二阶拉普拉斯算子）为
+\[
+  \nabla^2 f=\frac{\partial^2f}{\partial x^2}+\frac{\partial^2f}{\partial y^2}.
+\]
+直接求 second derivative 会放大 noise，因此 LoG 先以 Gaussian $G_\sigma$ smoothing，再求 Laplacian。利用 differentiation 与 convolution 的可交换性，
+\[
+  \boxed{f*(\nabla^2G_\sigma)=\nabla^2(f*G_\sigma)}.
+\]
+所以可预先构造一个 LoG kernel，一次 convolution 后从 sign change 中寻找 zero crossing。一个理想 step edge 会产生一正一负的 double-lobe response，二者之间的 zero crossing 对应 edge centre。增大 $\sigma$ 会加强 smoothing 并偏向较粗尺度的 edges，但也降低 localization precision。
+
+LoG 比裸 Laplacian 更抗噪，却不代表 ``不受噪声影响''：残余 noise 仍可能因二阶导数被放大，而且 zero-crossing map 可能产生多余轮廓。
+
+\textbf{对应例题：}
+\relatedexercise{SC4061-L05-E03}{LoG 的 Smoothing 与 Zero Crossing}。
+
+\lecturetopic{SC4061-L05-T07}{Canny Edge Detector}
+
+Canny 重新采用 first-derivative route，并逐项处理 Sobel 的三个问题：
+\begin{enumerate}
+  \item \textbf{Derivative of Gaussian (DoG)：}以 $\partial G_\sigma/\partial x$、$\partial G_\sigma/\partial y$ 得到 $G_x,G_y$，把 smoothing 与 differentiation 合并；
+  \item \textbf{Non-maximum suppression (NMS)：}沿 gradient direction 比较 $M(x,y)$，仅保留 local maximum，把宽 ridge 压成近似 single-pixel-wide path；
+  \item \textbf{Hysteresis thresholding：}使用 $t_L<t_H$。$M\ge t_H$ 为 strong edge，$M<t_L$ 删除；中间的 weak edge 仅在与 strong edge 连通时保留。
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/canny-pipeline}}
+  \caption{Canny pipeline：DoG 抑制噪声，NMS 处理厚度，双阈值 hysteresis 处理强度变化。}
+  \label{fig:sc4061-l05-canny}
+\end{figure}
+
+NMS 必须沿 gradient direction 扫描，因为该方向横穿 edge；edge 延伸方向与之垂直。Hysteresis 的 connectivity 可沿 weak-edge chain 传播，只要整条链最终 anchored to a strong edge。实际使用至少需要选择 Gaussian scale/kernel support 以及 $t_L,t_H$；更强 smoothing 可减少 noise，却可能合并近邻 edges 或损失精确位置。
+
+Canny 能检测任意 orientation，包括 $30^\circ$ edge，因为 $G_x,G_y$ 合成连续方向的 gradient vector，而不是只保留水平/竖直二选一。输出仍可能有 broken edges 或不完整的 global shape；这些问题将由下一讲 edge linking 与 Hough transform 处理。
+
+\textbf{对应例题：}
+\relatedexercise{SC4061-L05-E04}{Hysteresis Thresholding 的 Strong/Weak Edges}。
+
+\subsection{一分钟回顾}
+
+Fourier representation 是 global 的，局部 sharp edge 可能产生 dense spectrum；wavelet 以 localized multi-scale basis 补充位置信息。U-Net 的 down/up-sampling 存在信息丢失，skip connection 与 frequency/wavelet modules 分别提供定位和全局/多尺度建模。Edge 可由 first-derivative peak 或 second-derivative zero crossing 描述；Sobel 简单但会产生噪声、强度和厚度问题。LoG 在 smoothing 后检测 zero crossing；Canny 依次用 DoG、NMS 与 hysteresis 得到细而连贯的 binary edge map。
