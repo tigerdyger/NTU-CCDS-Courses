@@ -1,0 +1,102 @@
+% Lecture example set: SC2008-L05
+% Sources: M1-L9 pp. 14, 36, 38; checked discussion on 2026-09-08
+% Human verified: Yes
+
+\exercisemeta
+  {SC2008-L05-EX}
+  {2026-09-08}
+  {M1-L9 pp.~14、36、38；课堂后的独立检验题}
+  {讲义例题与独立检验题均已完成并核对}
+  {已确认（2026-09-08）}
+
+\exercisequestion{SC2008-L05-E01}{讲义例题：Circuit Capacity 与 Transmission Delay}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L05-T01}{Circuit Switching}；\\
+\relatedtopic{SC2008-L05-T05}{Circuit 与 Packet Delay 的比较}
+
+\subsubsection*{题目}
+
+\begin{enumerate}[label=(\alph*)]
+  \item 一条 $10\ \mathrm{Gb/s}$ circuit-switched trunk 中，每条 call 固定占用 $64\ \mathrm{kb/s}$。忽略 control overhead，最多可同时支持多少 calls？
+  \item 一条已建立的 circuit 经过 3 hops，data size 为 $1000$ bits，data rate 为 $10\ \mathrm{kb/s}$。求 transmission delay；另说明完整 end-to-end delay 还缺少哪些项。
+\end{enumerate}
+
+\begin{checkedsolution}
+\begin{enumerate}[label=(\alph*)]
+  \item 使用 decimal rates：
+  \[
+    N_{\max}=\frac{10\times10^9}{64\times10^3}
+    =\boxed{156250\ \text{calls}}.
+  \]
+  \item Circuit 建立后各 links 连续工作，transmission term 不乘 hop count：
+  \[
+    d_{\mathrm{trans}}=\frac{1000}{10\times10^3}
+    =\boxed{0.1\ \mathrm{s}=100\ \mathrm{ms}}.
+  \]
+  完整 delay 还应加入 circuit setup delay 与三条 links 的 propagation delays。
+\end{enumerate}
+\end{checkedsolution}
+
+\textbf{检查点：}只有在题目明确按 circuit 的 continuous transmission model 计算时，transmission term 才是 $M/R$；不要机械地乘 $H$。
+
+\exercisequestion{SC2008-L05-E02}{讲义例题：Pipeline Transmission Delay}
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L05-T04}{Store-and-Forward Pipeline 与 Packetization}
+
+\subsubsection*{题目}
+
+四个等长 packets 经过 3 hops。各 link rate 相同，每个 packet 的 transmission delay 为 $T_{\mathrm{frame}}$；忽略 propagation、processing 与 queuing delay。求全部 packets 到达 destination 的 transmission delay。
+
+\begin{checkedsolution}
+第一个 packet 经过 3 hops 需要 $3T_{\mathrm{frame}}$；pipeline 填满后，余下三个 packets 每隔 $T_{\mathrm{frame}}$ 到达：
+\[
+  D=3T_{\mathrm{frame}}+(4-1)T_{\mathrm{frame}}
+   =\boxed{6T_{\mathrm{frame}}}.
+\]
+等价地，$D=(N+H-1)T_{\mathrm{frame}}=(4+3-1)T_{\mathrm{frame}}$。
+\end{checkedsolution}
+
+\textbf{检查点：}$3$ hops 对应 $4$ nodes；pipeline 允许不同 links 同时发送不同 packets，不能计算成 $NH T_{\mathrm{frame}}$。
+
+\clearpage
+\exercisequestion{SC2008-L05-E03}{独立检验例：Header Overhead 与 Pipeline}
+
+\textbf{题目类型：}self-contained check example（自编独立检验题）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC2008-L05-T04}{Store-and-Forward Pipeline 与 Packetization}
+
+\subsubsection*{题目}
+
+一个 $12000$-bit message 经过 4 hops，每条 link rate 为 $2\ \mathrm{Mb/s}$。它被均分为 3 个 packets，每个 packet 另有 $200$-bit header。忽略 propagation、processing 与 queuing delay。
+\begin{enumerate}[label=(\alph*)]
+  \item 求每个 packet 的总长度；
+  \item 求使用 pipeline 后全部 packets 到达 destination 的时间；
+  \item 若不分割，整个 message 作为一个带 $200$-bit header 的 packet 发送，求对应时间并比较。
+\end{enumerate}
+
+\begin{checkedsolution}
+\begin{enumerate}[label=(\alph*)]
+  \item
+  \[
+    L=\frac{12000}{3}+200=\boxed{4200\ \mathrm{bits}}.
+  \]
+  \item $N=3$、$H=4$，因此
+  \[
+    D_{\mathrm{split}}
+    =(3+4-1)\frac{4200}{2\times10^6}
+    =\boxed{0.0126\ \mathrm{s}=12.6\ \mathrm{ms}}.
+  \]
+  \item 不分割时 $N=1$、$L=12200$ bits：
+  \[
+    D_{\mathrm{unsplit}}
+    =4\frac{12200}{2\times10^6}
+    =\boxed{0.0244\ \mathrm{s}=24.4\ \mathrm{ms}}.
+  \]
+  此例中 packetization 虽增加了总 header bits，却因 pipeline overlap 把简化 transmission delay 从 $24.4$ ms 降为 $12.6$ ms。
+\end{enumerate}
+\end{checkedsolution}
+
+\textbf{检查点：}先计算每个 packet 的 payload 与 header，再代入 $(N+H-1)L/R$；不要把原 message size 直接当成每个 packet 的 $L$。

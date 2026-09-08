@@ -1,0 +1,26 @@
+\begin{tikzpicture}[x=1.45cm,y=0.72cm,font=\scriptsize]
+  \foreach \x/\name in {0/{hop 1},1/{hop 2},2/{hop 3}} {
+    \node[font=\small\bfseries] at (\x+0.5,0.55) {\name};
+  }
+  \draw[->] (-0.35,0.15)--(-0.35,-6.25) node[below] {time};
+
+  \foreach \t in {0,...,6} {
+    \draw[gray!30] (0,-\t)--(3,-\t);
+  }
+  \foreach \x in {0,...,3} {
+    \draw[gray!30] (\x,0)--(\x,-6);
+  }
+
+  \foreach \p/\c in {1/blue!25,2/green!25,3/orange!35,4/purple!25} {
+    \pgfmathtruncatemacro{\start}{\p-1}
+    \foreach \h in {0,1,2} {
+      \pgfmathtruncatemacro{\slot}{\start+\h}
+      \draw[fill=\c,draw=noteBlue]
+        (\h,-\slot) rectangle ++(1,-1)
+        node[pos=.5,font=\bfseries] {$P_{\p}$};
+    }
+  }
+
+  \draw[<->] (3.15,0)--(3.15,-6)
+    node[midway,right=5pt,align=left] {$N+H-1=6$\\time slots};
+\end{tikzpicture}

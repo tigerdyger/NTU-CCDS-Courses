@@ -1,0 +1,37 @@
+\begin{tikzpicture}[
+  >=Latex,
+  node distance=1.55cm,
+  endpoint/.style={circle,draw,minimum size=6mm,inner sep=0pt,font=\scriptsize},
+  router/.style={rectangle,rounded corners,draw,minimum width=7mm,minimum height=6mm,font=\scriptsize},
+  note/.style={font=\scriptsize,align=left}
+]
+  \node[endpoint] (cs) at (0,0) {S};
+  \node[router] (ca) at (2,0) {$R_1$};
+  \node[router] (cb) at (4,0) {$R_2$};
+  \node[endpoint] (cd) at (6,0) {D};
+  \node[anchor=east,font=\small\bfseries] at (-0.55,0) {Circuit switching};
+
+  \node[endpoint] (vs) at (0,-1.6) {S};
+  \node[router] (va) at (2,-1.6) {$R_1$};
+  \node[router] (vb) at (4,-1.6) {$R_2$};
+  \node[endpoint] (vd) at (6,-1.6) {D};
+  \node[anchor=east,font=\small\bfseries] at (-0.55,-1.6) {Virtual circuit};
+
+  \node[endpoint] (ds) at (0,-3.2) {S};
+  \node[router] (da) at (2,-3.2) {$R_1$};
+  \node[router] (db) at (4,-3.2) {$R_2$};
+  \node[endpoint] (dd) at (6,-3.2) {D};
+  \node[anchor=east,font=\small\bfseries] at (-0.55,-3.2) {Datagram};
+
+  \draw[ntuRed,very thick] (cs)--(ca)--(cb)--(cd);
+  \node[note,anchor=west] at (6.55,0) {fixed path\\reserved resources};
+
+  \draw[noteBlue,very thick] (vs)--(va)--(vb)--(vd);
+  \node[note,anchor=west] at (6.55,-1.6) {fixed logical path\\shared resources};
+
+  \coordinate (u) at (3,-2.55);
+  \coordinate (l) at (3,-3.85);
+  \draw[blue!70,thick,->] (ds)--(da)--(u)--(db)--(dd);
+  \draw[green!55!black,thick,->] (ds)--(da)--(l)--(db)--(dd);
+  \node[note,anchor=west] at (6.55,-3.2) {independent routing\\shared resources};
+\end{tikzpicture}

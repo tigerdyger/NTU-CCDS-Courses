@@ -1,0 +1,150 @@
+% Actual class: 05
+% Slide deck: M1-L9 Network Paradigms (2026)
+% Exact scope: pp. 1--40; substantive content pp. 5--39
+% NTULearn supplement: classroom recording transcript, used only to verify full coverage and emphasis
+% Human verified: Yes
+
+\section{第 05 节课：Network Paradigms}
+\label{lecture:SC2008-L05}
+
+\lecturemeta
+  {SC2008-L05}
+  {2026-09-08}
+  {M1-L9 Network Paradigms (2026)}
+  {pp.~1--40；核心内容 pp.~5--39}
+  {课堂录像字幕（用于确认完整覆盖及讲解重点；原文未入库）}
+  {已确认（2026-09-08）}
+
+\subsection{本讲主线}
+
+Network paradigm（网络范式）的核心选择是：一次 communication（通信）应当预留 end-to-end resources（端到端资源），还是把 links（链路）交给多个 users 动态共享。Circuit switching（电路交换）选择固定路径与专用资源；packet switching（分组交换）选择 statistical multiplexing（统计复用），再分为 datagram（数据报）和 virtual circuit（虚电路）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/network-paradigms-paths}}
+  \caption{三种 network paradigms 的判断轴：path 是否固定，以及 resources 是否预留。}
+  \label{fig:sc2008-l05-paradigms}
+\end{figure}
+
+\lecturetopic{SC2008-L05-T01}{Circuit Switching：先预留，再传输}
+
+一次 circuit-switched communication 包含三个 phases：
+\begin{enumerate}[label=(\arabic*)]
+  \item circuit establishment：选择 end-to-end path，并在沿途 links 上预留 bandwidth；
+  \item ordered data transfer：沿固定路径连续、有序传输；
+  \item circuit disconnection：通信结束后释放资源。
+\end{enumerate}
+
+建立成功后，dedicated resources（专用资源）使 performance 较可预测，通常没有由其他 traffic 引起的 queuing delay；代价是 setup delay、连接可能因资源不足而被 blocked，以及 idle periods 仍占用 capacity。因此它适合持续且速率稳定的 traffic，却不适合 Internet 中大量 intermittent bursty traffic（间歇突发流量）。
+
+若 trunk capacity 为 $C$、每条 connection 固定占用 $r$，理想化最大连接数为
+\[
+  \boxed{N_{\max}=\left\lfloor\frac{C}{r}\right\rfloor}.
+\]
+\textbf{对应例题：}\relatedexercise{SC2008-L05-E01}{讲义例题：Circuit Capacity 与 Transmission Delay}。
+
+\lecturetopic{SC2008-L05-T02}{Packet Switching、Datagram 与 Virtual Circuit}
+
+Packet switching 把 message 切成 packets；每个 packet 由 payload 与 header/control information 组成。Links 不为某一 connection 独占，而由活跃 flows 动态共享。其优点是 resource utilization 高、无需为 bursty traffic 长期预留 capacity；代价是 per-packet overhead、variable queuing delay、packet loss 与可能的乱序。
+
+两类 packet-switched networks 都采用 store-and-forward（存储转发）：intermediate node 必须先收完一个 packet，才开始向下一 hop 发送。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}XX@{}}
+  \toprule
+  Property & Datagram network & Virtual-circuit network \\
+  \midrule
+  Setup & 无 connection setup；packet 独立路由 & 先建立 logical path 与 forwarding state \\
+  Packet identifier & 通常携带 destination address & 携带较短的 VCI \\
+  Route / order & 可走不同 paths，可能乱序 & 走同一 logical path，通常有序 \\
+  Resources & 共享 & 共享；默认不等于预留 bandwidth \\
+  Failure response & 可绕开 failure 重新选路 & 原 VC 可能失效，需要重新建立 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{判断标准：}virtual circuit 固定的是 logical path 与 forwarding state；circuit switching 还进一步预留 dedicated resources。名称中都有 ``circuit''，不代表二者资源模型相同。Internet Protocol 的 network layer 采用 datagram model；重排所需的 sequence information 也可能由 TCP 等 upper-layer protocol 提供，并非所有 network-layer datagrams 自带通用 sequence number。
+
+\lecturetopic{SC2008-L05-T03}{Nodal Delay 的四个分量}
+
+一个 packet 在每个 node/link 处的 delay 可分解为
+\[
+  \boxed{d_{\mathrm{nodal}}
+  =d_{\mathrm{proc}}+d_{\mathrm{queue}}
+  +d_{\mathrm{trans}}+d_{\mathrm{prop}}}.
+\]
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}X>{\raggedright\arraybackslash}p{3.3cm}@{}}
+  \toprule
+  Component & Meaning & Main dependence \\
+  \midrule
+  processing delay & 检查 header、error 与选择 output link & node implementation \\
+  queuing delay & 在 output queue 中等待；buffer 满时可能丢包 & instantaneous traffic load \\
+  transmission delay & 把 $L$ bits 推入 rate-$R$ link & $d_{\mathrm{trans}}=L/R$ \\
+  propagation delay & signal 在 length-$d$ medium 中传播 & $d_{\mathrm{prop}}=d/v$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Transmission delay 取决于 packet length 与 link rate；propagation delay 取决于 physical distance 与 propagation speed。前者是 ``把全部 bits 送上链路'' 的时间，后者是 signal 已进入链路后抵达远端的时间，二者不能混用。
+
+\lecturetopic{SC2008-L05-T04}{Store-and-Forward Pipeline 与 Packetization}
+
+设 $N$ 个等长 packets 通过 $H$ hops，每个 packet（含 header）长 $L$ bits，各 link rate 均为 $R$。忽略 processing、queuing 与 propagation delay 时，第一个 packet 到达需 $H(L/R)$；pipeline 填满后，其余 $N-1$ 个 packets 每隔 $L/R$ 到达，因此
+\[
+  \boxed{D_{\mathrm{packet,tx}}=(N+H-1)\frac{L}{R}}.
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.73\textwidth}{!}{\input{figures/packet-switching-pipeline}}
+  \caption{$N=4$、$H=3$ 时的 pipeline：总 transmission time 为 $6T_{\mathrm{frame}}$，而非 $12T_{\mathrm{frame}}$。}
+  \label{fig:sc2008-l05-pipeline}
+\end{figure}
+
+若每 hop propagation delay 为 $d_{\mathrm{prop}}$，且其他两项仍忽略，则
+\[
+  D_{\mathrm{packet}}=(N+H-1)\frac{L}{R}+H d_{\mathrm{prop}}.
+\]
+实际 queuing delay 随 congestion 变化，不能仅靠一个固定项概括。
+
+\textbf{补充推导。}若总 payload 为 $M$ bits，分成 $N$ 个 packets，每个 header 为 $h$ bits，则 $L=M/N+h$，理想化 transmission term 为
+\[
+  D(N)=\frac{(N+H-1)(M/N+h)}{R}.
+\]
+较大的 $N$ 提高 pipeline overlap，却增加 header overhead。在仅考虑这两项、把 $N$ 暂视为连续变量的模型中，
+\[
+  \frac{\mathrm d}{\mathrm dN}\bigl[(N+H-1)(M/N+h)\bigr]
+  =-\frac{M(H-1)}{N^2}+h,
+\]
+故
+\[
+  \boxed{N^*=\sqrt{\frac{M(H-1)}{h}}}.
+\]
+真实 optimum 还受 integer packet count、MTU、processing、queueing 与 error rate 限制；该式只解释 trade-off，不是通用配置公式。
+
+\textbf{对应例题：}\relatedexercise{SC2008-L05-E02}{讲义例题：Pipeline Transmission Delay}；\relatedexercise{SC2008-L05-E03}{独立检验例：Header Overhead 与 Pipeline}。
+
+\lecturetopic{SC2008-L05-T05}{Circuit 与 Packet Delay 的比较}
+
+Circuit 建立后传输 continuous bit stream，不要求中间 node 收完整个 message 再转发。课程的简化模型给出
+\[
+  \boxed{D_{\mathrm{circuit}}
+  =d_{\mathrm{setup}}+\frac{M}{R}
+  +\sum_{i=1}^{H}d_{\mathrm{prop},i}}.
+\]
+这里 transmission term 是 $M/R$，不是 $HM/R$：各 links 在 circuit 建立后可以同时承载连续 bit stream。若 links 的 rates 不同，持续 end-to-end rate 受 bottleneck link 限制，$R_{\mathrm{end-to-end}}=\min_i R_i$。
+
+Packet switching 没有 circuit setup，却引入 store-and-forward、headers、queuing 和 loss。因而不能脱离 message size、traffic load、hop count 与 setup duration，笼统断言某一种 paradigm 一定更快。
+
+\subsection{一分钟回顾}
+
+\begin{itemize}
+  \item Circuit switching：fixed path + reserved resources；稳定但可能浪费 capacity。
+  \item Virtual circuit：fixed logical path + shared resources；不能与 circuit switching 混同。
+  \item Datagram：independent routing + shared resources；灵活但可能乱序。
+  \item Packet delay 要区分 processing、queuing、transmission 与 propagation；store-and-forward pipeline 的简化 transmission delay 为 $(N+H-1)L/R$。
+  \item Packetization 在 pipeline gain 与 header overhead 之间取舍；所有公式都必须先检查题目忽略了哪些 delay。
+\end{itemize}
