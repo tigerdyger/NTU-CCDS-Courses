@@ -1,0 +1,39 @@
+\begin{tikzpicture}[x=1.05cm,y=1.0cm,font=\scriptsize]
+  \tikzset{
+    axis/.style={->,semithick,gray!75!black},
+    lowpass/.style={very thick,noteBlue},
+    highpass/.style={very thick,ntuRed},
+    guide/.style={dashed,gray!55}
+  }
+
+  \begin{scope}[shift={(0,0)}]
+    \node[font=\small\bfseries] at (3.3,3.65) {Q1: $H(\omega,0)=(3+2\cos\omega)/5$};
+    \draw[axis] (0,0) -- (6.65,0) node[right] {$\omega$};
+    \draw[axis] (3.3,0) -- (3.3,3.15) node[above] {$H$};
+    \draw[guide] (0.25,2.75) -- (6.35,2.75);
+    \draw[guide] (0.25,0.99) -- (6.35,0.99);
+    \draw[lowpass,smooth,samples=100,domain=-3.14159:3.14159]
+      plot ({3.3+0.97*\x},{0.55+2.2*(3+2*cos(\x r))/5});
+    \node[left] at (3.3,2.75) {$1$};
+    \node[left] at (3.3,0.99) {$1/5$};
+    \node[below] at (0.25,0) {$-\pi$};
+    \node[below] at (3.3,0) {$0$};
+    \node[below] at (6.35,0) {$\pi$};
+    \node[align=center,noteBlue] at (3.3,-0.7) {DC passed; high frequencies attenuated};
+  \end{scope}
+
+  \begin{scope}[shift={(8.0,0)}]
+    \node[font=\small\bfseries] at (3.3,3.65) {Q3: $|H(\omega)|=4\sin^2(\omega/2)$};
+    \draw[axis] (0,0) -- (6.65,0) node[right] {$\omega$};
+    \draw[axis] (3.3,0) -- (3.3,3.15) node[above] {$|H|$};
+    \draw[guide] (0.25,2.75) -- (6.35,2.75);
+    \draw[highpass,smooth,samples=100,domain=-3.14159:3.14159]
+      plot ({3.3+0.97*\x},{0.55+0.55*4*(sin(\x/2 r))^2});
+    \node[left] at (3.3,2.75) {$4$};
+    \node[left] at (3.3,0.55) {$0$};
+    \node[below] at (0.25,0) {$-\pi$};
+    \node[below] at (3.3,0) {$0$};
+    \node[below] at (6.35,0) {$\pi$};
+    \node[align=center,ntuRed] at (3.3,-0.7) {DC rejected; Nyquist frequencies strongest};
+  \end{scope}
+\end{tikzpicture}

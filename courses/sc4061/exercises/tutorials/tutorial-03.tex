@@ -1,0 +1,181 @@
+% Tutorial set: 03
+% Source: T3.pdf, Tutorial 3 (Image Enhancement in the Frequency Domain), Questions 1--3
+% Reference: T3_Reference solutions.pptx, used only for answer checking
+% Session date: 2026-09-08
+% Human verified: Yes
+
+\clearpage
+\subsection{Tutorial 03：Frequency-domain Image Enhancement}
+\label{tutorial:SC4061-TUT03}
+
+\exercisemeta
+  {SC4061-TUT03}
+  {2026-09-08}
+  {T3.pdf，Questions 1--3；T3\_Reference solutions.pptx 仅用于核对}
+  {三题均已完成推导、讨论并订正}
+  {已确认（2026-09-08）}
+
+\exercisequestion{SC4061-TUT03-Q01}{Spatial Mask、Frequency Response 与 Separability}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L04-T03}{FFT 与 Convolution Theorem}；
+\relatedtopic{SC4061-L04-T05}{Low-pass、High-pass 与 Notch Filtering}
+
+\subsubsection*{题目}
+
+给定 spatial convolution mask（空间卷积核）
+\[
+  h(x,y)=\frac15
+  \begin{bmatrix}
+    0&1&0\\
+    1&1&1\\
+    0&1&0
+  \end{bmatrix}.
+\]
+（a）利用 translation property（平移性质）推导其 frequency response（频率响应），并解释其 low-pass property（低通性质）。（b）若 $f(x,y)=f_1(x)f_2(y)$，证明二维 Fourier transform 可分离，并说明该性质对 convolution 的意义。
+
+\begin{checkedsolution}
+将 mask 写成 shifted impulses（移位冲激）之和：
+\[
+  h(x,y)=\frac15\bigl[
+  \delta(x,y)+\delta(x-1,y)+\delta(x+1,y)
+  +\delta(x,y-1)+\delta(x,y+1)\bigr].
+\]
+由
+\[
+  f(x-x_0,y-y_0)
+  \Longleftrightarrow
+  F(u,v)e^{-j2\pi(ux_0/M+vy_0/N)},
+\]
+得到
+\begin{align*}
+  H(u,v)
+  &=\frac15\left(1+e^{-j2\pi u/M}+e^{j2\pi u/M}
+  +e^{-j2\pi v/N}+e^{j2\pi v/N}\right)\\
+  &=\boxed{\frac15\left(1+2\cos\frac{2\pi u}{M}
+  +2\cos\frac{2\pi v}{N}\right)}.
+\end{align*}
+特别地，$H(0,0)=1$，所以 DC component（直流分量）完整保留。该 mask 对中心及四邻域求平均；slow variation（缓慢变化）的各项近似同相，而 rapid oscillation（快速振荡）会在求和中相消，因此总体属于 low-pass filter。它并非 ideal、radially monotone low-pass：例如 $H(M/2,N/2)=-3/5$，仍存在 side lobes（旁瓣）与 phase reversal（相位反转）。
+
+对 separable signal（可分离信号），
+\begin{align*}
+F(u,v)
+&=\sum_{y=0}^{N-1}\sum_{x=0}^{M-1}
+f_1(x)f_2(y)e^{-j2\pi ux/M}e^{-j2\pi vy/N}\\
+&=\left(\sum_{x=0}^{M-1}f_1(x)e^{-j2\pi ux/M}\right)
+\left(\sum_{y=0}^{N-1}f_2(y)e^{-j2\pi vy/N}\right)\\
+&=\boxed{F_1(u)F_2(v)}.
+\end{align*}
+若 filter 也满足 $h(x,y)=h_1(x)h_2(y)$，二维 convolution 可依次执行两个 one-dimensional convolutions（一维卷积）。对 $K\times K$ kernel，每个 pixel 的主要乘法量由约 $K^2$ 降为 $2K$。
+\end{checkedsolution}
+
+\textbf{检查点：}``averaging mask'' 足以说明总体 smoothing tendency（平滑倾向），但不意味着 $|H(u,v)|$ 沿任意径向都严格单调。
+
+\exercisequestion{SC4061-TUT03-Q02}{Gaussian Fourier Transform 与 Domain Scaling}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L04-T02}{DFT、IDFT 与 Spectrum}；
+\relatedtopic{SC4061-L04-T05}{Low-pass、High-pass 与 Notch Filtering}
+
+\subsubsection*{题目}
+
+在
+\[
+  e^{-\pi x^2}\Longleftrightarrow e^{-\pi u^2},
+  \qquad
+  f(ax)\Longleftrightarrow \frac1{|a|}F\!\left(\frac ua\right)
+\]
+的 convention 下，证明 standard deviation（标准差）为 $\sigma$ 的 unit-amplitude Gaussian（单位峰值高斯函数）仍变换为 Gaussian，并求其 frequency-domain amplitude 与 standard deviation。
+
+\begin{checkedsolution}
+令 $\sigma>0$，将空间域函数配成已知形式：
+\[
+  e^{-x^2/(2\sigma^2)}=e^{-\pi(ax)^2},
+  \qquad
+  \pi a^2=\frac1{2\sigma^2},
+  \qquad
+  a=\frac1{\sqrt{2\pi}\,\sigma}.
+\]
+使用 scaling theorem：
+\begin{align*}
+  e^{-x^2/(2\sigma^2)}
+  &\Longleftrightarrow
+  \frac1a e^{-\pi(u/a)^2}\\
+  &=\sqrt{2\pi}\,\sigma\,
+  e^{-2\pi^2\sigma^2u^2}\\
+  &=\boxed{\sqrt{2\pi}\,\sigma
+  \exp\!\left(-\frac{u^2}{2\alpha^2}\right)},
+  \qquad
+  \boxed{\alpha=\frac1{2\pi\sigma}}.
+\end{align*}
+前面的 coefficient（系数）给出 frequency-domain amplitude；指数中的 $\alpha$ 给出 width（宽度），两者作用不同。还可用
+\[
+  F(0)=\int_{-\infty}^{\infty}e^{-x^2/(2\sigma^2)}\,dx
+  =\sqrt{2\pi}\,\sigma
+\]
+检查 amplitude。空间域越宽，频域越窄，并满足
+\[
+  \boxed{\sigma\alpha=\frac1{2\pi}}.
+\]
+该常数依赖这里采用的 $e^{-j2\pi ux}$ Fourier convention；更换 convention 会移动 $2\pi$。
+\end{checkedsolution}
+
+\textbf{检查点：}本题空间域 Gaussian 没有除以 $\sqrt{2\pi}\sigma$，所以它的面积和 $F(0)$ 都随 $\sigma$ 增大；不能只改指数而漏掉 scaling coefficient。
+
+\exercisequestion{SC4061-TUT03-Q03}{Second Difference 的 Directional High-pass Response}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L04-T05}{Low-pass、High-pass 与 Notch Filtering}；
+\relatedtopic{SC4061-L05-T04}{Image Edges、Gradient 与 Curvature}
+
+\subsubsection*{题目}
+
+设
+\[
+  g(x,y)=f(x+1,y)+f(x-1,y)-2f(x,y).
+\]
+推导 $G(u,v)$ 与 $F(u,v)$ 的关系，判断 filter type（滤波器类型），并说明其方向性。
+
+\begin{checkedsolution}
+两次 spatial shift 分别产生相反的 phase factor：
+\begin{align*}
+  G(u,v)
+  &=\left(e^{j2\pi u/M}+e^{-j2\pi u/M}-2\right)F(u,v)\\
+  &=\left(2\cos\frac{2\pi u}{M}-2\right)F(u,v)\\
+  &=\boxed{-4\sin^2\!\left(\frac{\pi u}{M}\right)F(u,v)}.
+\end{align*}
+因此 transfer function（传递函数）为
+\[
+  H(u,v)=-4\sin^2\!\left(\frac{\pi u}{M}\right),
+  \qquad
+  |H(u,v)|=4\sin^2\!\left(\frac{\pi u}{M}\right).
+\]
+$H(0,v)=0$，而 $|H(M/2,v)|=4$；它消除沿 $x$ 不变的成分并增强沿 $x$ 的快速变化，所以是 directional high-pass filter（方向性高通滤波器）。负号改变 response sign/phase，不改变 pass type。
+
+原始 DFT array 中 $u=0,1,\ldots,M-1$ 的后半段代表 negative frequencies（负频率）：
+\[
+  \widetilde u=
+  \begin{cases}
+    u,&0\le u\le M/2,\\
+    u-M,&M/2<u<M.
+  \end{cases}
+\]
+例如 $u=M-1$ 实际是低频 $-1$，而不是更高的正频率。因此响应从 $u=M/2$ 向 $u=M$ 降低，是 frequency wrapping（频率回绕）后的对称部分；在 centred frequency axis 上，$|H|$ 随 $|\widetilde u|$ 增大，在 Nyquist frequency 处最大。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/tutorial-03-frequency-responses}}
+  \caption{Q1 与 Q3 的一维 frequency-response cross-sections（频率响应截面）。横轴使用 centred angular frequency，避免把 raw DFT index 的回绕误认为更高频率。}
+  \label{fig:sc4061-tut03-frequency-responses}
+\end{figure}
+
+$g$ 是沿 $x$ 的 exact central second difference（精确中心二阶差分）；当 sampling interval 为 $1$ 且 $f$ 足够平滑时，才近似 $\partial^2f/\partial x^2$，不能直接写成严格相等。
+
+方向名称依赖 coordinate convention（坐标约定）：该算子始终检测 intensity 沿 $x$ 变化的边界，edge tangent 与 $x$ 方向垂直。按本课程常用的 image-matrix convention（$x$ 为 row、从上到下），它响应 horizontal edges（水平边缘）；若采用 Cartesian convention（$x$ 从左到右），同一算子则响应 vertical edges（竖直边缘）。
+\end{checkedsolution}
+
+\textbf{检查点：}判断 DFT filter type 时看 centred signed frequency（中心化带符号频率）上的 $|H|$，不能把 raw index $u$ 的数值大小直接当作频率高低。
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1 将 local averaging mask 转为 frequency response，并利用 separability 把二维运算拆成两个一维运算；Q2 展示 Gaussian 在 Fourier transform 下保持 Gaussian 形状，但 amplitude 与 width 按 scaling theorem 同时变化；Q3 把 central second difference 写成 directional high-pass response。复习时优先掌握：shift 对应 phase factor、$G=HF$、空间域与频域 Gaussian 宽度成反比，以及 raw DFT indices 的后半段代表 negative frequencies。
