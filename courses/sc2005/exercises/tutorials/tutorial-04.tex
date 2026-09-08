@@ -1,0 +1,159 @@
+% Tutorial set: 04
+% Source: Tutorial Four, p. 4-1 (PDF p. 1), Questions 1--3
+% Session date: 2026-09-08
+% Human verified: Yes
+
+\clearpage
+\subsection{Tutorial 04：Process Synchronization Part I}
+\label{tutorial:SC2005-TUT04}
+
+\exercisemeta
+  {SC2005-TUT04}
+  {2026-09-08}
+  {Tutorial Four，p.~4-1（PDF p.~1），Questions 1--3}
+  {全部题目已作答并完成订正}
+  {已确认（2026-09-08）}
+
+\exercisequestion{SC2005-TUT04-Q01}{非对称 User-Level Protocol 的性质分析}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L07-T04}{Critical-Section Problem 与三个正确性性质}；
+\relatedtopic{SC2005-L08-T01}{Algorithm 1：Strict Alternation}；
+\relatedtopic{SC2005-L08-T02}{Algorithm 2：Interest Flags}
+
+\subsubsection*{题目}
+
+共享变量初始为 $\texttt{flag=false}$、$\texttt{turn=0}$。判断下面协议是否满足 mutual exclusion（互斥）、progress（推进性）与 bounded waiting（有限等待），并给出理由。题面中的 ``three requirements in part (a)'' 应理解为上述三个标准；本页并不存在单独的 part (a)。
+
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}XX@{}}
+  \toprule
+  Process $P_0$ & Process $P_1$ \\
+  \midrule
+  \texttt{while (1) \{} & \texttt{while (1) \{} \\
+  \quad\texttt{flag = true;} & \quad\texttt{turn = 0;} \\
+  \quad\texttt{while (turn == 1);} & \quad\texttt{while (flag \&\& turn == 0);} \\
+  \quad\texttt{critical-section} & \quad\texttt{critical-section} \\
+  \quad\texttt{turn = 1;} & \quad\texttt{flag = false;} \\
+  \quad\texttt{remainder-section} & \quad\texttt{remainder-section} \\
+  \texttt{\}} & \texttt{\}} \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+  \toprule
+  Property & Mutual exclusion & Progress & Bounded waiting \\
+  \midrule
+  Result & 不满足 & 不满足 & 满足（课程口径） \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Mutual exclusion 反例：}
+\begin{enumerate}[leftmargin=2.2em]
+  \item 初始 $\texttt{flag=false}$、$\texttt{turn=0}$；$P_1$ 先执行 \texttt{turn=0}。
+  \item $P_1$ 检查 $\texttt{flag \&\& (turn==0)}=\texttt{false}$，通过 entry section 并进入 critical section。
+  \item 在 $P_1$ 尚未退出时，$P_0$ 执行 \texttt{flag=true}；由于 $\texttt{turn==1}$ 为 false，$P_0$ 也进入 critical section。
+\end{enumerate}
+两个 processes 可同时位于 critical section，因此 mutual exclusion 不成立。\texttt{while(condition);} 只在 condition 为 true 时空转；已经通过检查的 process 不会因共享变量后来改变而自动返回检查。
+
+\textbf{Progress 反例：}若 $P_0$ 完成一次 critical section，留下 $\texttt{flag=true}$、$\texttt{turn=1}$，随后只有 $P_0$ 再次请求，而 $P_1$ 留在 remainder section，则 $P_0$ 永久停在 \texttt{while(turn==1)}。临界区为空却必须依赖不参与竞争的 $P_1$ 写入 \texttt{turn=0}，故违反 progress。
+
+\textbf{Bounded waiting：}按本课程的 overtake count（超越次数）定义，一个 process 开始等待后，另一 process 不能无限次抢先进入。$P_0$ 等待时，$P_1$ 的下一次请求会写 \texttt{turn=0}，使 $P_1$ 自己等待并放行 $P_0$；$P_1$ 等待时，$P_0$ 至多先进入一次，退出时写 \texttt{turn=1}。因此存在有限上界。该结论不能弥补 progress failure；三个性质必须分别检验。
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+Correctness properties（正确性性质）描述整套 protocol，不分别给 $P_0$、$P_1$ 各判一组。证明“不满足”只需构造一个合法 interleaving；证明“满足”则必须覆盖所有合法 interleavings。
+
+\exercisequestion{SC2005-TUT04-Q02}{Disabling Interrupts 与性质之间的蕴含关系}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L07-T04}{Critical-Section Problem 与三个正确性性质}；
+\relatedtopic{SC2005-L08-T04}{Synchronization Hardware 与 TestAndSet}；
+\relatedtopic{SC2005-L08-T05}{TestAndSet 的性质与 Starvation}
+
+\subsubsection*{题目}
+
+判断下列陈述是 True 还是 False，并说明理由。
+
+\begin{enumerate}[label=(\alph*)]
+  \item 在 critical section 中关闭 interrupts（中断）可以实现 mutual exclusion。
+  \item Critical-section solution 若满足 progress，就一定也满足 bounded waiting。
+\end{enumerate}
+
+\begin{checkedsolution}
+\begin{enumerate}[label=(\alph*)]
+  \item \textbf{一般情况下 False；single-core kernel 中有条件成立。}在单核且 critical section 不主动 block/yield 的内核代码中，关闭 interrupts 可阻止 timer preemption，从而避免另一 execution stream 在同一 core 上并发进入。但在 multicore system 中，当前 core 关闭中断不会停止其他 cores；普通 user process 也无权任意关闭硬件中断。因此，未限定执行环境时不能把它当作通用 mutual-exclusion solution。
+  \item \textbf{False。}Progress 只保证系统能继续选出某个进入者，不保证每个特定 requester 都最终获准。普通 TestAndSet lock 可以不断产生 winner，因而满足 progress；但同一 process 可能反复 reacquire，令另一 process 被无限次超越并发生 starvation，所以不满足 bounded waiting。
+\end{enumerate}
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+回答 (a) 时必须说明 hardware scope（硬件范围）：``当前 core 不被中断'' 不等于 ``所有 cores 都停止访问 shared memory''。回答 (b) 时区分 system-wide progress 与 per-process fairness。
+
+\exercisequestion{SC2005-TUT04-Q03}{反向 TestAndSet 的 Lock Protocol}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L08-T04}{Synchronization Hardware 与 TestAndSet}；
+\relatedtopic{SC2005-L08-T05}{TestAndSet 的性质与 Starvation}
+
+\subsubsection*{题目}
+
+设下列 TestAndSet 整体为 atomic operation（原子操作）：
+\[
+\begin{aligned}
+  rv &\gets *target,\\
+  *target &\gets \texttt{false},\\
+  &\text{return }rv.
+\end{aligned}
+\]
+共享变量初始为 $\texttt{lock=true}$，每个 process 执行：
+\[
+\begin{aligned}
+  &\texttt{while (1) \{}\\
+  &\quad\texttt{while (TestAndSet(\&lock) == false);}\quad\text{(entry)}\\
+  &\quad\text{critical section}\\
+  &\quad\texttt{lock = false;}\quad\text{(exit)}\\
+  &\quad\text{remainder section}\\
+  &\texttt{\}}.
+\end{aligned}
+\]
+判断该方案是否满足 mutual exclusion 与 progress。
+
+\begin{checkedsolution}
+第一次调用读到旧值 true、返回 true 并把 \texttt{lock} 写成 false，因此循环条件为 false，首个 process 进入 critical section。此后其他调用者都读到 false、返回 false 并继续 busy waiting（忙等待），所以 holder 未退出时没有第二个 process 能进入：
+\[
+  \boxed{\text{Mutual exclusion 满足。}}
+\]
+
+问题出在 exit section：holder 再次写入 \texttt{lock=false}，等待者之后仍只会取得 false，所有 processes 永久空转：
+\[
+  \boxed{\text{Progress 不满足。}}
+\]
+
+本题把常见 TestAndSet 的布尔语义反转了：true 表示 available，false 表示 unavailable。因此与 entry protocol 匹配的 release operation 应为
+\[
+  \boxed{\texttt{lock = true;}}
+\]
+严格说，题中 primitive 更接近 TestAndClear（测试并清零），不能机械套用标准 TestAndSet 中 ``\texttt{false} 表示 unlocked'' 的记忆结论。
+\end{checkedsolution}
+
+\subsubsection*{检查与常见错误}
+
+先写出 atomic primitive 的状态转换 ``旧值 $\to$ 返回值、新值''，再判断循环何时结束；最后单独检查 exit assignment 是否真正恢复 entry protocol 所需的 available value。
+
+\subsection*{本次 Tutorial 收口}
+
+\begin{itemize}[leftmargin=2em]
+  \item 检验 user-level synchronization protocol 时，应主动寻找反例 interleaving，而不是只模拟常见顺序。
+  \item Mutual exclusion、progress 与 bounded waiting 相互独立；系统持续前进不等于每个 requester 都获得公平机会。
+  \item Disabling interrupts 的有效性取决于 single-core/multicore 与 privilege boundary；atomic hardware instruction 的关键是跨 cores 的不可分割 read--modify--write。
+  \item 分析 lock code 时不要凭函数名猜语义；必须跟踪返回的旧值、写入的新值和 release value 是否一致。
+\end{itemize}
