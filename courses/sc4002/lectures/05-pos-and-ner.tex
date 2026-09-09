@@ -1,0 +1,147 @@
+% Actual class: 05
+% Released material: Week 5 POS and NER
+% Exact released scope: pp. 1--50
+% Video supplement: Week 5 lecture transcript checked locally; not included in repository
+% Human verified: Full coverage and representative check answers confirmed in discussion
+
+\section{第 05 节课：Parts of Speech and Named Entities}
+\label{lecture:SC4002-L05}
+
+\lecturemeta
+  {SC4002-L05}
+  {2026-09-09}
+  {Week 5 POS and NER (2026)}
+  {pp.~1--50；整份讲义}
+  {Week 5 课堂视频字幕已作本地核对，未收入仓库}
+  {课堂范围及代表题答案已确认（2026-09-09）}
+
+\subsection{本讲主线}
+
+POS tagging（词性标注）和 Named Entity Recognition（命名实体识别，NER）都可写成 sequence labeling（序列标注）：输入是 token sequence，输出是等长的 label sequence。POS 的核心困难是 word-class ambiguity（词类歧义）；NER 还需同时判断 entity boundary（实体边界）与 entity type（实体类别）。本讲先用 Hidden Markov Model（隐马尔可夫模型，HMM）描述标签与词的联合生成过程，再用 Viterbi algorithm（维特比算法）高效寻找最可能的标签序列，最后用 BIO scheme 把 NER 转成逐 token 标注。
+
+\lecturetopic{SC4002-L05-T01}{POS Tagging：Word Classes、Tagsets 与 Ambiguity}
+
+Part of speech（词性，POS）是词在当前语境中的 grammatical category（语法类别），例如 noun、verb、adjective、adverb、determiner、preposition 与 pronoun。POS tagging 给每个 token $x_i$ 指定 tag $y_i$：
+\[
+  (x_1,\ldots,x_n)\longmapsto(y_1,\ldots,y_n).
+\]
+Universal Dependencies 使用较粗的 17-tag tagset；Penn Treebank 使用更细的 45-tag tagset。应理解标签含义而非机械背诵全部缩写；常见标签包括 \texttt{NN}（普通名词）、\texttt{NNP}（专有名词）、\texttt{VB}（动词原形）、\texttt{JJ}（形容词）、\texttt{RB}（副词）、\texttt{DT}（限定词）与 \texttt{MD}（情态动词）。
+
+Open classes（开放词类）如 noun、verb 和 adjective 能不断吸收新词；closed classes（封闭词类）如 preposition、determiner 与 conjunction 的成员相对固定，通常承担 grammatical function（语法功能）。
+
+POS 是 context-dependent（依赖上下文）的。同一个 \texttt{back} 在 \texttt{my back}、\texttt{move back}、\texttt{the back door}、\texttt{back the bill} 中可分别是 noun、adverb、adjective、verb，因此 tagging 是 disambiguation（消歧），不能只查词典。讲义数据还说明：按 word types 统计时多数词只对应一个 tag，但高频 ambiguous words 使 token-level ambiguity 显著更高。讲义中的约 $92\%$ most-frequent-tag baseline 与约 $97\%$ tagger accuracy 依赖具体 corpus 与 tagset，不是跨数据集常数。
+
+\lecturetopic{SC4002-L05-T02}{从 Markov Chain 到 Hidden Markov Model}
+
+一阶 Markov chain（马尔可夫链）使用假设
+\[
+  P(q_i\mid q_1,\ldots,q_{i-1})=P(q_i\mid q_{i-1}),
+\]
+并由 state space $Q$、transition matrix $A$ 与 initial distribution $\pi$ 描述，其中
+\[
+  a_{ij}=P(q_{t+1}=q_j\mid q_t=q_i),
+  \qquad \sum_j a_{ij}=1,
+  \qquad \sum_i\pi_i=1.
+\]
+普通 Markov chain 的 states 可观察；POS 中只能观察 words，tags 则是 hidden states（隐藏状态）。HMM 因而同时建模：
+\begin{itemize}
+  \item transition probability（标签转移概率）$P(t_i\mid t_{i-1})$；
+  \item emission probability / observation likelihood（发射概率／观测似然）$P(w_i\mid t_i)$。
+\end{itemize}
+HMM 是 generative model（生成模型）：先按 tag transition 产生隐藏标签，再由每个 tag 产生 word，所以方向是 $P(w\mid t)$，不是 $P(t\mid w)$。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.93\textwidth}{!}{\input{figures/pos-ner-sequence-labeling}}
+  \caption{HMM POS tagger：相邻 hidden tags 之间是 transition，每个 tag 向 observed word 发射。}
+  \label{fig:sc4002-l05-hmm}
+\end{figure}
+
+\lecturetopic{SC4002-L05-T03}{HMM POS Tagging：目标、假设与参数估计}
+
+给定 words $w_{1:n}$，目标是
+\[
+  \hat t_{1:n}=\arg\max_{t_{1:n}}P(t_{1:n}\mid w_{1:n}).
+\]
+由 Bayes' rule，$P(w_{1:n})$ 对所有候选 tag sequences 相同，因此
+\[
+  \hat t_{1:n}
+  =\arg\max_{t_{1:n}}P(w_{1:n}\mid t_{1:n})P(t_{1:n}).
+\]
+一阶 HMM 再采用两项近似：
+\begin{align*}
+  P(t_i\mid t_{1:i-1})&\approx P(t_i\mid t_{i-1})
+  &&\text{（Markov assumption）},\\
+  P(w_i\mid t_{1:n},w_{1:i-1})&\approx P(w_i\mid t_i)
+  &&\text{（output independence assumption）}.
+\end{align*}
+令 $t_0=\langle s\rangle$，候选路径的 joint score（联合分数）为
+\[
+  P(w_{1:n},t_{1:n})
+  \approx\prod_{i=1}^{n}P(w_i\mid t_i)P(t_i\mid t_{i-1}).
+\]
+在 fully annotated corpus（完全标注语料）上，两类参数用相对频率估计：
+\[
+  P(t_i\mid t_{i-1})
+  =\frac{C(t_{i-1},t_i)}{C(t_{i-1})},
+  \qquad
+  P(w_i\mid t_i)
+  =\frac{C(t_i,w_i)}{C(t_i)}.
+\]
+若 unseen word 导致所有 $P(w\mid t)=0$，对应路径乘积也为零。Laplace smoothing 能避免零值，但通常过度搬移 probability mass；更实用的处理包括 \texttt{<UNK>}、按 capitalization/suffix/digit 划分 unknown-word classes，以及能直接利用这些特征的 discriminative model。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L05-E01}{\texttt{race} 消歧与 HMM 路径比较}。
+
+\lecturetopic{SC4002-L05-T04}{Viterbi Algorithm：按终点状态保留最佳路径}
+
+暴力枚举 $K$ 个 tags、长度为 $n$ 的句子需要比较近似 $K^n$ 条路径。Viterbi 使用 dynamic programming（动态规划）。定义
+\[
+  v_i(t)=\max_{t_{1:i-1}}P(w_{1:i},t_{1:i-1},t_i=t),
+\]
+即读完前 $i$ 个 words 且当前 tag 为 $t$ 时，最佳 partial path 的概率。初始化与递推为
+\begin{align*}
+  v_1(t)&=P(t\mid\langle s\rangle)P(w_1\mid t),\\
+  v_i(t)&=P(w_i\mid t)
+    \max_{t'}\left[v_{i-1}(t')P(t\mid t')\right].
+\end{align*}
+同时保存 backpointer（回溯指针）
+\[
+  bp_i(t)=\arg\max_{t'}\left[v_{i-1}(t')P(t\mid t')\right].
+\]
+最后在第 $n$ 列选取最大值，并沿 backpointers 反向恢复整条路径。时间复杂度为 $O(nK^2)$，空间可按是否需要完整 backtrace 在 $O(K)$ 与 $O(nK)$ 间取舍。
+
+Viterbi 不是“每个位置只留下当前全局最大 tag”的 greedy decoding（贪心解码），而是为每个候选终点 tag 分别保留一条最佳路径。讲义的 \texttt{Janet will back the bill} 中，读到 \texttt{back} 时以 \texttt{RB} 结尾的局部路径可暂时更大，但后续 \texttt{the bill} 使完整最优路径成为
+\[
+  \texttt{NNP}\to\texttt{MD}\to\texttt{VB}\to\texttt{DT}\to\texttt{NN}.
+\]
+因此必须等读完整句后再 backtrace；不能在中途永久提交单一标签。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L05-E01}{\texttt{race} 消歧与 HMM 路径比较}。
+
+\lecturetopic{SC4002-L05-T05}{NER 与 BIO / BIOES Sequence Labels}
+
+Named entity（命名实体）是可由 proper name 指代的 person、organization、location、geo-political entity、time、money、product 等对象，具体类别依 domain 而变。NER 同时寻找 text span（文本片段）的边界并判断 entity type。
+
+POS 中每个 token 天然对应一个 tag；NER 中一个 entity 可跨越多个 tokens。BIO scheme 把 span recognition 转成等长 sequence labeling：
+\begin{itemize}
+  \item \texttt{B-X}：entity type \texttt{X} 的起点；
+  \item \texttt{I-X}：同一 entity 内部；
+  \item \texttt{O}：不属于任何 entity。
+\end{itemize}
+例如 \texttt{Nanyang Technological University is in Singapore} 的 BIO labels 为
+\[
+  \texttt{B-ORG, I-ORG, I-ORG, O, O, B-GPE}.
+\]
+典型约束是 \texttt{I-ORG} 应跟在 \texttt{B-ORG} 或 \texttt{I-ORG} 后；直接出现在 \texttt{O} 或其他 entity type 后通常是 illegal BIO sequence。BIOES 进一步用 \texttt{E-X} 标记结尾、\texttt{S-X} 标记 single-token entity。它提供更明确的 boundary information，但扩大了 tag space，并减少每类标签的训练样本；讲义没有断言它必然优于 BIO。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L05-E02}{BIO 与 BIOES 标注及合法性检查}。
+
+\lecturetopic{SC4002-L05-T06}{CRF：与 HMM 的概念对比（Information Only）}
+
+HMM 直接建模 joint distribution $P(X,Y)$，难以自然加入任意重叠特征。Conditional Random Field（条件随机场，CRF）是 discriminative sequence model（判别式序列模型），直接建模 $P(Y\mid X)$，可使用 current/neighboring words、POS、capitalization、prefix/suffix、word shape 与 gazetteer 等 features。
+
+本讲将 CRF 公式、训练和推断以及 NER feature templates 标为 \textit{For Information Only}。复习时只需掌握：它为何比朴素 HMM 更方便利用输入特征，以及 HMM、CRF 都能服务于 POS、NER 等 sequence-labeling tasks；无需展开 CRF 的归一化公式和训练算法。
+
+\subsection{一分钟回顾}
+
+POS tagging 根据上下文解决 word-class ambiguity。HMM 以 tag 为 hidden state、word 为 observation，用 transition 与 emission probability 为整条标签路径评分；Viterbi 通过“每个终点状态保留一条最佳路径”把指数枚举降为 $O(nK^2)$。NER 比 POS 多出 span boundary 问题，BIO/BIOES 把它转化为逐 token sequence labeling。CRF 的细节不属于本讲考试重点，只需理解它可直接使用丰富输入 features。

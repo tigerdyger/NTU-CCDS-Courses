@@ -1,0 +1,88 @@
+% Lecture example set: SC4002-L05
+% Source: Week 5 POS and NER
+% Question classification: E01 lecture worked example with discussion extension; E02 self-contained check example
+% Human verified: Answers completed and checked in discussion
+
+\exercisemeta
+  {SC4002-L05-EX}
+  {2026-09-09}
+  {Week 5 POS and NER pp.~22--33, 40--45；E02 为自编检验例}
+  {两题答案已完成并订正}
+  {已确认（2026-09-09）}
+
+\exercisequestion{SC4002-L05-E01}{\texttt{race} 消歧与 Viterbi 路径保留}
+
+\textbf{对应知识点：}\par
+\relatedtopic{SC4002-L05-T03}{HMM POS Tagging：目标、假设与参数估计}；\par
+\relatedtopic{SC4002-L05-T04}{Viterbi Algorithm：按终点状态保留最佳路径}
+
+\subsubsection*{题目（讲义 worked example 改编）}
+
+在句子 \texttt{Secretariat is expected to race tomorrow} 中，假设除 \texttt{race} 外的 tags 已知。写出把 \texttt{race} 判为 \texttt{VB} 与 \texttt{NN} 时真正需要比较的 HMM factors，并说明 Viterbi 为什么不能在每个位置只留下一个当前概率最大的 tag。
+
+另设某一步已知
+\[
+  v_{i-1}(\texttt{NN})=0.04,
+  \qquad v_{i-1}(\texttt{MD})=0.01,
+\]
+\[
+  P(\texttt{VB}\mid\texttt{NN})=0.1,
+  \quad P(\texttt{VB}\mid\texttt{MD})=0.8,
+  \quad P(\texttt{race}\mid\texttt{VB})=0.02.
+\]
+求 $v_i(\texttt{VB})$ 及其 backpointer。
+
+\begin{workedsolution}
+两条候选 tag sequences 的公共 factors 可约去。应比较
+\[
+  P(\texttt{race}\mid\texttt{VB})
+  P(\texttt{VB}\mid\texttt{TO})
+  P(\texttt{NR}\mid\texttt{VB})
+\]
+和
+\[
+  P(\texttt{race}\mid\texttt{NN})
+  P(\texttt{NN}\mid\texttt{TO})
+  P(\texttt{NR}\mid\texttt{NN}).
+\]
+这同时利用 word emission、左侧 tag transition 与右侧 structure，而非只查 \texttt{race} 最常见的词性。
+
+数值递推为
+\[
+\begin{aligned}
+  v_i(\texttt{VB})
+  &=0.02\max(0.04\times0.1,\ 0.01\times0.8)\\
+  &=0.02\times0.008
+   =1.6\times10^{-4}.
+\end{aligned}
+\]
+最大项来自 \texttt{MD}，故 backpointer 指向 \texttt{MD}。
+
+Viterbi 在每个位置为每个候选终点 tag 保存一条最佳路径，而不是全局只保存一个当前最大 tag。后续 transition 可使当前较小的终点路径成为完整句子的最优路径；最后才从末列最大值回溯整条序列。
+\end{workedsolution}
+
+\textbf{检查点：}先做 $\max_{t'}[v_{i-1}(t')P(t\mid t')]$，再乘当前 emission；backpointer 指向使最大值成立的前一 tag。
+
+\exercisequestion{SC4002-L05-E02}{BIO / BIOES 标注与 Unknown Word}
+
+\textbf{对应知识点：}\par
+\relatedtopic{SC4002-L05-T05}{NER 与 BIO / BIOES Sequence Labels}；\par
+\relatedtopic{SC4002-L05-T06}{CRF：与 HMM 的概念对比（Information Only）}
+
+\subsubsection*{题目（自编检验例）}
+
+对句子 \texttt{Nanyang Technological University is in Singapore} 分别给出 BIO 与 BIOES labels。已知前三个 tokens 构成一个 \texttt{ORG}，\texttt{Singapore} 是 single-token \texttt{GPE}。再说明：若 unseen proper noun 使 HMM 对所有 tags 都有 $P(w\mid t)=0$，会发生什么，以及如何缓解。
+
+\begin{workedsolution}
+BIO labels 为
+\[
+  \boxed{\texttt{B-ORG, I-ORG, I-ORG, O, O, B-GPE}}.
+\]
+BIOES labels 为
+\[
+  \boxed{\texttt{B-ORG, I-ORG, E-ORG, O, O, S-GPE}}.
+\]
+若某个 emission factor 为零，包含它的 HMM path probability 整体为零；若所有 tags 的 emission 都为零，则模型无法通过路径比较完成正常 decoding。Laplace smoothing 可避免严格零值，但对大 vocabulary 往往过度平滑。更实用的方法包括学习 \texttt{<UNK>} emission、按 capitalization/suffix/digit 建立 unknown-word classes，或使用能直接接收 word-shape 等 features 的 CRF/其他判别模型。
+\end{workedsolution}
+
+\textbf{检查点：}\texttt{I-X} 不应无起点地跟在 \texttt{O} 或其他 entity type 后；BIOES 中多词实体必须有 \texttt{B-X} 与 \texttt{E-X}，单词实体使用 \texttt{S-X}。

@@ -1,0 +1,31 @@
+\begin{tikzpicture}[
+  >=Latex,
+  tag/.style={draw=noteBlue, rounded corners, fill=blue!6,
+    minimum width=1.65cm, minimum height=0.70cm, align=center},
+  word/.style={draw=ntuRed, rounded corners, fill=red!4,
+    minimum width=1.65cm, minimum height=0.70cm, align=center},
+  trans/.style={->, thick, noteBlue},
+  emit/.style={->, thick, ntuRed}
+]
+  \node[tag] (t1) at (0,1.35) {NNP};
+  \node[tag] (t2) at (2.05,1.35) {MD};
+  \node[tag] (t3) at (4.10,1.35) {VB};
+  \node[tag] (t4) at (6.15,1.35) {DT};
+  \node[tag] (t5) at (8.20,1.35) {NN};
+  \node[word] (w1) at (0,0) {Janet};
+  \node[word] (w2) at (2.05,0) {will};
+  \node[word] (w3) at (4.10,0) {back};
+  \node[word] (w4) at (6.15,0) {the};
+  \node[word] (w5) at (8.20,0) {bill};
+
+  \draw[trans] (t1) -- node[above,font=\scriptsize] {$P(t_i\mid t_{i-1})$} (t2);
+  \draw[trans] (t2) -- (t3);
+  \draw[trans] (t3) -- (t4);
+  \draw[trans] (t4) -- (t5);
+  \foreach \i in {1,...,5}{\draw[emit] (t\i) -- node[right,font=\scriptsize] {$P(w_i\mid t_i)$} (w\i);}
+
+  \node[align=left,anchor=west,font=\small] at (-0.85,2.20)
+    {Hidden tags（隐藏标签）：transition（转移）};
+  \node[align=left,anchor=west,font=\small] at (-0.85,-0.85)
+    {Observed words（观测词）：emission（发射）};
+\end{tikzpicture}
