@@ -1,0 +1,232 @@
+% Tutorial set: 03
+% Source: Tutorial 3: N-gram and Language Model, PDF p. 1
+% Session date: 2026-09-09
+% Human verified: Yes
+
+\clearpage
+\subsection{Tutorial 03：N-gram and Language Model}
+\label{tutorial:SC4002-TUT03}
+
+\exercisemeta
+  {SC4002-TUT03}
+  {2026-09-09}
+  {Tutorial 3: N-gram and Language Model，PDF p.~1，Questions 1--6}
+  {六题均已讨论并订正；Q6 为 implementation design（实现设计）}
+  {已确认（2026-09-09）}
+
+\exercisequestion{SC4002-TUT03-Q01}{Bigram Counts 与 Laplace Smoothing}
+
+\textbf{对应讲义：}\par
+\relatedtopic{SC4002-L04-T02}{Maximum-Likelihood Estimation 与 Sentence Probability}；\par
+\relatedtopic{SC4002-L04-T05}{Smoothing、Backoff 与 Interpolation}
+
+\subsubsection*{题目}
+
+给定三条 word sequences（词序列）组成的 corpus（语料库）：
+\begin{center}
+\ttfamily
+very good tennis player in US Open\\
+tennis player US Open\\
+tennis player qualify play US Open
+\end{center}
+建立 bigram count table（双元计数表），并用 Laplace smoothing（拉普拉斯平滑）计算 bigram probabilities。题目未指定 sentence-boundary tokens（句界词元），以下不加入 \texttt{<s>} 与 \texttt{</s>}。
+
+\begin{checkedsolution}
+Vocabulary（词表）为
+\[
+  V=\{\texttt{very, good, tennis, player, in, US, Open, qualify, play}\},
+  \qquad |V|=9.
+\]
+三条序列分别产生 $6$、$3$、$5$ 个 bigrams，共 $14$ 次。非零 counts 如下；未列出的 pair（词对）count 均为 $0$。
+\[
+\begin{array}{c|c@{\qquad}c|c}
+\toprule
+\text{Bigram} & C & \text{Bigram} & C\\
+\midrule
+(\texttt{very},\texttt{good}) & 1 & (\texttt{good},\texttt{tennis}) & 1\\
+(\texttt{tennis},\texttt{player}) & 3 & (\texttt{player},\texttt{in}) & 1\\
+(\texttt{player},\texttt{US}) & 1 & (\texttt{player},\texttt{qualify}) & 1\\
+(\texttt{in},\texttt{US}) & 1 & (\texttt{US},\texttt{Open}) & 3\\
+(\texttt{qualify},\texttt{play}) & 1 & (\texttt{play},\texttt{US}) & 1\\
+\bottomrule
+\end{array}
+\]
+Laplace estimate（加一估计）为
+\[
+  P_{\mathrm L}(w_2\mid w_1)
+  =\frac{C(w_1,w_2)+1}{C(w_1)+|V|}.
+\]
+下表以“observed continuations（已见后继词）／其他词”的形式完整定义全部 $9\times9$ 个概率，无需机械列出 81 个 cells（单元格）。
+{\small
+\[
+\begin{array}{c|c|l|c}
+\toprule
+w_1 & C(w_1) & \text{已见 }w_2\text{ 及概率} & \text{任一其他 }w_2\\
+\midrule
+\texttt{very} & 1 & P(\texttt{good}\mid\texttt{very})=2/10 & 1/10\\
+\texttt{good} & 1 & P(\texttt{tennis}\mid\texttt{good})=2/10 & 1/10\\
+\texttt{tennis} & 3 & P(\texttt{player}\mid\texttt{tennis})=4/12 & 1/12\\
+\texttt{player} & 3 & P(w_2\mid\texttt{player})=2/12,\ w_2\in\{\texttt{in,US,qualify}\} & 1/12\\
+\texttt{in} & 1 & P(\texttt{US}\mid\texttt{in})=2/10 & 1/10\\
+\texttt{US} & 3 & P(\texttt{Open}\mid\texttt{US})=4/12 & 1/12\\
+\texttt{Open} & 0 & \text{无} & 1/9\\
+\texttt{qualify} & 1 & P(\texttt{play}\mid\texttt{qualify})=2/10 & 1/10\\
+\texttt{play} & 1 & P(\texttt{US}\mid\texttt{play})=2/10 & 1/10\\
+\bottomrule
+\end{array}
+\]
+}
+例如
+\[
+  P_{\mathrm L}(\texttt{US}\mid\texttt{player})=\frac16,
+  \quad
+  P_{\mathrm L}(\texttt{Open}\mid\texttt{US})=\frac13,
+  \quad
+  P_{\mathrm L}(\texttt{good}\mid\texttt{player})=\frac1{12}.
+\]
+\end{checkedsolution}
+
+\textbf{易错点：}分母中的 $C(w_1)$ 是 $w_1$ 作为 context（上下文）的次数。由于本题不加入 \texttt{</s>}，句尾的 \texttt{Open} 没有 outgoing bigram（外出双元组），故这里 $C(\texttt{Open})=0$。
+
+\exercisequestion{SC4002-TUT03-Q02}{Trigram Maximum-Likelihood Estimation}
+
+\textbf{对应讲义：}\par
+\relatedtopic{SC4002-L04-T01}{从 Chain Rule 到 N-gram Approximation}；\par
+\relatedtopic{SC4002-L04-T02}{Maximum-Likelihood Estimation 与 Sentence Probability}
+
+\subsubsection*{题目}
+
+写出 trigram probability estimation（三元概率估计）公式，并根据 Q1 corpus 计算
+\[
+  P(\texttt{US}\mid\texttt{tennis player}),
+  \qquad
+  P(\texttt{player}\mid\texttt{good tennis}).
+\]
+
+\begin{checkedsolution}
+题目没有再次要求 smoothing，因此采用 unsmoothed MLE（未平滑最大似然估计）：
+\[
+  \hat P(w_i\mid w_{i-2},w_{i-1})
+  =\frac{C(w_{i-2},w_{i-1},w_i)}{C(w_{i-2},w_{i-1})}.
+\]
+\texttt{tennis player} 出现三次，其后分别是 \texttt{in}、\texttt{US}、\texttt{qualify}；\texttt{good tennis} 只出现一次且后接 \texttt{player}。因此
+\[
+  \boxed{P(\texttt{US}\mid\texttt{tennis player})=\frac13},
+  \qquad
+  \boxed{P(\texttt{player}\mid\texttt{good tennis})=1}.
+\]
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT03-Q03}{由 Bigram Table 计算 Sentence Probability}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4002-L04-T02}{Maximum-Likelihood Estimation 与 Sentence Probability}
+
+\subsubsection*{题目}
+
+题目给出一张 bigram probability table，row（行）表示 previous word（前词），column（列）表示 next word（后词）。计算 sequence（序列）\texttt{I eat Chinese food} 的概率，解释计算方法并声明 assumptions（假设）。与本题直接相关的 entries（表项）为
+\[
+  P(\texttt{eat}\mid\texttt{i})=0.0036,
+  \qquad
+  P(\texttt{chinese}\mid\texttt{eat})=0.021,
+  \qquad
+  P(\texttt{food}\mid\texttt{chinese})=0.52.
+\]
+原表采用 lowercase tokens（小写词元），且未给出 initial-word probability（首词概率）。
+
+\begin{checkedsolution}
+Bigram approximation 给出
+\[
+\begin{aligned}
+  P(\texttt{i eat chinese food})
+  &=P(\texttt{i})P(\texttt{eat}\mid\texttt{i})
+    P(\texttt{chinese}\mid\texttt{eat})
+    P(\texttt{food}\mid\texttt{chinese}).
+\end{aligned}
+\]
+先计算从已知首词 \texttt{i} 开始的 conditional probability：
+\[
+\begin{aligned}
+  P(\texttt{eat chinese food}\mid\texttt{i})
+  &=0.0036\times0.021\times0.52\\
+  &=3.9312\times10^{-5}.
+\end{aligned}
+\]
+若记 $q=P(\texttt{i})$，则完整 sequence probability 为
+\[
+  \boxed{P(\texttt{i eat chinese food})=q\,(3.9312\times10^{-5})}.
+\]
+如果模型使用 sentence-start token，应将 $q$ 换成 $P(\texttt{i}\mid\texttt{<s>})$。题目没有提供该值，不能无声明地令其等于 $1$；也可按题意自行假设一个 $q$，但必须把假设写出。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT03-Q04}{为什么 Language Model 需要 Smoothing}
+
+\textbf{对应讲义：}\par
+\relatedtopic{SC4002-L04-T04}{OOV 与 Unseen N-gram：两种零概率}；\par
+\relatedtopic{SC4002-L04-T05}{Smoothing、Backoff 与 Interpolation}
+
+\subsubsection*{题目}
+
+说明 language model（语言模型）为什么需要 smoothing（平滑）。
+
+\begin{checkedsolution}
+有限 training corpus 不可能覆盖所有合理的 N-grams。Unsmoothed MLE 对 unseen N-gram 给出
+\[
+  C(h,w)=0\quad\Longrightarrow\quad P(w\mid h)=0.
+\]
+只要一句话含有一个这样的 factor（因子），整句 probability 就成为 $0$，perplexity（困惑度）也会失去有限值；这会把“训练集中没见过”错误地解释成“语言中绝不可能”。Smoothing 通过 discounting/redistribution（折扣／再分配）为 unseen events 分配非零 probability mass，从而提高对 unseen text 的 generalization（泛化能力）。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT03-Q05}{收集 N-gram Counts 的通用流程}
+
+\textbf{对应讲义：}\par
+\relatedtopic{SC4002-L04-T01}{从 Chain Rule 到 N-gram Approximation}；\par
+\relatedtopic{SC4002-L04-T02}{Maximum-Likelihood Estimation 与 Sentence Probability}
+
+\subsubsection*{题目}
+
+给定一批 text（文本），说明收集建立 N-gram LM 所需全部 counts 的一般步骤。
+
+\begin{checkedsolution}
+\begin{enumerate}
+  \item 固定 preprocessing（预处理）规则：normalization、sentence segmentation 与 tokenization；训练、开发和测试阶段必须一致。
+  \item 只用 training corpus 建立 vocabulary；依据 threshold（阈值）把低频词或词表外词映射为 \texttt{<UNK>}。
+  \item 为每个句子加入约定的 \texttt{<s>}、\texttt{</s>}，用 sliding window（滑动窗口）产生 unigram 到 N-gram。
+  \item 累计并 aggregate（汇总）相同 N-gram 的 counts，同时保存各 history/context 的 denominator counts（分母计数）。
+  \item 由 counts 计算 MLE，再应用选定的 smoothing/backoff/interpolation；最后在独立 development/test sets 上评价。
+\end{enumerate}
+建立 vocabulary 往往需要先做一次 unigram-frequency pass（单词频数扫描），完成 \texttt{<UNK>} mapping 后再进行正式 N-gram count，因此工程上可能需要两遍读取。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT03-Q06}{100 GB Corpus 的 Bigram Training Design}
+
+\textbf{对应讲义：}\par
+\relatedtopic{SC4002-L04-T02}{Maximum-Likelihood Estimation 与 Sentence Probability}；\par
+\relatedtopic{SC4002-L04-T05}{Smoothing、Backoff 与 Interpolation}
+
+\subsubsection*{题目}
+
+现有 $100\,\mathrm{GB}$ text collection（文本集合），计算机只有 $16\,\mathrm{GB}$ RAM 与 $1\,\mathrm{TB}$ storage（存储空间）。设计训练 bigram LM 的实现步骤。
+
+\begin{checkedsolution}
+不能把 corpus 或全部 bigram dictionary 一次载入 RAM，应采用 streaming external-memory pipeline（流式外存流程）：
+\begin{enumerate}
+  \item 按 chunk 读取，但以完整 sentence/token boundary 为处理边界；保留 chunk 末尾未完成的文本并与下一块拼接。
+  \item 对每块执行同一 preprocessing，并在内存 hash table 中累计 local bigram counts。
+  \item 达到安全内存阈值后，把 $(w_1,w_2,C)$ 按 key 排序、压缩并 spill（溢写）为磁盘 intermediate file；清空内存后继续扫描。
+  \item 使用 external sort/merge（外部排序／归并）或 hash partitioning（哈希分区），保证相同 bigram 进入同一归并任务，再将其 counts 求和。
+  \item 从最终 counts 累计每个 context 的 denominator，计算概率并应用 smoothing；在小型 held-out sample（留出样本）上检查归一化、未知词与边界处理。
+\end{enumerate}
+磁盘空间虽足以保存原始 $100\,\mathrm{GB}$ corpus，但 intermediate data 可能显著膨胀，因此应采用 compact IDs（紧凑整数词 ID）、压缩文件并监控峰值空间。若已有集群，可把相同思路实现为 MapReduce/Spark；单机上 Unix external sort 或分区后的多路归并已经足够。
+\end{checkedsolution}
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/tutorial-03-external-counting}
+  \caption{Q6 的 external-memory bigram counting：各 chunk 的局部计数先 spill 到磁盘，再按 bigram key 归并求和。}
+  \label{fig:sc4002-tut03-external-counting}
+\end{figure}
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1--Q3 的统一判断标准是“先确定 conditioning context（条件上下文），再让分母与该 context 对齐”；Q4 说明 zero count 不等于不可能，必须为 unseen N-grams 保留 probability mass；Q5--Q6 则把同一统计定义落实为可复现 pipeline，并在大于内存的数据上使用 chunk、spill 与 merge。

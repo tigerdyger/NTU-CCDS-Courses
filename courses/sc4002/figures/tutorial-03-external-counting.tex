@@ -1,0 +1,21 @@
+\begin{tikzpicture}[
+  node distance=0.38cm,
+  box/.style={draw=noteBlue, rounded corners=2pt, thick, align=center,
+    minimum height=0.78cm, text width=10.6cm, fill=blue!4},
+  disk/.style={draw=ntuRed, rounded corners=2pt, thick, align=center,
+    minimum height=0.78cm, text width=10.6cm, fill=red!4},
+  flow/.style={-{Latex[length=2.4mm]}, thick, draw=noteBlue}
+]
+  \node[box] (corpus) {100 GB corpus：按 chunk 流式读取};
+  \node[box, below=of corpus] (prep) {Boundary-safe preprocessing：保留未完成的 sentence/token 并拼接下一块};
+  \node[box, below=of prep] (local) {In-memory hash table：累计 local bigram counts};
+  \node[disk, below=of local] (spill) {达到 RAM threshold 后，写出 sorted and compressed spill files};
+  \node[box, below=of spill] (merge) {External merge / hash partition：让相同 bigram key 汇合并求和};
+  \node[disk, below=of merge] (final) {Global counts $\rightarrow$ context denominators $\rightarrow$ smoothed probabilities};
+
+  \draw[flow] (corpus) -- (prep);
+  \draw[flow] (prep) -- (local);
+  \draw[flow] (local) -- (spill);
+  \draw[flow] (spill) -- (merge);
+  \draw[flow] (merge) -- (final);
+\end{tikzpicture}
