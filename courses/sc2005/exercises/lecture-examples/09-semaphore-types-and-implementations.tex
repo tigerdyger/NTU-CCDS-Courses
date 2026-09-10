@@ -1,0 +1,79 @@
+% Related lecture: SC2005-L09
+% Source: Part 4 (Process Synchronization), pp. 28--36; classroom checks
+% Human verified: Yes
+
+\exercisemeta
+  {SC2005-L09-EX}
+  {2026-09-10}
+  {Part 4 pp.~28--36；课堂检查题}
+  {题干、状态变化、atomicity 与实现选择均已核对}
+  {已确认（2026-09-10）}
+
+\exercisequestion{SC2005-L09-E01}{Binary Semaphore 的状态轨迹}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L09-T02}{Binary Semaphore 实现 Mutual Exclusion}；\relatedtopic{SC2005-L09-T04}{Blocking Semaphore：Value 与 Waiting Queue}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+Blocking binary semaphore 初始为 \texttt{mutex.value=1}。$P_0$ 执行 \texttt{Wait(mutex)}，随后 $P_1$ 执行 \texttt{Wait(mutex)}，最后 $P_0$ 执行 \texttt{Signal(mutex)}。写出每一步的 value 与两个 processes 的状态。
+
+\begin{checkedsolution}
+状态依次为
+\[
+\begin{array}{c|c|l}
+  \text{Event} & \texttt{mutex.value} & \text{State change}\\
+  \hline
+  \text{Initial} & 1 & P_0,P_1\text{ 尚未取得许可}\\
+  P_0:\texttt{Wait} & 0 & P_0\text{ 进入 critical section}\\
+  P_1:\texttt{Wait} & -1 & P_1\text{ 加入 waiting queue}\\
+  P_0:\texttt{Signal} & 0 & P_0\text{ 离开 critical section；}P_1\text{ 进入 ready queue}
+\end{array}
+\]
+$P_0$ 只是离开 critical section 并继续 remainder section，不是结束整个 process；$P_1$ 被唤醒后为 ready，不保证立即 running。
+\end{checkedsolution}
+
+\textbf{检查点：}区分 release lock、process termination、ready 与 running 四个不同事件。
+
+\exercisequestion{SC2005-L09-E02}{检查与递减分离造成的 Mutual-Exclusion Violation}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L09-T03}{Busy-Waiting Semaphore 与 Atomicity}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+设 $S=1$，\texttt{Wait(S)} 先检查 $S>0$，稍后才执行一个本身 atomic 的 \texttt{S--}。解释为什么仍然不能保证 mutual exclusion。
+
+\begin{checkedsolution}
+一种危险 interleaving 为
+\[
+  P_0:\text{check }S>0
+  \rightarrow
+  P_1:\text{check }S>0
+  \rightarrow
+  P_1:S--
+  \rightarrow
+  P_0:S--.
+\]
+两个 processes 都在 $S=1$ 时通过了同一次许可检查；后续 decrement 即使分别 atomic，也无法撤销已经作出的进入决定，因此二者都可能进入 critical section。必须原子化完整的 check--decrement decision，而非只原子化单次写入。
+\end{checkedsolution}
+
+\textbf{检查点：}Atomic components 不推出 atomic protocol；先定位决定“能否进入”的完整操作边界。
+
+\exercisequestion{SC2005-L09-E03}{Spinning 与 Blocking 的选择}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L09-T05}{Blocking 实现的原子边界与选择}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+分别选择 busy waiting 或 blocking，并说明依据：
+\begin{enumerate}
+  \item Multicore CPU 上，holder 正在另一 core 运行，预计几条指令后释放锁。
+  \item Single-core CPU 上，holder 还需运行几十毫秒才能释放锁。
+\end{enumerate}
+
+\begin{checkedsolution}
+第一种适合短暂 spinning：holder 能在另一 core 上继续运行，等待时间很短，block/wakeup 的 context-switch overhead 可能更大。第二种适合 blocking：等待者若在唯一 core 上自旋，会浪费 CPU 并推迟 holder 再次获得 CPU。
+
+Multicore 不代表 CPU cycles 免费；只有 expected wait 足够短时，spinning 才可能更划算。等待时间长或不可预测时，即使是 multicore 也通常应 blocking。
+\end{checkedsolution}
+
+\textbf{检查点：}先比较 expected waiting time 与 context-switch cost，再考虑 holder 是否能在另一 core 上取得进展。

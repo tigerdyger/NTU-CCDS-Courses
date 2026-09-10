@@ -1,0 +1,126 @@
+% Actual class: 09
+% Slide deck: Part 4 (Process Synchronization)
+% Exact scope: pp. 28--36
+% Video supplement: Part 4.5 and Part 4.6 complete
+% Human verified: Yes
+
+\section{第 09 节课：Semaphore 类型与实现}
+\label{lecture:SC2005-L09}
+
+\lecturemeta
+  {SC2005-L09}
+  {2026-09-10}
+  {Part 4 (Process Synchronization)}
+  {主讲义 pp.~28--36}
+  {Part 4.5 Types of Semaphores 与 Part 4.6 Semaphore Implementations 完整}
+  {已确认（2026-09-10）}
+
+\subsection{本讲主线}
+
+上一讲的 TestAndSet（测试并置位）提供底层 atomic read--modify--write（原子读改写），但程序仍需自行管理 lock 与等待方式。本讲引入 semaphore（信号量）：只允许通过 atomic \texttt{Wait} 与 \texttt{Signal} 访问的同步对象。Binary semaphore 用于 mutual exclusion；counting semaphore 管理多个同类资源。等待既可用 spinning 实现，也可通过 OS queue 将 process 置为 waiting；后者不浪费长时间的 CPU cycles，但会产生 context-switch overhead。
+
+\lecturetopic{SC2005-L09-T01}{Semaphore 抽象与两种类型}
+
+\keyidea{Semaphore 不是可任意读写的普通整数，而是“状态 $+$ 两个 atomic operations”的同步抽象。}
+
+课程使用如下抽象语义：
+\[
+  \texttt{Wait(S)}:
+  \begin{cases}
+    S\gets S-1, & S>0,\\
+    \text{wait}, & S\le 0,
+  \end{cases}
+  \qquad
+  \texttt{Signal(S)}:S\gets S+1.
+\]
+\texttt{Wait} 也称 P/down，用于 acquire permit（获取许可）；\texttt{Signal} 也称 V/up，用于 release permit（释放许可）。对 $S$ 的检查、修改以及必要的等待或唤醒必须构成不可分割的 protocol。
+
+\begin{itemize}
+  \item \textbf{Binary semaphore（二元信号量）：}逻辑上的可用许可最多为 $1$，常用于 mutual exclusion。
+  \item \textbf{Counting semaphore（计数信号量）：}初值通常等于某类 shared resource 的实例数，每次 \texttt{Wait} 消耗一个实例，每次 \texttt{Signal} 归还一个实例。
+\end{itemize}
+
+Blocking implementation 中的内部 $S.value$ 可以为负；这不表示“负的资源”，而表示尚有等待请求。若 $S.value=-k$，则等待队列中有 $k$ 个 processes。
+
+\lecturetopic{SC2005-L09-T02}{Binary Semaphore 实现 Mutual Exclusion}
+
+共享 semaphore \texttt{mutex} 初始化为 $1$：
+\[
+  \texttt{Wait(mutex)}\rightarrow
+  \text{critical section}\rightarrow
+  \texttt{Signal(mutex)}\rightarrow
+  \text{remainder section}.
+\]
+第一个 process 执行 \texttt{Wait} 后取得唯一许可；其他 process 必须等待 holder 执行 \texttt{Signal}。\texttt{Signal} 只会把某个等待者从 waiting 变为 ready，不保证它立即成为 running。Holder 离开 critical section 后继续执行 remainder section；释放 semaphore 不等于结束整个 process。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L09-E01}{Binary Semaphore 的状态轨迹}。
+
+\lecturetopic{SC2005-L09-T03}{Busy-Waiting Semaphore 与 Atomicity}
+
+Classical busy-waiting implementation 为
+\[
+\begin{aligned}
+  \texttt{Wait(S):}\;&\texttt{while (S <= 0);}\quad \texttt{S--;}\\
+  \texttt{Signal(S):}\;&\texttt{S++;}
+\end{aligned}
+\]
+等待者不断读取 $S$，属于 spinning（自旋）。它避免 block/wakeup 引起的 context switch，适合 multicore 上预期极短的等待；若 critical section 较长，则会浪费 CPU cycles。
+
+仅保证一次 \texttt{S--} atomic 并不够；“检查 $S>0$”与“递减 $S$”也必须合成一个 atomic operation。否则两个 processes 可先后通过同一次 $S=1$ 的检查，再分别执行 decrement，最终同时进入 critical section。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L09-E02}{检查与递减分离造成的 Mutual-Exclusion Violation}。
+
+\lecturetopic{SC2005-L09-T04}{Blocking Semaphore：Value 与 Waiting Queue}
+
+Blocking implementation 将 semaphore 表示为
+\[
+  S=(\texttt{value},L),
+\]
+其中 $L$ 保存等待该 semaphore 的 PCB list。\texttt{block()} 将当前 process 从 ready queue 移入 $L$ 并置为 waiting；\texttt{wakeup()} 从 $L$ 取出一个 process，放回 ready queue 并置为 ready。
+
+\[
+\begin{aligned}
+  \texttt{Wait(S):}\quad
+    &\texttt{S.value--;}\\[-0.2em]
+    &\texttt{if (S.value < 0) block();}\\[0.35em]
+  \texttt{Signal(S):}\quad
+    &\texttt{S.value++;}\\[-0.2em]
+    &\texttt{if (S.value <= 0) wakeup(P);}
+\end{aligned}
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/blocking-semaphore-trace}}
+  \caption{初值 $S.value=1$ 的 blocking semaphore 状态轨迹。图中等待队列假定采用 FIFO；wakeup 后 $P_1$ 仅进入 ready。}
+  \label{fig:sc2005-l09-blocking-semaphore}
+\end{figure}
+
+先 decrement 再检查使 $S.value$ 同时记录当前申请：非负值表示剩余 permits，负值的绝对值表示 queued waiters。执行 \texttt{Signal} 后若结果仍不大于 $0$，说明至少有一个请求尚未满足，需要唤醒一个等待者。
+
+\lecturetopic{SC2005-L09-T05}{Blocking 实现的原子边界与选择}
+
+Blocking 并未取消 atomicity 要求。\texttt{Wait} 中的 decrement、test 与 enqueue/block protocol，以及 \texttt{Signal} 中的 increment、test 与 dequeue/wakeup protocol，必须相对于彼此保持原子性；否则会发生 lost wakeup、progress failure，甚至 mutual-exclusion violation。
+
+不能先 \texttt{block()}、再执行 \texttt{S.value--}：在两者之间，另一个 process 可能 \texttt{Signal} 并唤醒当前 process，第三个 process 又取得刚释放的许可；当前 process 恢复后若继续 decrement 并进入，便会与第三个 process 同时持有同一许可。
+
+实现选择取决于 expected waiting time，而不只是 CPU core 数：
+\begin{center}
+\small
+\begin{tabularx}{0.96\textwidth}{@{}>{\raggedright\arraybackslash}p{2.55cm}XX@{}}
+  \toprule
+  Strategy & Cost & 适用情形 \\
+  \midrule
+  Busy waiting / spinning & 持续占用一个 CPU core；无 block/wakeup context switch & Multicore，holder 可在另一 core 运行，且等待预计极短 \\
+  Blocking & 需要 scheduler、queue 与 context switch & Single-core、临界区较长或等待时间不可预测 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+实际 blocking semaphore 的内部短 critical section 仍可由 hardware atomic instruction 或短暂 spinlock 保护；被消除的是等待资源期间的长时间 spinning，而不是一切底层原子机制。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L09-E03}{Spinning 与 Blocking 的选择}。
+
+\subsection{一分钟回顾}
+
+Semaphore 用 atomic \texttt{Wait}/\texttt{Signal} 管理进入许可：binary semaphore 保护单一 critical section，counting semaphore 管理多个同类资源。Busy waiting 避免 context switch 但消耗 CPU；blocking implementation 用 $S.value$ 与 waiting queue 记录未满足请求。无论采用哪种等待方式，对 semaphore 状态的检查、更新和队列操作都必须保持原子性；\texttt{wakeup} 只使 process 进入 ready，而非立即 running。
