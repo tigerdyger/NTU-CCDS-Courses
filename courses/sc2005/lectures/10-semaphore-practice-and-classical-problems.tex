@@ -1,0 +1,143 @@
+% Actual class: 10
+% Slide deck: Part 4 (Process Synchronization)
+% Exact scope: pp. 37--54 (substantive content pp. 38--54)
+% Video supplement: Part 4.7 and Part 4.8 complete
+% Human verified: Yes
+
+\section{第 10 节课：Semaphore 设计与经典同步问题}
+\label{lecture:SC2005-L10}
+
+\lecturemeta
+  {SC2005-L10}
+  {2026-09-11}
+  {Part 4 (Process Synchronization)}
+  {主讲义 pp.~37--54（实质 pp.~38--54）}
+  {Part 4.7 Semaphore Best Practices 与 Part 4.8 Classical Synchronization Problems 完整}
+  {已确认（2026-09-11）}
+
+\subsection{本讲主线}
+
+Semaphore（信号量）题的关键不是背代码，而是先区分两类约束：shared data（共享数据）需要 mutual exclusion（互斥），resource availability / execution order（资源可用性／执行顺序）需要 counting 或 binary semaphore 表示条件。错误的获取顺序可能造成 deadlock（死锁），不公平的唤醒策略还可能造成 starvation（饥饿）。
+
+\lecturetopic{SC2005-L10-T01}{Semaphore 的系统化设计}
+
+\begin{enumerate}
+  \item 找出所有 shared variables 与 shared resources。
+  \item 对需要原子访问的 shared data，用初值为 $1$ 的 binary semaphore（通常命名为 \texttt{mutex}）包围 critical section。
+  \item 对每类可计数资源各设一个 semaphore，初值等于资源实例数；取得／消耗资源前执行 \texttt{Wait}，释放／产生资源后执行 \texttt{Signal}。
+\end{enumerate}
+
+Semaphore 也可表达 happens-before（先发生）关系。若要求 $A$ 必须先于 $B$：
+\[
+\begin{array}{ll}
+P_i: & A;\ \texttt{Signal(flag);}\qquad (\texttt{flag}=0),\\
+P_k: & \texttt{Wait(flag);}\ B.
+\end{array}
+\]
+$B$ 在取得由 $A$ 产生的唯一 permit 前无法执行。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L10-E01}{用 Semaphore 保证执行顺序}。
+
+\lecturetopic{SC2005-L10-T02}{Deadlock 与 Starvation}
+
+\begin{itemize}
+  \item \textbf{Deadlock（死锁）：}一组 processes 形成 circular wait（循环等待），每个都在等待只能由组内另一个 process 触发的事件，因此整个集合都不能继续。
+  \item \textbf{Starvation（饥饿）：}系统仍在运行，但某个 process 因调度、优先级或不公平的 semaphore queue 长期得不到资源。
+\end{itemize}
+
+例如 $S=Q=1$：$P_0$ 先取得 $S$ 后等待 $Q$，$P_1$ 先取得 $Q$ 后等待 $S$，二者便互相等待。统一 lock ordering（锁顺序）可以破坏 circular wait。FIFO waiting queue 有助于 bounded waiting，但仍需要资源最终被释放和 scheduler 公平等假设。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L10-E02}{两个 Semaphore 的 Circular Wait}。
+
+\lecturetopic{SC2005-L10-T03}{Bounded-Buffer Producer--Consumer}
+
+容量为 $n$ 的 circular buffer（循环缓冲区）包含 shared data \texttt{buffer}, \texttt{in}, \texttt{out}，并使用
+\[
+  \texttt{mutex}=1,\qquad \texttt{empty}=n,\qquad \texttt{full}=0.
+\]
+其中 \texttt{mutex} 保护 buffer 与索引；\texttt{empty}/\texttt{full} 分别记录 empty slots（空槽）与 full slots（已占槽），因此不再需要另设共享 \texttt{counter}。
+
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}XX@{}}
+  \toprule
+  Producer（生产者） & Consumer（消费者） \\
+  \midrule
+  produce item & \texttt{Wait(full)} \\
+  \texttt{Wait(empty)} & \texttt{Wait(mutex)} \\
+  \texttt{Wait(mutex)} & remove item; update \texttt{out} \\
+  insert item; update \texttt{in} & \texttt{Signal(mutex)} \\
+  \texttt{Signal(mutex)} & \texttt{Signal(empty)} \\
+  \texttt{Signal(full)} & consume item \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/bounded-buffer-semaphore-flow}}
+  \caption{Bounded buffer 中三个 semaphores 的职责。Resource semaphore 必须先于 \texttt{mutex} 获取，避免持锁等待。}
+  \label{fig:sc2005-l10-bounded-buffer}
+\end{figure}
+
+\keyidea{先等待所需资源，再进入保护 shared data 的 critical section；不要持有 \texttt{mutex} 去等待只能由另一个需要该 \texttt{mutex} 的 process 创造的条件。}
+
+若 buffer 已满，producer 错误地先 \texttt{Wait(mutex)}、再 \texttt{Wait(empty)}，它会持有 \texttt{mutex} 阻塞；consumer 虽通过 \texttt{Wait(full)}，却无法取得 \texttt{mutex} 来移除 item 并 \texttt{Signal(empty)}，于是 deadlock。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L10-E03}{Bounded Buffer 的错误 Wait 顺序}。
+
+\lecturetopic{SC2005-L10-T04}{Dining Philosophers}
+
+五位 philosophers 与五根 chopsticks 构成环。若每人都先取得左边 chopstick、再等待右边 chopstick，可能出现五人各持一根并等待下一根的 circular wait。
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/dining-philosophers-cycle}
+  \caption{所有 philosophers 同时持有左侧 chopstick 时形成 circular wait。}
+  \label{fig:sc2005-l10-dining-philosophers}
+\end{figure}
+
+常见 deadlock prevention（死锁预防）包括：
+\begin{itemize}
+  \item 最多允许四位 philosophers 同时尝试取 chopsticks；至少留下一根空闲 chopstick，使相邻者能够取得第二根、完成并释放资源。
+  \item 将“同时取得两根 chopsticks”做成 atomic operation。
+  \item 采用 asymmetric ordering（非对称顺序）或全局资源编号顺序，例如奇偶 philosopher 以相反顺序取用。
+\end{itemize}
+这些方案破坏 deadlock 的必要条件，但不自动保证没有 starvation；公平性仍取决于 queue 与 scheduling policy。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L10-E04}{限制四位 Philosophers 的作用}。
+
+\lecturetopic{SC2005-L10-T05}{Readers--Writers Problem}
+
+Readers 可同时读取 shared database；writer 写入时必须独占。设
+\[
+  \texttt{readcount}=0,\qquad \texttt{mutex}=1,\qquad \texttt{wrt}=1.
+\]
+\texttt{mutex} 只保护 \texttt{readcount}；\texttt{wrt} 控制 database 的读者群体或单个 writer。
+
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}XX@{}}
+  \toprule
+  Reader（读者） & Writer（写者） \\
+  \midrule
+  \texttt{Wait(mutex); readcount++;} & \texttt{Wait(wrt)} \\
+  \texttt{if (readcount == 1) Wait(wrt);} & write database \\
+  \texttt{Signal(mutex);} & \texttt{Signal(wrt)} \\
+  read database & \\
+  \texttt{Wait(mutex); readcount--;} & \\
+  \texttt{if (readcount == 0) Signal(wrt);} & \\
+  \texttt{Signal(mutex);} & \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+First reader（首位读者）替整个 reader group 取得 \texttt{wrt}，last reader（末位读者）释放它；中间读者只更新 \texttt{readcount}。该 reader-preference（读者优先）版本允许新 readers 持续加入，因此 writer 可能 starvation。
+
+\textbf{对应独立检验例：}\relatedexercise{SC2005-L10-E05}{Readers--Writers 状态轨迹}。
+
+\lecturetopic{SC2005-L10-T06}{Monitor：不考的延伸}
+
+Monitor（管程）是封装 shared data、operations 与 synchronization 的高层语言结构，同一时刻只允许一个 process 在 monitor 内 active。它减少手工配对 \texttt{Wait}/\texttt{Signal} 的错误；本课程将此部分标为 not examinable（不考），只需认识概念。
+
+\textbf{一分钟回顾。}\texttt{empty/full} 管理资源，\texttt{mutex} 保护数据；统一 resource ordering 可避免 circular wait。Deadlock freedom 与 starvation freedom 必须分开检查。

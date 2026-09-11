@@ -1,0 +1,20 @@
+\begin{tikzpicture}[
+  >=Latex,
+  philosopher/.style={circle,draw=noteBlue,very thick,fill=blue!6,minimum size=10mm,font=\small},
+  chopstick/.style={circle,draw=ntuRed,very thick,fill=red!6,minimum size=7mm,font=\scriptsize},
+  wait/.style={-{Latex[length=2mm]},thick,draw=black!68}
+]
+  \foreach \i in {0,...,4} {
+    \pgfmathsetmacro{\a}{90-72*\i}
+    \pgfmathsetmacro{\b}{54-72*\i}
+    \node[philosopher] (p\i) at (\a:2.25cm) {$P_{\i}$};
+    \node[chopstick] (c\i) at (\b:1.35cm) {$C_{\i}$};
+  }
+  \foreach \i in {0,...,4} {
+    \pgfmathtruncatemacro{\j}{mod(\i+1,5)}
+    \draw[wait] (p\i) to[bend left=10] (c\i);
+    \draw[wait,dashed] (c\i) to[bend left=10] (p\j);
+  }
+  \node[align=center,font=\scriptsize] at (0,-2.95cm)
+    {实线：等待下一根\qquad 虚线：已被相邻者持有};
+\end{tikzpicture}

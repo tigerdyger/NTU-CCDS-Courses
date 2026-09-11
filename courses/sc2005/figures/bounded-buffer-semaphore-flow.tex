@@ -1,0 +1,29 @@
+\begin{tikzpicture}[
+  >=Latex,
+  actor/.style={draw=noteBlue,very thick,rounded corners=3pt,fill=blue!6,minimum width=2.15cm,minimum height=9mm,align=center,font=\small},
+  resource/.style={draw=ntuRed,very thick,rounded corners=3pt,fill=red!5,minimum width=2.15cm,minimum height=9mm,align=center,font=\small},
+  mutex/.style={draw=verifyOrange,very thick,rounded corners=3pt,fill=orange!7,minimum width=2.15cm,minimum height=9mm,align=center,font=\small},
+  access/.style={draw=green!45!black,very thick,rounded corners=3pt,fill=green!7,minimum width=2.15cm,minimum height=9mm,align=center,font=\small},
+  flow/.style={-{Latex[length=2mm]},thick,draw=black!68}
+]
+  \node[actor] (p0) at (0,1.05) {Producer};
+  \node[resource] (p1) at (2.65,1.05) {Wait(empty)};
+  \node[mutex] (p2) at (5.3,1.05) {Wait(mutex)};
+  \node[access] (p3) at (7.95,1.05) {insert item};
+  \node[mutex] (p4) at (10.6,1.05) {Signal(mutex)};
+  \node[resource] (p5) at (13.25,1.05) {Signal(full)};
+
+  \node[actor] (c0) at (0,-1.05) {Consumer};
+  \node[resource] (c1) at (2.65,-1.05) {Wait(full)};
+  \node[mutex] (c2) at (5.3,-1.05) {Wait(mutex)};
+  \node[access] (c3) at (7.95,-1.05) {remove item};
+  \node[mutex] (c4) at (10.6,-1.05) {Signal(mutex)};
+  \node[resource] (c5) at (13.25,-1.05) {Signal(empty)};
+
+  \foreach \a/\b in {p0/p1,p1/p2,p2/p3,p3/p4,p4/p5,c0/c1,c1/c2,c2/c3,c3/c4,c4/c5}
+    \draw[flow] (\a) -- (\b);
+
+  \node[font=\scriptsize,text=ntuRed,anchor=east] at (13.25,0) {resource count};
+  \node[font=\scriptsize,text=verifyOrange] at (5.3,0) {protect shared data};
+  \node[font=\scriptsize,text=green!45!black] at (7.95,0) {buffer access};
+\end{tikzpicture}

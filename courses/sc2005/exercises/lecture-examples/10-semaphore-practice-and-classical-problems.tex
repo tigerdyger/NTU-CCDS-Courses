@@ -1,0 +1,109 @@
+% Related lecture: SC2005-L10
+% Source: Part 4 (Process Synchronization), pp. 37--54; classroom checks
+% Human verified: Yes
+
+\exercisemeta
+  {SC2005-L10-EX}
+  {2026-09-11}
+  {Part 4 pp.~37--54；课堂检查题}
+  {题干、semaphore 顺序、deadlock 条件与状态轨迹均已核对}
+  {已确认（2026-09-11）}
+
+\exercisequestion{SC2005-L10-E01}{用 Semaphore 保证执行顺序}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L10-T01}{Semaphore 的系统化设计}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+Processes $P_i$ 与 $P_k$ 分别执行 statements $A$ 与 $B$。用一个 semaphore 保证 $A$ 完成后才能执行 $B$，写出初值以及 \texttt{Wait}/\texttt{Signal} 的位置。
+
+\begin{checkedsolution}
+令 \texttt{flag=0}：
+\[
+  P_i:\ A;\ \texttt{Signal(flag);}
+  \qquad
+  P_k:\ \texttt{Wait(flag);}\ B.
+\]
+若 $P_k$ 先运行，它会因没有 permit 而等待；$P_i$ 完成 $A$ 后 \texttt{Signal(flag)}，$P_k$ 才可能继续执行 $B$。因此 $A\rightarrow B$ 的 happens-before 关系成立。
+\end{checkedsolution}
+
+\textbf{检查点：}用于事件排序的 semaphore 初值为 $0$；\texttt{Wait} 放在后发生事件前，\texttt{Signal} 放在先发生事件后。
+
+\exercisequestion{SC2005-L10-E02}{两个 Semaphore 的 Circular Wait}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L10-T02}{Deadlock 与 Starvation}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+设 $S=Q=1$。$P_0$ 依次执行 \texttt{Wait(S)}、\texttt{Wait(Q)}；$P_1$ 依次执行 \texttt{Wait(Q)}、\texttt{Wait(S)}。给出一种产生 deadlock 的 interleaving，并说明如何避免。
+
+\begin{checkedsolution}
+危险 interleaving 为
+\[
+  P_0:\texttt{Wait(S)}
+  \rightarrow P_1:\texttt{Wait(Q)}
+  \rightarrow P_0:\texttt{Wait(Q)}\text{（阻塞）}
+  \rightarrow P_1:\texttt{Wait(S)}\text{（阻塞）}.
+\]
+$P_0$ 持有 $S$ 等待 $Q$，$P_1$ 持有 $Q$ 等待 $S$，形成 circular wait。规定所有 processes 都按相同的全局顺序（例如先 $S$、后 $Q$）获取 locks，可破坏 circular-wait condition。
+\end{checkedsolution}
+
+\textbf{检查点：}画 wait-for cycle；若每个节点持有下一个节点所需的资源，便不能只靠继续调度解除 deadlock。
+
+\exercisequestion{SC2005-L10-E03}{Bounded Buffer 的错误 Wait 顺序}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L10-T03}{Bounded-Buffer Producer--Consumer}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+Bounded buffer 已满。Producer 错误地先取得 \texttt{mutex}，再等待 \texttt{empty}；consumer 仍先等待 \texttt{full}，再取得 \texttt{mutex}。说明随后发生什么。
+
+\begin{checkedsolution}
+Producer 先取得 \texttt{mutex}，但因 \texttt{empty=0} 在 \texttt{Wait(empty)} 阻塞。Consumer 可消耗一个 \texttt{full} permit，却在 \texttt{Wait(mutex)} 阻塞。Consumer 无法进入 critical section 取走 item，因而无法 \texttt{Signal(empty)}；producer 也不会释放 \texttt{mutex}，形成 deadlock。
+
+正确顺序是 producer 先 \texttt{Wait(empty)}，consumer 先 \texttt{Wait(full)}，确认资源存在后再取得 \texttt{mutex}。
+\end{checkedsolution}
+
+\textbf{检查点：}若 process 持锁等待的条件只能由另一个也需要此锁的 process 创造，顺序通常已经错误。
+
+\exercisequestion{SC2005-L10-E04}{限制四位 Philosophers 的作用}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L10-T04}{Dining Philosophers}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+五位 philosophers 围绕五根 chopsticks 就餐。为什么将“同时尝试取 chopsticks 的 philosophers 数量”限制为最多四人可以防止经典 circular deadlock？该限制是否自动消除 starvation？
+
+\begin{checkedsolution}
+最多四人参与时，五根 chopsticks 中至少有一根未被持有。与该空缺相邻、已经取得另一根 chopstick 的 philosopher 能取得第二根并完成就餐，随后释放两根，从而保证不可能形成五人闭合的 circular wait。
+
+该方案只保证上述 deadlock 不发生，不自动消除 starvation；若 semaphore queue 或调度不公平，某位 philosopher 仍可能长期无法得到两根 chopsticks。
+\end{checkedsolution}
+
+\textbf{检查点：}Deadlock freedom 与 starvation freedom 是两项不同性质，必须分开证明。
+
+\exercisequestion{SC2005-L10-E05}{Readers--Writers 状态轨迹}
+
+\textbf{对应知识点：}\relatedtopic{SC2005-L10-T05}{Readers--Writers Problem}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+初始 \texttt{readcount=0}、\texttt{wrt=1}。$R_1$ 进入读取，随后 $R_2$ 进入；此时 writer $W$ 请求写入。之后 $R_1$、$R_2$ 依次离开。写出每一步的 \texttt{readcount}，并判断 $W$ 何时被唤醒。
+
+\begin{checkedsolution}
+\[
+\begin{array}{c|c|l}
+  \text{Event} & \texttt{readcount} & \text{Effect on \texttt{wrt}}\\
+  \hline
+  \text{Initial} & 0 & \texttt{wrt}=1\\
+  R_1\text{ enters} & 1 & \text{first reader executes \texttt{Wait(wrt)}}\\
+  R_2\text{ enters} & 2 & \text{reader group already holds \texttt{wrt}}\\
+  W\text{ requests} & 2 & W\text{ waits on \texttt{wrt}}\\
+  R_1\text{ leaves} & 1 & \text{no signal}\\
+  R_2\text{ leaves} & 0 & \text{last reader executes \texttt{Signal(wrt)}}
+\end{array}
+\]
+因此 \texttt{readcount} 的轨迹为 $0,1,2,1,0$。$R_2$ 离开并发出 \texttt{Signal(wrt)} 后，$W$ 从 waiting 变为 ready；它不一定立即 running。
+\end{checkedsolution}
+
+\textbf{检查点：}First reader 获取群体锁，last reader 释放群体锁；中间 readers 不直接操作 \texttt{wrt}。
