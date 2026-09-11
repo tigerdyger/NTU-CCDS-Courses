@@ -1,0 +1,166 @@
+% Tutorial set: 02
+% Source: T2-CSP Game Playing, p. 1, Questions 2.1--2.2
+% Reference: T2-CSP Game Playing-solution, pp. 1--6
+% Session date: 2026-09-11
+% Human verified: Search counts, heuristic values, minimax backups, and caveats checked
+
+\subsection{Tutorial 02：CSP 与 Game Playing}
+\label{tutorial:SC3000-TUT02}
+
+\exercisemeta
+  {SC3000-TUT02}
+  {2026-09-11}
+  {T2-CSP Game Playing，p.~1，Questions 2.1--2.2；官方参考解答 pp.~1--6}
+  {搜索规模、heuristic values 与 Minimax backup 均已核对；参考答案的公平性结论已订正}
+  {已确认（2026-09-11）}
+
+\exercisequestion{SC3000-TUT02-Q01}{Logo Coloring：Forward Checking 与 CSP Heuristics}
+
+\textbf{对应讲义：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L02-T04}{CSP Formulation 与 Backtracking}
+  \item \relatedtopic{SC3000-L02-T05}{CSP Heuristics 与 Min-Conflicts}
+\end{itemize}
+
+\subsubsection*{题目}
+
+Intelligent Systems Laboratory 的 logo 由 $D,I,S,L$ 四个 design elements 构成。每个 element 可染成 red、green 或 blue，且相邻 elements 必须颜色不同。使用带 Forward Checking（前向检查）的 Depth-First Search（深度优先搜索）生成所有合法 color combinations。分别完成：
+
+\begin{enumerate}[label=(\alph*)]
+  \item 按 alphabetical order（字母顺序）$D\to I\to L\to S$ 赋值；
+  \item 使用适合 CSP 的最佳 variable/value heuristics 决定赋值顺序，并说明其他 heuristics 是否有用。
+\end{enumerate}
+
+两种情形均需给出完整 search-space profile（搜索空间各层规模）、total nodes、average branching factor，并评价效率。
+
+\begin{checkedsolution}
+令 variables、domains 与 constraints 为
+\[
+  X=\{D,I,S,L\},\qquad
+  \operatorname{Dom}(X_i)=\{R,G,B\},
+\]
+\[
+  D\ne I,\qquad D\ne S,\qquad I\ne S,\qquad S\ne L.
+\]
+约束图是 triangle $D-I-S$ 加上一条 tail $S-L$。Forward checking 在赋值后立即从尚未赋值的邻居 domains 中删除该颜色；若某个 domain 变成空集，则立即 backtrack。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/tutorial02-csp-search-profile}}
+  \caption{Logo CSP 的 constraint graph 与两种顺序的 search-space profile（原创重绘）。}
+  \label{fig:sc3000-tut02-csp-profile}
+\end{figure}
+
+\paragraph{(a) Alphabetical order.}
+各层 node counts（包括 root）为
+\[
+  \boxed{1,\ 3,\ 6,\ 18,\ 12},
+  \qquad N=\boxed{40}.
+\]
+$D$ 与 $I$ 必须使用不同颜色。$L$ 暂时有三种选择，但其中一种会用掉 $D,I$ 之外的第三种颜色，使 $S$ 的 domain 变空；所以 18 个 $L$ nodes 中只有 12 个能生成 $S$ solution node。
+
+以实际产生 children 的 nodes 为 internal nodes，tree edges 为 $N-1$，故
+\[
+  b_{\mathrm{avg}}
+  =\frac{N-1}{N_{\mathrm{internal}}}
+  =\frac{39}{1+3+6+12}
+  =\boxed{\frac{39}{22}\approx1.77}.
+\]
+相较不使用 forward checking 的完整三叉树 $1+3+3^2+3^3+3^4=121$ nodes，搜索量已明显下降，但把约束最多的 $S$ 留到最后仍产生无效的 $L$ assignments。
+
+\paragraph{(b) Heuristic ordering.}
+Degree heuristic（度启发式）选择与最多 unassigned variables 相邻的 variable：
+\[
+  \deg(S)=3,\quad \deg(D)=\deg(I)=2,\quad \deg(L)=1.
+\]
+因此可取 $S\to D\to I\to L$（交换 $D,I$ 等价）。各层为
+\[
+  \boxed{1,\ 3,\ 6,\ 6,\ 12},
+  \qquad N=\boxed{28},
+\]
+\[
+  b_{\mathrm{avg}}
+  =\frac{27}{1+3+6+6}
+  =\boxed{\frac{27}{16}\approx1.69}.
+\]
+MRV / Most Constrained Variable（最少剩余值）在初始时因四个 domains 都有三个值而打平；LCV / Least Constraining Value（最少约束值）也因三种颜色完全对称而不能区分首选颜色。Degree heuristic 能直接选出 $S$，将 40 nodes 进一步降至 28，同时保留全部 $3!\times2=12$ 个合法 colorings。
+\end{checkedsolution}
+
+\textbf{检查点：}$N-1$ 是 tree edges 数，不是 total nodes；average branching factor 应除以实际 expanded internal nodes，而不是 tree depth。
+
+\exercisequestion{SC3000-TUT02-Q02}{Tic-Tac-Toe：Symmetry、Evaluation 与 Minimax Backup}
+
+\textbf{对应讲义：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L03-T01}{Game Formulation 与 Minimax}
+  \item \relatedtopic{SC3000-L03-T02}{Cutoff、Evaluation、Quiescent Search 与 MCTS}
+\end{itemize}
+
+\subsubsection*{题目}
+
+Tic-Tac-Toe（井字棋）由 X 与 O 轮流在 $3\times3$ board 的空格落子；同一 row、column 或 diagonal 上先连成三个相同 marks 的玩家获胜。定义 $X_n$ 为“恰有 $n$ 个 X 且没有 O”的 winning lines 数量，$O_n$ 类似。对 non-terminal position 使用
+\[
+  h(s)=3X_2+X_1-3O_2-O_1;
+\]
+X 胜、O 胜与 draw 的 terminal utilities 分别为 $+1,-1,0$。
+
+\begin{enumerate}[label=(\alph*)]
+  \item 利用 symmetry（对称性）画出 depth $2$ 的 game tree，即 X、O 各走一步；
+  \item 计算所有 depth-2 positions 的 heuristic values，使用 Minimax 回传 depth $1$ 与 root values，并确定 X 的最佳第一步。
+\end{enumerate}
+
+\begin{checkedsolution}
+空 board 的九个位置在 rotations/reflections 下分为 corner、centre、edge 三类，所以 depth $1$ 只需保留三个不等价 moves。O 的回应分别有 $5,2,5$ 个 symmetry classes，depth $2$ 共 $12$ 个不等价 positions。
+
+在 depth $2$ 只有一个 X 和一个 O，因此
+\[
+  X_2=O_2=0,
+  \qquad
+  \boxed{h(s)=X_1-O_1}.
+\]
+同时含 X 与 O 的 line 已被 block，不计入任何一方的 $X_1$ 或 $O_1$。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/tutorial02-tictactoe-minimax}}
+  \caption{利用 symmetry 压缩后的 depth-2 game tree。Leaf values 来自 $h=X_1-O_1$；MIN 与 MAX 的回传值标在内部节点中（原创重绘）。}
+  \label{fig:sc3000-tut02-tictactoe-tree}
+\end{figure}
+
+三类第一步的 leaf values 与 backup 为
+\begin{center}
+\small
+\begin{tabularx}{0.94\textwidth}{@{}lXcc@{}}
+  \toprule
+  X first move & Depth-2 heuristic values & MIN backup & Root comparison \\
+  \midrule
+  corner & $1,-1,0,0,1$ & $-1$ & \\
+  centre & $1,2$ & $+1$ & $\leftarrow$ maximum \\
+  edge & $-1,-2,0,-1,0$ & $-2$ & \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+因此 root 的 MAX backup 为
+\[
+  \max\{-1,+1,-2\}=\boxed{+1},
+\]
+在本题的 depth-2 cutoff 与 evaluation function 下，最佳第一步为
+\[
+  \boxed{\text{play in the centre}}.
+\]
+
+该结论只表示 centre 在当前 shallow evaluation（浅层评估）下的 worst-case value 最高，不能证明 X 一定获胜。标准 Tic-Tac-Toe 在双方 optimal play 下是 draw；参考答案所称 ``whoever plays first has a strong advantage'' 不能作为 game-theoretic forced win 的结论。
+
+此外，题设把 terminal win 记为 $+1$，但 non-terminal heuristic 可超过 $+1$。更稳妥的实现应令 terminal win/loss 使用超过所有 heuristic values 的 $\pm M$（或 $\pm\infty$），避免算法把未结束局面的 $+2$ 错排在真实胜利 $+1$ 之前。
+\end{checkedsolution}
+
+\textbf{检查点：}Minimax 的 MAX/MIN backup 给出的是当前 search depth 与 evaluation function 下的决策；只有搜索到 terminal states，或 evaluation 足够准确时，才可把回传值解释为最终胜负保证。
+
+\subsubsection*{本次 Tutorial 收口}
+
+\begin{itemize}
+  \item Q2.1：Forward checking 通过删减未来 domains 剪枝；Degree heuristic 优先处理 constraint graph 的高连接变量；
+  \item Q2.1：区分 total nodes、tree edges、internal nodes 与 average branching factor；
+  \item Q2.2：先用 symmetry 合并等价 moves，再在 cutoff leaves 计算 evaluation，MIN 取最小、MAX 取最大；
+  \item Q2.2：``当前 heuristic 下最优'' 不等于 ``一定获胜''，terminal utility 的尺度还应压过所有 non-terminal estimates。
+\end{itemize}

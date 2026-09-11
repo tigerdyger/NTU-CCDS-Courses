@@ -1,0 +1,29 @@
+\begin{tikzpicture}[
+  >=Latex,
+  edge/.style={draw=gray!75,-{Latex[length=2mm]},thick},
+  maxnode/.style={circle,draw=noteBlue,fill=noteBlue!10,thick,minimum size=10mm,align=center,font=\scriptsize},
+  minnode/.style={rounded corners,draw=ntuRed,fill=ntuRed!8,thick,minimum width=29mm,minimum height=11mm,align=center,font=\scriptsize},
+  leaf/.style={circle,draw=gray!75,fill=gray!7,minimum size=7mm,font=\scriptsize}
+]
+  \node[maxnode] (root) at (0,3.6) {MAX\\$+1$};
+  \node[minnode] (corner) at (-5.0,2.15) {corner\\MIN $=-1$};
+  \node[minnode] (centre) at (0,2.15) {centre\\MIN $=+1$};
+  \node[minnode] (edge) at (5.0,2.15) {edge\\MIN $=-2$};
+  \draw[edge] (root)--(corner); \draw[edge] (root)--(centre); \draw[edge] (root)--(edge);
+
+  \foreach \x/\v [count=\i] in {-7/1,-6/-1,-5/0,-4/0,-3/1}{
+    \node[leaf] (c\i) at (\x,0.35) {$\v$};
+    \draw[edge] (corner)--(c\i);
+  }
+  \foreach \x/\v [count=\i] in {-0.55/1,0.55/2}{
+    \node[leaf] (m\i) at (\x,0.35) {$\v$};
+    \draw[edge] (centre)--(m\i);
+  }
+  \foreach \x/\v [count=\i] in {3/-1,4/-2,5/0,6/-1,7/0}{
+    \node[leaf] (e\i) at (\x,0.35) {$\v$};
+    \draw[edge] (edge)--(e\i);
+  }
+
+  \node[font=\scriptsize,align=center] at (0,-0.55)
+    {Leaf values use $h=3X_2+X_1-3O_2-O_1=X_1-O_1$ at depth $2$};
+\end{tikzpicture}
