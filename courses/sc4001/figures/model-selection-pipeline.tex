@@ -1,0 +1,22 @@
+\begin{tikzpicture}[
+  >=Latex,
+  box/.style={draw=noteBlue, rounded corners, align=center, minimum height=1.05cm, minimum width=2.55cm, fill=blue!5},
+  data/.style={draw=ntuRed, rounded corners, align=center, minimum height=0.85cm, minimum width=2.15cm, fill=red!5},
+  arrow/.style={->, thick, draw=noteBlue}
+]
+  \node[data] (train) {Training set\\学 parameters};
+  \node[data, below=0.55cm of train] (val) {Validation set\\选 hyperparameters};
+  \node[data, below=0.55cm of val] (test) {Test set\\最终评估一次};
+
+  \node[box, right=1.25cm of train] (candidates) {训练 candidate models\\$\theta^*(\lambda_1),\ldots,\theta^*(\lambda_M)$};
+  \node[box, right=1.15cm of val] (select) {比较 validation error\\选择 $\lambda^*$};
+  \node[box, right=1.15cm of test] (report) {冻结 pipeline\\报告 test error};
+  \node[box, right=1.2cm of select, yshift=0.8cm] (retrain) {可选：用 train + val\\重训选定结构};
+
+  \draw[arrow] (train) -- (candidates);
+  \draw[arrow] (candidates.south) -- (select.north);
+  \draw[arrow] (val.east) -- (select.west);
+  \draw[arrow] (select) -- (retrain);
+  \draw[arrow] (retrain) |- (report);
+  \draw[arrow] (test) -- (report);
+\end{tikzpicture}

@@ -1,0 +1,94 @@
+% Lecture example set: SC4001-L05
+% Sources: 5_model_selection pp. 22--23, 31--39, 45--48; self-contained checks
+% Human verified: Yes
+
+\exercisemeta
+  {SC4001-L05-EX}
+  {2026-09-11}
+  {5\_model\_selection pp.~22--23、31--39、45--48；基于对应概念的 self-contained checks}
+  {题意、公式与数值结果已由学习者核对；dropout convention 已订正}
+  {已确认（2026-09-11）}
+
+\exercisequestion{SC4001-L05-E01}{Model Selection 与 Test-set Boundary}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L05-T04}{Three-way Split 与 Data Leakage}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+两个候选模型的 error 如下：
+\[
+  \begin{array}{c|cc}
+    \toprule
+    \text{Model} & \text{Training error} & \text{Validation error}\\
+    \midrule
+    A & 0.02 & 0.15\\
+    B & 0.06 & 0.08\\
+    \bottomrule
+  \end{array}
+\]
+应选择哪个模型？为什么不能再根据 test error 改变选择？
+
+\begin{checkedsolution}
+选择 $\boxed{B}$，因为 model selection 的依据是 validation performance；A 的 training error 更低，但 generalization gap 更大。Test set 只用于模型与所有 hyperparameters 冻结后的最终独立评估。若根据 test error 再调整选择，test set 就变成了 validation set，最终估计将产生 selection bias（选择偏差）。
+\end{checkedsolution}
+
+\exercisequestion{SC4001-L05-E02}{Learning Curve 与 Early-stopping Checkpoint}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L05-T05}{Model Complexity、Underfitting 与 Overfitting}；\relatedtopic{SC4001-L05-T06}{Early Stopping、Regularization 与 Dropout}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+某模型前 20 个 epochs 的 training error 与 validation error 一起下降；之后 training error 继续下降，但 validation error 开始上升。判断该现象，并说明应保留哪个模型。
+
+\begin{checkedsolution}
+这是 $\boxed{\text{overfitting}}$。应保留 validation error 达到全程最小值的
+\[
+  \boxed{t^*=\arg\min_t J_{\mathrm{val}}(t)}
+\]
+对应 checkpoint。Patience 只决定何时停止等待，不改变最终恢复 best checkpoint 的原则。
+\end{checkedsolution}
+
+\exercisequestion{SC4001-L05-E03}{L2 Regularization 的一次更新}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L05-T06}{Early Stopping、Regularization 与 Dropout}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+对单个 weight $w=2$，data loss gradient 为 $3$，learning rate $\alpha=0.1$，正则项为 $\beta w^2$，其中 $\beta=0.05$。求一次 gradient-descent update 后的 $w'$。
+
+\begin{checkedsolution}
+\[
+  \frac{\partial\widetilde J}{\partial w}
+  =3+2\beta w
+  =3+2(0.05)(2)
+  =3.2,
+\]
+\[
+  \boxed{w'=2-0.1(3.2)=1.68}.
+\]
+自检时必须确认正则项写作 $\beta w^2$ 还是 $\tfrac12\beta w^2$；两种 convention 的 derivative 相差因子 $2$。
+\end{checkedsolution}
+
+\exercisequestion{SC4001-L05-E04}{PyTorch Inverted Dropout 的期望保持}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L05-T06}{Early Stopping、Regularization 与 Dropout}
+
+\subsubsection*{题目（Self-contained Check Example）}
+
+PyTorch \texttt{nn.Dropout} 使用 $p=0.25$。若某 activation 为 $h=6$，求 training mode 下该 neuron 被保留时、被删除时的输出，以及随机输出的期望。
+
+\begin{checkedsolution}
+Keep probability 为 $q=1-p=0.75$。Inverted dropout 在保留时除以 $q$：
+\[
+  \widetilde h=
+  \begin{cases}
+    6/0.75=\boxed{8}, & \text{概率 }0.75,\\
+    \boxed{0}, & \text{概率 }0.25.
+  \end{cases}
+\]
+因此
+\[
+  \boxed{\mathbb E[\widetilde h]=0.75(8)+0.25(0)=6}.
+\]
+在 evaluation mode 下直接输出 $6$。结果 $6,0,4.5$ 对应 training 时不缩放、test 时再乘 $1-p$ 的 classical dropout convention，而不是 PyTorch 实现。
+\end{checkedsolution}

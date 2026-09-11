@@ -1,0 +1,156 @@
+% Actual class: 05
+% Slide decks: 5_model_selection; L5_summary
+% Exact scope: 5_model_selection pp. 1--51; L5_summary pp. 1--15
+% Video supplement: Lecture5_Part1 and Lecture5_Part2; ranges checked from sampled frames
+% Human verified: Yes
+
+\section{第 05 节课：Model Selection 与 Overfitting}
+\label{lecture:SC4001-L05}
+
+\lecturemeta
+  {SC4001-L05}
+  {2026-09-11}
+  {5\_model\_selection；L5\_summary}
+  {主讲义 pp.~1--51；Summary pp.~1--15}
+  {Lecture5\_Part1（31:46）与 Lecture5\_Part2（32:13）；视频画面覆盖主讲义全部章节，无嵌入字幕轨}
+  {已确认（2026-09-11；检查题完成，test-set、dropout 与 PyTorch loss 表述已订正）}
+
+\subsection{本讲主线}
+
+Model selection（模型选择）不是挑选 training error（训练误差）最低的模型，而是利用未参与参数学习的数据，选择最可能 generalize（泛化）的 hyperparameters（超参数）。完整逻辑为
+\[
+  \boxed{\text{training set 学参数}}
+  \longrightarrow
+  \boxed{\text{validation set 选模型}}
+  \longrightarrow
+  \boxed{\text{test set 只做最终评估}}.
+\]
+
+\lecturetopic{SC4001-L05-T01}{Parameters、Hyperparameters 与 Error Hierarchy}
+
+Weights（权重）与 biases（偏置）是 parameters（模型参数），由 training data（训练数据）学习。Depth（深度）、width（宽度）、learning rate（学习率）、batch size（批大小）、regularization strength（正则化强度）和 dropout ratio（随机失活率）是 hyperparameters，需要通过 model selection 决定。若用 $\lambda$ 表示一组 hyperparameters，则
+\[
+  \theta^*(\lambda)
+  =\arg\min_\theta \widehat R_{\mathrm{train}}(\theta;\lambda),
+  \qquad
+  \lambda^*
+  =\arg\min_\lambda
+    \widehat R_{\mathrm{val}}\bigl(\theta^*(\lambda)\bigr).
+\]
+
+三种误差不可混用：
+\begin{itemize}
+  \item apparent/training error（表观/训练误差）是优化器直接最小化的经验误差，通常偏乐观；
+  \item true error（真实误差）是未知数据分布上的期望
+    \[
+      R(f)=\mathbb E_{(\bm x,d)\sim\mathcal D}
+      [\ell(f(\bm x),d)];
+    \]
+  \item test error（测试误差）用独立 test set 估计 true error，本身仍有 sampling uncertainty（抽样不确定性）。
+\end{itemize}
+
+对 $P$ 个 samples、$K$ 个 outputs，课件采用
+\[
+  \mathrm{MSE}=\frac1P\sum_{p=1}^{P}\sum_{k=1}^{K}(d_{pk}-y_{pk})^2.
+\]
+这是对 samples 取平均、对 outputs 求和；若定义为逐元素平均，则分母应为 $PK$。课件的
+\[
+  \sum_{p=1}^{P}\mathbf 1(d_p\ne y_p)
+\]
+是 misclassification count（错分数）；classification error rate（错分率）还需除以 $P$。
+
+\lecturetopic{SC4001-L05-T02}{Holdout 与 Random Subsampling}
+
+Holdout method（留出法）只进行一次 train/held-out split（训练/留出划分）。它计算便宜，但若发生 unfortunate split（不幸运划分），训练集可能无法覆盖 held-out data 所在区域，得到的误差会很不稳定。
+
+Random subsampling（随机重复抽样）重复进行 $S$ 次随机划分；每次都从头训练候选模型 $m$，再计算
+\[
+  \overline e_m=\frac1S\sum_{s=1}^{S}e_m^{(s)},
+  \qquad
+  m^*=\arg\min_m\overline e_m.
+\]
+它降低了对单次划分的依赖，但某些 samples 可能多次进入 held-out set，另一些可能一次也没有进入。
+
+\lecturetopic{SC4001-L05-T03}{K-fold 与 Leave-One-Out Cross-Validation}
+
+$K$-fold cross-validation（$K$ 折交叉验证）把数据划分成互不重叠的 $K$ folds。第 $i$ 次用第 $i$ fold 验证、其余 $K-1$ folds 训练：
+\[
+  e_{\mathrm{CV}}(m)=\frac1K\sum_{i=1}^{K}e_i(m).
+\]
+每个 sample 恰好作为 validation sample 一次；每个候选 hyperparameter setting 必须独立训练 $K$ 次。
+
+Leave-one-out cross-validation（留一交叉验证，LOOCV）是 $K=N$ 的极端情形：每次用 $N-1$ 个 samples 训练、一个 sample 验证。它每次几乎使用全部数据，但需要训练 $N$ 次，且各训练集高度重叠，因此对 neural networks 通常计算代价过高。
+
+\lecturetopic{SC4001-L05-T04}{Three-way Split 与 Data Leakage}
+
+若既要 model selection，又要 unbiased final evaluation（无选择偏差的最终评估），应采用 training--validation--test 三部分：
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/model-selection-pipeline}}
+  \caption{Three-way model-selection pipeline。Test set 在模型与超参数全部冻结后才使用一次。}
+  \label{fig:sc4001-l05-selection-pipeline}
+\end{figure}
+
+看到 test result 后若继续修改模型，test set 就通过人工决策间接参与了训练，产生 data leakage（数据泄漏）。同理，early stopping（早停）必须观察 validation loss，而不能观察真正的 test loss。
+
+课件的 Iris dataset（鸢尾花数据集）含 150 个 samples、4 个 input features 和 3 个 classes。不同划分方法分别选出 4、6 或 2 个 hidden neurons，某次 test accuracy 达到 $100\%$。这些结果不矛盾：小数据集上的 split randomness（划分随机性）会改变最优超参数；一次 $100\%$ 也不等于 true accuracy 为 $100\%$。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L05-E01}{Model selection 与 test-set 边界}。
+
+\lecturetopic{SC4001-L05-T05}{Model Complexity、Underfitting 与 Overfitting}
+
+模型太简单会 underfit（欠拟合）：training error 与 validation error 都较高。模型过于复杂时，可能记住 training samples 及其 noise，使 training error 很低而 validation error 较高，即 overfitting（过拟合）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.78\textwidth}{!}{\input{figures/model-complexity-errors}}
+  \caption{Error 随 model complexity 变化的示意图。曲线只表达典型趋势，不代表固定函数形式。}
+  \label{fig:sc4001-l05-complexity-errors}
+\end{figure}
+
+训练过程中若出现
+\[
+  J_{\mathrm{train}}\downarrow,
+  \qquad
+  J_{\mathrm{val}}\ \text{先下降后上升},
+\]
+说明模型开始拟合训练数据的偶然细节。判断标准是 generalization gap（泛化差距），而不是单独观察 training loss。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L05-E02}{Learning curve 与 early-stopping checkpoint}。
+
+\lecturetopic{SC4001-L05-T06}{Early Stopping、Regularization 与 Dropout}
+
+\textbf{Early stopping。}保留 validation loss 最小时的 checkpoint：
+\[
+  t^*=\arg\min_t J_{\mathrm{val}}(t).
+\]
+Patience（耐心轮数）决定连续多少个 epochs 无明显改善后停止；最终应恢复 $t^*$，而不是触发停止时的最后一个 epoch。
+
+\textbf{Weight regularization（权重正则化）。}课件的 penalty（惩罚项）为
+\[
+  \widetilde J(W,b)
+  =J(W,b)
+  +\beta_1\sum_{i,j}|w_{ij}|
+  +\beta_2\sum_{i,j}w_{ij}^2.
+\]
+对 $L_2$ 项，$\nabla_W\sum w_{ij}^2=2W$，所以
+\[
+  W\leftarrow
+  (1-2\alpha\beta_2)W-\alpha\nabla_WJ.
+\]
+这就是 weight decay（权重衰减）。$L_1$ 的 subgradient 近似为 $\operatorname{sign}(w)$，更容易把小权重推到精确的零，从而产生 sparsity（稀疏性）。Bias terms 通常不正则化。
+
+\textbf{Dropout（随机失活）。}令 dropout probability 为 $p$，keep probability 为 $q=1-p$。PyTorch 的 inverted dropout（反向缩放 dropout）在 training mode 使用
+\[
+  \widetilde h_i=\frac{m_i}{q}h_i,
+  \qquad m_i\sim\operatorname{Bernoulli}(q),
+\]
+因此 $\mathbb E[\widetilde h_i]=h_i$。在 \texttt{model.eval()} 下不再随机删除，也不再额外缩放。课件第 46 页混合了 classical dropout 与 inverted dropout 两种 convention；对 \texttt{nn.Dropout(p)} 应以上述 PyTorch 规则为准。
+
+\textbf{实现注意：}课件示例把 \texttt{test\_loss} 传给 EarlyStopper；若该数据真是最终 test set，应改用 validation loss。网络末尾也不应在 \texttt{CrossEntropyLoss} 前显式加入 \texttt{Softmax}，因为该 loss 接收 raw logits 并在内部完成 log-softmax。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L05-E03}{$L_2$ regularization 的一次更新}；\relatedexercise{SC4001-L05-E04}{PyTorch inverted dropout 的期望保持}。
+
+\subsection{一分钟回顾}
+
+Parameters 由 training set 学习，hyperparameters 由 validation set 选择，test set 只做一次最终评估。Cross-validation 用重复训练换取更稳定的数据利用；three-way split 则明确隔离 model selection 与 final evaluation。Underfitting 表现为训练、验证误差都高，overfitting 表现为 training error 很低但 validation error 回升。Early stopping、weight regularization 和 dropout 都能限制过拟合，但必须避免把 test set 用于调参，并遵守具体框架的 dropout 与 loss convention。
