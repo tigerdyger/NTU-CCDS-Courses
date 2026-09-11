@@ -1,0 +1,175 @@
+% Tutorial set: 03
+% Source: M1-T3-SC2008, p. 1 (PDF p. 1), Questions 1--4
+% Session date: 2026-09-11
+% Human verified: Yes
+
+\subsection{Tutorial 03：CSMA/CD、Backoff 与 MARP Throughput}
+\label{tutorial:SC2008-TUT03}
+
+\exercisemeta
+  {SC2008-TUT03}
+  {2026-09-11}
+  {M1-T3-SC2008，p.~1（PDF p.~1），Questions 1--4}
+  {四题的传播路径、事件概率与 throughput model 均已核对}
+  {已确认（2026-09-11）}
+
+\exercisequestion{SC2008-TUT03-Q01}{由 Collision-Detection Time 求 Minimum Frame Size}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L03-T05}{CSMA/CD、Propagation Delay 与 Minimum Frame Length}；
+\relatedtopic{SC2008-L04-T02}{CSMA/CD、64-byte Minimum 与 Jam Signal}
+
+\subsubsection*{题目}
+
+某 CSMA/CD medium 的每个 cable segment 最长 $200$ m，propagation delay 为每 $100$ m 用时 $1\ \mu\mathrm{s}$；每段最多连接 $20$ 个 stations；任意两台 stations 之间最多经过 $4$ 个 repeaters，每个 repeater delay 为 $2\ \mu\mathrm{s}$。若 data rate 为 $20$ Mbps，求保证正确 collision detection 所需的 minimum frame size。
+
+\begin{checkedsolution}
+四个 repeaters 连接五个 cable segments。每段的 maximum propagation delay 为
+\[
+  200\ \mathrm{m}\times\frac{1\ \mu\mathrm{s}}{100\ \mathrm{m}}
+  =2\ \mu\mathrm{s}.
+\]
+因此 maximum one-way delay 为
+\[
+  \tau_{max}=5(2)+4(2)=18\ \mu\mathrm{s}.
+\]
+CSMA/CD 要求 sender 在最远端 collision indication 返回前仍在发送：
+\[
+  T_{\mathrm{frame}}\ge2\tau_{max}=36\ \mu\mathrm{s}.
+\]
+故
+\[
+  L_{\min}=RT_{\mathrm{frame}}
+  =20\times10^6\times36\times10^{-6}
+  =\boxed{720\ \mathrm{bits}=90\ \mathrm{bytes}}.
+\]
+每段最多 $20$ 个 stations 不改变题目给定的 worst-case propagation path，因此不参与本题计算。题目未给 station/interface processing delay，计算中将其忽略。
+\end{checkedsolution}
+
+\textbf{检查点：}有 $r$ 个串联 repeaters 时，两端之间有 $r+1$ 个 cable segments；minimum frame time 对应 round-trip delay $2\tau$，不是单程 $\tau$。
+
+\exercisequestion{SC2008-TUT03-Q02}{三台 Stations 退避后的 Next Event}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L04-T03}{Binary Exponential Backoff 与 Ethernet Domains}
+
+\subsubsection*{题目}
+
+Ethernet 10BASE-T single-segment LAN 中，三台距离 hub 相同的 stations 同时发送并发生 collision。第一次 backoff 时，每台独立且等概率地选择 slot $0$ 或 slot $1$。求 channel 上 next event 仍为 collision 的概率；若 slot $0$ 无 transmission，则该 idle slot 不算 event。
+
+\begin{checkedsolution}
+令 $M$ 为选择 slot $0$ 的 stations 数。八种 backoff combinations 等概率：
+\begin{center}
+\small
+\begin{tabular}{@{}ccc@{}}
+  \toprule
+  $M$ & Probability & Next channel event \\
+  \midrule
+  $3$ & $1/8$ & slot $0$ collision \\
+  $2$ & $3/8$ & slot $0$ collision \\
+  $1$ & $3/8$ & slot $0$ success \\
+  $0$ & $1/8$ & slot $0$ idle；三台在 slot $1$ collision \\
+  \bottomrule
+\end{tabular}
+\end{center}
+题目问的是 next non-idle event，而不只是 slot $0$ 的结果，因此
+\[
+  P(\text{next event is collision})
+  =\frac18+\frac38+\frac18
+  =\boxed{\frac58}.
+\]
+\end{checkedsolution}
+
+\textbf{检查点：}“Nothing happens” 不等于 experiment 结束；若 slot $0$ idle，必须继续判断 slot $1$ 的第一个实际 transmission event。
+
+\exercisequestion{SC2008-TUT03-Q03}{Modified Backoff 的 First-Success Probability}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L04-T03}{Binary Exponential Backoff 与 Ethernet Domains}
+
+\subsubsection*{题目}
+
+Stations A、B 发生 collision 后在两个 slots 内 retransmit。A 在 slot $0$ 发送的概率为 $p$，B 为 $q$；未在 slot $0$ 发送者将在 slot $1$ 发送。
+\begin{enumerate}[label=(\roman*)]
+  \item 当 $p=1/3,q=2/3$ 时，求 channel 上 first event 为 success 的概率。
+  \item 在 $0\le p,q\le1$ 内选择 $p,q$，使该概率最大。
+\end{enumerate}
+
+\begin{checkedsolution}
+First event 成功当且仅当两台选择不同 slots：
+\[
+\begin{aligned}
+  P_{\mathrm{success}}
+    &=p(1-q)+(1-p)q\\
+    &=p+q-2pq.
+\end{aligned}
+\]
+代入第一问：
+\[
+  P_{\mathrm{success}}
+  =\frac13\left(1-\frac23\right)
+   +\left(1-\frac13\right)\frac23
+  =\boxed{\frac59}.
+\]
+要使概率达到最大值 $1$，可令
+\[
+  \boxed{(p,q)=(0,1)\quad\text{或}\quad(1,0)}.
+\]
+这相当于预先让两台 stations 选择不同 slots。若额外要求 symmetric policy（对称策略）$p=q$，则最大值只能在 $p=q=1/2$ 时达到 $1/2$；原题没有此限制。
+\end{checkedsolution}
+
+\textbf{检查点：}两台都选 slot $0$ 会立即 collision；两台都选 slot $1$ 虽先经历 idle，first non-idle event 仍是 collision。
+
+\exercisequestion{SC2008-TUT03-Q04}{携带 Information 的 Reservation Frame}
+
+\textbf{对应讲义：}\par
+\relatedtopic{SC2008-L03-T03}{ALOHA 与 Throughput}；\par
+\relatedtopic{SC2008-L04-T05}{MARP Utilization 与 Amortization}
+
+\subsubsection*{题目}
+
+实验 Wi-Fi network 使用 MARP。每个 cycle 先通过某 MAC protocol 完成 reservation，再由成功者发送一个 frame。Channel data rate 为 $R=1$ Mbps；每个 frame 含 $1000$ information bits，其中 reservation frame 已携带 $10$ information bits。
+\begin{enumerate}[label=(\roman*)]
+  \item Reservation-phase MAC utilization 为 $U=0.8$ 时，求 network throughput。
+  \item Reservation phase 使用 Slotted ALOHA 时，求 maximum network throughput。
+\end{enumerate}
+
+\begin{checkedsolution}
+一次成功 reservation 交付前 $10$ information bits，其平均用时为
+\[
+  T_{\mathrm{reservation}}=\frac{10}{UR}.
+\]
+之后只剩 $1000-10=990$ information bits 需要 collision-free transmission：
+\[
+  T_{\mathrm{data}}=\frac{990}{R}.
+\]
+每个 cycle 共交付 $1000$ information bits，故
+\[
+  S
+  =\frac{1000}{10/(UR)+990/R}
+  =R\frac{1000}{990+10/U}.
+\]
+当 $U=0.8$ 时，
+\[
+  S=1\ \mathrm{Mbps}\times\frac{1000}{990+10/0.8}
+   \approx\boxed{0.99751\ \mathrm{Mbps}}.
+\]
+Slotted ALOHA 的 maximum utilization 为 $U_{\max}=1/e$，因此
+\[
+  S_{\max}
+  =1\ \mathrm{Mbps}\times\frac{1000}{990+10e}
+  \approx\boxed{0.98311\ \mathrm{Mbps}}.
+\]
+尽管 Slotted ALOHA 自身的 maximum utilization 仅为 $1/e$，竞争只作用于很短的 reservation portion，其成本被后续 $990$ bits 的 collision-free phase amortize（摊销）。
+\end{checkedsolution}
+
+\textbf{检查点：}题干明确说 reservation frame \emph{carries 10 information bits}，所以后续只发送 $990$ bits；若 reservation 不携带 useful information，分母才会改为 $1000+10/U$。
+
+\subsubsection*{本次 Tutorial 收口}
+
+\begin{itemize}
+  \item Q1：沿最长 physical path 计算 one-way delay，再用 $L_{\min}=2R\tau$；
+  \item Q2：区分 first slot 与 next non-idle event；
+  \item Q3：成功条件是两台选择不同 slots，并区分 unrestricted 与 symmetric policy；
+  \item Q4：先判断 reservation bits 是否属于 useful information，再选择 MARP throughput 公式。
+\end{itemize}
