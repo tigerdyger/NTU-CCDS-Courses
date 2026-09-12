@@ -346,4 +346,215 @@ Nonpreemptive scheduling（非抢占式调度）只在当前 process 主动释�
   \item RR 的 $q$ 与 turnaround time 没有一般性的单调关系；$q$ 足够大时退化为 FCFS，只是一个边界情况。
 \end{itemize}
 
+\section{Lecture Quiz 3}
+\label{homework:SC2005-HW03}
+
+\exercisemeta
+  {SC2005-HW03}
+  {2026-09-12}
+  {NTULearn Lecture Quiz 3，10 道 multiple-choice questions（选择题）；题干与选项见下文}
+  {已完成，并根据平台满分反馈逐题核对}
+  {是（2026-09-12）}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW03-Q01}{Question 1：Mutual Exclusion}
+
+\textbf{题干：} What is meant by the mutual exclusion property?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item No two processes can be in the critical section at the same time.
+  \item At most two processes can be in the critical section at the same time.
+  \item No process can context switch in the critical section.
+  \item The OS cannot context switch from one process in its critical section to another process in its critical section.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L07-T04}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Mutual exclusion（互斥）要求任意时刻至多一个 process（进程）处于相关 critical section（临界区）。它限制的是并发访问结果，并不禁止 critical section 内发生 context switch（上下文切换）。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW03-Q02}{Question 2：Blocking Wait 的操作顺序}
+
+\textbf{题干：} In the blocking implementation of \texttt{Wait()}, why can we not decrement the semaphore value after the \texttt{if()} condition check?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item This would imply a context-switch between the \texttt{if()} condition check and the decrement, which can lead to mutual exclusion violation.
+  \item This would imply a context-switch between the \texttt{if()} condition check and the decrement, which can lead to a race condition for the semaphore value.
+  \item It is possible, but the implementation is less efficient than when the decrement is before the \texttt{if()} condition check.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L09-T04}，\texttt{SC2005-L09-T05}
+
+\Needspace{8\baselineskip}
+\begin{checkedsolution}
+若先检查再 decrement（减一），当 $S=1$ 时，P0 可通过检查后被切走；P1 也通过检查、减一并进入 critical section，随后 P0 恢复、减一并同样进入。Check--update（检查—更新）不是一个 atomic action（原子操作），因而可能直接破坏 mutual exclusion。正确顺序是先执行 $S.value\mathrel{-}=1$，再按更新后的值决定是否 block（阻塞）。
+\end{checkedsolution}
+
+\Needspace{14\baselineskip}
+\exercisequestion{SC2005-HW03-Q03}{Question 3：Blocking Semaphore 的 Atomicity}
+
+\textbf{题干：} Why must \texttt{Wait()} and \texttt{Signal()} system calls with blocking implementation be atomic? Give all reasons.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item To prevent race condition in the updates to the value of the semaphore; To ensure mutual exclusion by guaranteeing that the update to the semaphore value and its checking in the \texttt{if()} condition happen atomically in each system call.
+  \item To ensure mutual exclusion by guaranteeing that the update to the semaphore value and its checking in the \texttt{if()} condition happen atomically in each system call.
+  \item To prevent race condition in the updates to the value of the semaphore.
+  \item They don't have to be atomic. Only busy waiting implementations require atomic \texttt{Wait()} and \texttt{Signal()} system calls.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L09-T05}
+
+\Needspace{7\baselineskip}
+\begin{checkedsolution}
+Atomicity（原子性）同时保护两件事：多个 callers（调用者）不能对共享 semaphore value（信号量值）产生 lost update（丢失更新）；value update、condition check 以及必要的 queue operation（队列操作）也不能被其他调用插入，否则 mutual exclusion 或 wake-up bookkeeping（唤醒记账）可能失效。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW03-Q04}{Question 4：Algorithm 2 的 Progress Violation}
+
+\textbf{题干：} In Algorithm 2 in the lecture, Progress property is violated because
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Process P0 updates flag to true, context switch to Process P1, Process P1 updates flag to true, both the processes are now stuck in the entry while loop.
+  \item Process P0 updates flag to false, context switch to Process P1, Process P1 updates flag to false, both the processes are now stuck in the entry while loop.
+  \item Process P0 updates flag to true and enters critical section, context switch to Process P1, Process P1 updates flag to true and is now stuck indefinitely.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L08-T02}
+
+\Needspace{7\baselineskip}
+\begin{checkedsolution}
+Algorithm 2（interest flags）中，两者若先后设置自己的 $flag=true$，随后都会在 \texttt{while (flag[other])} 中等待。此时 critical section 为空，却没有任何 process 能进入，形成 deadlock（死锁）并违反 Progress（进展性）。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW03-Q05}{Question 5：Progress Property}
+
+\textbf{题干：} What is meant by the Progress property?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item It is liveness; when no process is in the critical section, then a process cannot wait indefinitely to get access to the critical section.
+  \item It is fairness; when a process wants access to the critical section, another process cannot repeatedly get access to the critical section indefinitely.
+  \item It is liveness; when one process is in the critical section, another process cannot wait indefinitely to get access to the critical section.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L07-T04}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Progress（进展性）是一项 liveness（活性）要求：当 critical section 为空且存在申请者时，选择下一位进入者的决定不能无限延期。它不要求打断当前已在 critical section 中的 process。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW03-Q06}{Question 6：Reader Preference}
+
+\textbf{题干：} In the Reader-Writer implementation, explain what it means by ``the reader is given preference''.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item While a reader is reading, other readers will be allowed access to the database, even if writers are currently waiting to get access.
+  \item If a reader and writer both want access to the database at the same time, then the reader is given preference over the writer irrespective of who is currently accessing the database.
+  \item Readers can always access the database, even if writers are currently accessing it.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L10-T05}
+
+\Needspace{7\baselineskip}
+\begin{checkedsolution}
+Reader preference（读者优先）允许已有 reader group（读者组）存在时，新 readers 继续加入，即使 writer 正在等待；但 reader 与 writer 仍不能同时访问数据库。持续到来的 readers 因此可能造成 writer starvation（写者饥饿）。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW03-Q07}{Question 7：Bounded Waiting}
+
+\textbf{题干：} What is meant by the property of Bounded Waiting?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item It is fairness; if a process wants to get access to a critical section, another process cannot get access to the critical section repeatedly infinite number of times.
+  \item It is liveness; if no process is in the critical section, then a process wanting to get access to the critical section should not wait indefinitely.
+  \item It is fairness; processes should make progress collectively through their critical sections.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L07-T04}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Bounded waiting（有界等待）是一项 fairness（公平性）要求：process 发出进入请求后，其他 processes 在它之前进入 critical section 的次数必须有有限上界，从而排除无限 overtaking（超越）和 starvation。
+\end{checkedsolution}
+
+\Needspace{15\baselineskip}
+\exercisequestion{SC2005-HW03-Q08}{Question 8：Peterson's Algorithm 的 Progress}
+
+\textbf{题干：} Algorithm 3 in the lecture satisfies Progress property because
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Suppose Process P0 wants access to the critical section; then flag for Process P0 is true; if Process P1 is in the entry section then either P0 or P1 will get access to the critical section; if Process P1 is in the critical section then Progress is vacuously satisfied; if Process P1 is in the remainder section then Process P0 can get access to the critical section.
+  \item Progress property is satisfied because Bounded Waiting is satisfied.
+  \item Process P0 sets its flag to true, turn to 1, and waits at the entry while loop; context switch to Process P1; Process P1 sets its flag to true, turn to 0, and waits at the entry while loop; context switch to Process P0; Process P0 enters the critical section.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L08-T03}
+
+\Needspace{8\baselineskip}
+\begin{checkedsolution}
+Peterson's Algorithm（Peterson 算法）用 $flag$ 表示意愿、用 $turn$ 在双方同时申请时打破平局：只有一方申请时它可直接进入；双方同时申请时，$turn$ 保证至少一方进入。因此不会在 critical section 为空且有申请者时让两者永久停在 entry section。C 只验证一个 interleaving（交错序列），A 才覆盖 P1 所处的各类状态。
+\end{checkedsolution}
+
+\Needspace{14\baselineskip}
+\exercisequestion{SC2005-HW03-Q09}{Question 9：Algorithm 2 的 Bounded Waiting}
+
+\textbf{题干：} In Algorithm 2 in the lecture, Bounded Waiting is satisfied because
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item A process sets its flag to true at the beginning of entry section; once the flag is set to true another process cannot subsequently enter its critical section.
+  \item Progress is not satisfied and this implies that Bounded Waiting will be satisfied.
+  \item Process P0 starts and enters critical section, context switch to Process P1, Process P1 sets flag to true and gets stuck in the entry while loop, context switch to Process P0, Process P0 completes critical and remainder sections and tries to enter the critical section again, Process P0 gets stuck.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L08-T02}
+
+\Needspace{8\baselineskip}
+\begin{checkedsolution}
+一旦 Pi 设置 $flag[i]=true$，Pj 此后不能再次通过自己的 entry loop 进入 critical section，因此 Pj 不可能无限次 overtaking Pi；这满足本讲单独检查的 bounded-waiting 条件。但 Algorithm 2 仍可能让双方一起卡住，所以 bounded waiting 成立并不推出 Progress 成立。C 只是一个特定 trace（执行轨迹），A 给出了通用判断依据。
+\end{checkedsolution}
+
+\Needspace{15\baselineskip}
+\exercisequestion{SC2005-HW03-Q10}{Question 10：Bounded-Buffer 的 Wait 顺序}
+
+\textbf{题干：} In the Producer-Consumer Bounder-Buffer implementation, why is the \texttt{Wait()} on empty or full semaphore done before the \texttt{Wait()} on mutex?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Otherwise, it can lead to a deadlock when the buffer is empty/full, because to add/remove items in the buffer the mutex semaphore must be acquired.
+  \item Otherwise, it can lead to a deadlock when the buffer is empty/full, because to add/remove items in the buffer the empty/full semaphore must be acquired.
+  \item Otherwise, it can lead to a deadlock when the buffer is empty/full, because to add/remove items in the buffer the full/empty semaphore must be acquired.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L10-T03}
+
+\Needspace{9\baselineskip}
+\begin{checkedsolution}
+若 producer（生产者）先取得 $mutex$，再因 full buffer（满缓冲区）等待 $empty$，consumer（消费者）便无法取得 $mutex$ 来移除 item 并执行 \texttt{Signal(empty)}，双方形成 circular wait（循环等待）；empty buffer 时同理。故应先等待 resource-count semaphore（资源计数信号量）$empty/full$，确认资源可用后再取得 $mutex$ 修改缓冲区。
+\end{checkedsolution}
+
+\subsection{易错点}
+
+\begin{itemize}
+  \item Mutual exclusion、Progress 与 Bounded Waiting 是三个独立检查项：分别回答“能否同时进入”“空闲时能否继续前进”“能否被无限超越”。
+  \item Blocking semaphore 仍要求 atomic \texttt{Wait}/\texttt{Signal}；blocking 只改变等待方式，不会自动消除共享 value 和 waiting queue 上的 race condition。
+  \item Algorithm 2 满足本讲的 bounded-waiting 判断，但不满足 Progress；Algorithm 3 通过 $turn$ 解决双方同时声明意愿时的 deadlock。
+  \item Producer--consumer 中先等待 $empty/full$、后等待 $mutex$；反序会让 process 持有 $mutex$ 睡眠，使能够改变资源计数的对方也无法进入。
+\end{itemize}
+
 \end{document}
