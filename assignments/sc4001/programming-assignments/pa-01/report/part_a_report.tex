@@ -1,0 +1,204 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=0.68in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\textfloatsep}{7pt}
+\setlength{\floatsep}{6pt}
+\graphicspath{{../outputs/part_a/figures/}}
+\hypersetup{colorlinks=true,urlcolor=blue!60!black,linkcolor=black}
+\newcommand{\StudentName}{Student}
+\InputIfFileExists{student-info.tex}{}{}
+
+\title{SC4001 Programming Assignment 1\\Part A: HDB Resale Price Prediction}
+\author{\StudentName}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.4em}
+
+\section*{Generative-AI declaration}
+OpenAI Codex was used for debugging, figure generation and report drafting.
+Its output was verified using unit tests, deterministic
+reruns, independent aggregation checks, and visual inspection of all figures.
+
+\section{Experimental protocol}
+The data were split chronologically: 2017--2020 for training (87,370 rows),
+2021 for validation (29,057), and 2022 for testing (26,702). For model
+selection, categorical mappings and continuous-feature statistics were fitted
+on 2017--2020 only. After selecting hyperparameters and an epoch budget, the
+same preprocessing procedure was refitted on the combined 2017--2021 data and
+the model was retrained from scratch. The 2022 test curve was logged only
+because the task requested it; it was never used for model or epoch selection.
+
+All models used Adam (learning rate $10^{-2}$), batch size 512, at most 20
+epochs, and early stopping with patience 4 and minimum RMSE improvement
+$10^{-4}$. CPU training used one thread to make Ray trials and local retraining
+numerically reproducible. A2 and A3 used seeds
+$\{42,123,456,789,2026\}$ and report mean $\pm$ sample standard deviation.
+
+\section{A1: Baseline and hyperparameter search}
+The supplied baseline embeds four categorical features, concatenates the
+embeddings with six standardised continuous features, and passes the result
+through Linear--LayerNorm--ReLU--Linear layers. Its output is converted from a
+standardised target back to Singapore dollars (SGD).
+
+\begin{center}
+\includegraphics[width=\textwidth]{a1_baseline_block_diagram.png}
+\end{center}
+
+With category cardinalities $(13,27,44,18)$ (including an unknown-category
+index) and embedding width 8, the four embedding tables contain 816
+parameters. The input width is $4\times8+6=38$, so the complete count is
+\[
+816+(38\times64+64)+(64+64)+(64+1)=\boxed{3505}.
+\]
+
+Ray Tune evaluated all $5\times5=25$ combinations of hidden width
+$\{16,32,64,128,256\}$ and common embedding dimension
+$\{2,4,8,12,16\}$. The lowest best validation RMSE was 59,666.52 SGD at
+hidden width 256 and embedding dimension 4; its best epoch was 6. The selected
+network has 7,065 trainable parameters.
+
+\begin{center}
+\includegraphics[width=0.72\textwidth]{a1_grid_search_heatmap.png}
+\end{center}
+
+\subsection*{Learning behaviour and final test result}
+\begin{center}
+\begin{minipage}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\linewidth]{a1_selection_learning_curve.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\linewidth]{a1_final_learning_curve.png}
+\end{minipage}
+\end{center}
+
+The training RMSE decreased almost monotonically, whereas validation RMSE was
+noisy and reached its minimum at epoch 6 before worsening. The large
+train--validation gap indicates overfitting, while the much higher 2022 error
+also suggests temporal distribution shift. Thus the model is not globally
+underfitting: it has enough capacity to fit the training data, but generalises
+less well to later years. Increasing hidden width generally helped, but the
+non-monotonic embedding-dimension results show that simply enlarging every
+component was not consistently beneficial.
+
+After refitting preprocessing on 2017--2021 and training for the fixed six
+epochs, the seed-42 model achieved
+\[
+\boxed{\mathrm{RMSE}=97{,}732.09\ \mathrm{SGD}},\qquad
+\boxed{R^2=0.6705}
+\]
+on 2022. The test curve fluctuates, but none of its intermediate values was
+used to choose the final epoch.
+
+\section{A2: Ablation studies}
+Each variant used the A1 hyperparameters, preprocessing, and six-epoch budget.
+``Continuous only'' removed all four categorical embeddings; ``Sigmoid'' kept
+the original inputs but replaced the hidden ReLU with a sigmoid.
+
+\begin{center}
+\includegraphics[width=0.83\textwidth]{a2_ablation_comparison.png}
+\end{center}
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+Model & RMSE mean & RMSE SD & $R^2$ mean & $R^2$ SD \\
+\midrule
+Baseline ReLU & 98,059.90 & 3,498.80 & 0.6680 & 0.0240 \\
+Continuous only & 111,213.11 & 7,915.25 & 0.5716 & 0.0604 \\
+Baseline Sigmoid & 100,416.22 & 4,504.27 & 0.6516 & 0.0311 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Removing categorical features increased mean RMSE by 13,153.21 SGD (13.4\%)
+and lowered mean $R^2$ by 0.0963, with greater seed sensitivity. Town, flat
+model/type, storey range, and month therefore carry useful information not
+fully recoverable from the continuous inputs. Replacing ReLU with Sigmoid
+caused a smaller degradation of 2,356.33 SGD (2.4\%) and $0.0164$ in $R^2$.
+This is consistent with Sigmoid saturation and weaker gradient propagation,
+although the experiment alone cannot isolate optimisation from representational
+effects.
+
+\section{A3: Wide-and-deep model}
+The same concatenated embedding-plus-continuous vector was sent to two branches.
+The deep branch retained the A1 MLP, while the wide branch was a single linear
+layer. In standardised target space,
+\[
+\hat y = f_{\mathrm{deep}}(x)+\lambda f_{\mathrm{wide}}(x),
+\quad \lambda\in\{0,0.25,0.5,1,2\}.
+\]
+All A1 hyperparameters were fixed. Seed 42 and the 2017--2020/2021 split were
+used only to select $\lambda$; the lowest validation RMSE, 58,076.59 SGD,
+occurred at $\lambda=2$.
+
+\begin{center}
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth]{a3_lambda_search.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.50\textwidth}
+\centering
+\includegraphics[width=\linewidth]{a3_model_comparison.png}
+\end{minipage}
+\end{center}
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+Model & RMSE mean & RMSE SD & $R^2$ mean & $R^2$ SD \\
+\midrule
+Baseline ReLU & 98,059.90 & 3,498.80 & 0.6680 & 0.0240 \\
+Wide-and-deep ($\lambda=2$) & 98,714.00 & 5,698.09 & 0.6630 & 0.0398 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The wide path can learn direct additive effects without forcing them through
+the nonlinear hidden layer, potentially making low-order trends easier to
+optimise. Here it improved the single selection run but did not provide a
+robust test benefit: across five seeds its mean RMSE was 654.11 SGD (0.67\%)
+worse and its variability was higher. A likely limitation is redundancy: the
+deep branch can already represent linear effects, while the extra path changes
+optimisation and introduces additional parameters. Selecting $\lambda$ with
+one seed also confounds architecture quality with seed-specific noise; nested
+multi-seed selection would be stronger but was outside the prescribed setup.
+
+\section{A4: Captum FeatureAblation}
+Captum FeatureAblation was applied to every 2022 test sample for the seed-42 A1
+baseline and A3 wide-and-deep model. Continuous features were replaced by their
+2017--2021 training means (zero after standardisation), and categorical
+features by their training modes. Importance is the test-set mean absolute
+change in predicted price, in SGD.
+
+\begin{center}
+\includegraphics[width=0.92\textwidth]{a4_feature_importance.png}
+\end{center}
+
+Both models had the same top three features: \texttt{floor\_area\_sqm},
+\texttt{flat\_model\_type}, and \texttt{remaining\_lease\_years}. Their mean
+absolute attributions were respectively 67,840, 45,104, and 42,465 SGD for the
+baseline, and 63,801, 46,078, and 41,891 SGD for wide-and-deep. This agreement
+suggests that the added linear path did not fundamentally change the dominant
+predictive signals, although it redistributed some attribution among location
+features.
+
+These values are not causal effects. Feature ablation can create unrealistic
+feature combinations, correlated predictors can share or transfer importance,
+and the ranking depends on the chosen mean/mode baselines. Consequently, the
+plot supports a comparison of model reliance under this perturbation scheme,
+not claims about the causal determinants of resale price.
+
+\end{document}

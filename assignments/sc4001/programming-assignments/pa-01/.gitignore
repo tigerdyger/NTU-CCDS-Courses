@@ -1,0 +1,24 @@
+# 本地环境与缓存
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# 教师提供的数据集（不公开提交）
+/hdb_price_prediction.csv
+/chestxray_binary_64.npz
+
+# 训练产物与实验记录
+/outputs/
+/checkpoints/
+/runs/
+/results/
+
+# 最终提交包和报告构建产物
+/submission/
+/report-build/
+/report/student-info.tex
+*.aux
+*.log
+*.out
+*.synctex.gz

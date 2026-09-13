@@ -1,3 +1,3 @@
 # SC4001 编程作业
 
-目前没有已整理的 Lab、PA 或课程项目。
+- [`pa-01/`](pa-01/)：HDB price prediction（组屋价格预测）与 Chest X-ray classification（胸部 X 光分类）
