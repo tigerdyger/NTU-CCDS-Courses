@@ -340,7 +340,10 @@ def run_a3(output_root, quick=False):
     lambda_curve(search_rows, output_root / "figures" / "a3_lambda_search.png")
 
     runs = []
-    epochs = int(a1["selected_epoch_budget"])
+    # Lambda and epoch are both selected on the validation split. A2 is
+    # explicitly required to reuse A1's epoch count, but A3 is a different
+    # architecture and therefore uses its own loss-selected checkpoint epoch.
+    epochs = int(selected["best_epoch"])
     for seed in seeds:
         config = build_config(
             a1["selected_hidden_width"],

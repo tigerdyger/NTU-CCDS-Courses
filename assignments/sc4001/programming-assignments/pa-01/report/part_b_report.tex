@@ -1,0 +1,194 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=0.56in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{caption}
+\captionsetup{hypcap=false}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{siunitx}
+\setlist{nosep,leftmargin=*}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2.5pt}
+\setlength{\textfloatsep}{5pt}
+\setlength{\floatsep}{5pt}
+\setlength{\tabcolsep}{4.5pt}
+\graphicspath{{../outputs/part_b/figures/}}
+\hypersetup{colorlinks=true,urlcolor=blue!60!black,linkcolor=black}
+\newcommand{\StudentName}{Student}
+\InputIfFileExists{student-info.tex}{}{}
+
+\title{SC4001 Programming Assignment 1\\Part B: Chest X-ray Classification}
+\author{\StudentName}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.6em}
+
+\section*{Generative-AI declaration}
+OpenAI Codex was used for debugging, figure generation and report polishing.
+
+\section{Experimental protocol}
+The supplied partitions contain 4,708 training, 524 validation, and 624 test
+images. Label 0 denotes normal/healthy and label 1 denotes pneumonia. Each
+8-bit image was divided by 255 and then standardised using only the training
+mean (0.571699) and population standard deviation (0.174098); no data
+augmentation was used. The class counts were 1,214/3,494, 135/389, and 234/390
+(normal/pneumonia) in the three partitions.
+
+Every convolution used no bias and was followed by batch normalisation and
+ReLU. Fully connected layers used bias. Following the course clarification,
+dropout ($p=0.5$) was used only after the ReLUs of B1's hidden \texttt{fc,64}
+and \texttt{fc,32} layers; B2 and B3 used no dropout. Each final \texttt{fc,1}
+returned one unrestricted logit, passed directly to
+\texttt{BCEWithLogitsLoss}. Adam, seed 42, a maximum of 20 epochs, patience 4,
+and minimum improvement $10^{-4}$ were used throughout. Validation BCE loss
+controlled early stopping and selected each candidate's best epoch checkpoint.
+B1 learning rate and B2 batch size were then chosen by that checkpoint's lowest
+validation classification error, with validation loss only as a deterministic
+tie-break between hyperparameters. The test partition was evaluated once after
+selection.
+
+Training ran with deterministic PyTorch algorithms on one Tesla V100 32 GB
+(PyTorch 2.5.1, CUDA 11.8). Sensitivity is
+$\mathrm{TP}/(\mathrm{TP}+\mathrm{FN})$ for pneumonia and specificity is
+$\mathrm{TN}/(\mathrm{TN}+\mathrm{FP})$ for normal cases.
+
+\section{B1: AlexNet-like learning-rate search}
+Batch size was fixed at 128. Table~\ref{tab:b1} reports the metrics of each
+candidate's selected checkpoint.
+
+\begin{center}
+\small
+\begin{tabular}{rrrrrr}
+\toprule
+Learning rate & Best epoch & Val. loss & Val. error & Sensitivity & Specificity \\
+\midrule
+$10^{-5}$ & 20 & 0.26925 & 0.09924 & 0.95887 & 0.73333 \\
+$10^{-4}$ & 20 & 0.07148 & 0.02672 & 0.98458 & 0.94074 \\
+$10^{-3}$ & 14 & 0.05353 & \textbf{0.01336} & 0.99486 & 0.96296 \\
+$10^{-2}$ & 14 & 0.05979 & 0.01908 & 0.98972 & 0.95556 \\
+$10^{-1}$ & 16 & 0.14681 & 0.04962 & 0.96144 & 0.91852 \\
+\bottomrule
+\end{tabular}
+\captionof{table}{B1 validation results.}\label{tab:b1}
+\end{center}
+
+\begin{center}
+\begin{minipage}[t]{0.49\textwidth}
+\centering\includegraphics[width=\linewidth]{b1_validation_loss.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\centering\includegraphics[width=\linewidth]{b1_validation_accuracy.png}
+\end{minipage}
+\end{center}
+
+The two smallest rates were still improving at epoch 20, especially
+$10^{-5}$, so they converged too slowly under the common budget. The $10^{-1}$
+curves were substantially worse, consistent with steps that were too large.
+$10^{-3}$ attained the lowest validation error and was therefore selected;
+$10^{-2}$ was close but slightly worse. On the test set, the selected model
+obtained accuracy 0.82212, sensitivity 0.99744, and specificity 0.52991
+(TP/TN/FP/FN = 389/124/110/1). Accuracy alone hides this asymmetric behaviour:
+the model detected nearly every pneumonia image but incorrectly labelled 110
+of 234 normal images as pneumonia. Sensitivity and specificity are therefore
+required to distinguish the two error types, especially under class imbalance.
+
+\section{B2: VGG-like batch-size search}
+The B1 learning rate $10^{-3}$ was fixed. Table~\ref{tab:b2} reports the
+selected checkpoint for each batch size.
+
+\begin{center}
+\small
+\begin{tabular}{rrrrrr}
+\toprule
+Batch size & Best epoch & Val. loss & Val. error & Sensitivity & Specificity \\
+\midrule
+16  & 14 & 0.05321 & 0.02481 & 0.99486 & 0.91852 \\
+32  & 8  & 0.06605 & 0.02481 & 0.97943 & 0.96296 \\
+64  & 12 & 0.07744 & \textbf{0.02290} & 0.98458 & 0.95556 \\
+128 & 6  & 0.12555 & 0.04389 & 0.97943 & 0.88889 \\
+256 & 15 & 0.10644 & 0.03053 & 0.97172 & 0.96296 \\
+\bottomrule
+\end{tabular}
+\captionof{table}{B2 validation results at learning rate $10^{-3}$.}\label{tab:b2}
+\end{center}
+
+\begin{center}
+\begin{minipage}[t]{0.49\textwidth}
+\centering\includegraphics[width=\linewidth]{b2_validation_loss.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\centering\includegraphics[width=\linewidth]{b2_validation_accuracy.png}
+\end{minipage}
+\end{center}
+
+Batch size 64 had the lowest validation error at its loss-selected checkpoint
+and was chosen. Batch size 16 reached a lower validation loss, but its
+loss-selected checkpoint had a higher classification error; this illustrates
+the distinction between epoch selection and batch-size selection. Sizes 16 and
+32 were close, whereas 128 and 256 gave higher errors. The final VGG-like model
+achieved test accuracy 0.84936, sensitivity 0.98462, and specificity 0.62393
+(TP/TN/FP/FN = 384/146/88/6).
+
+\section{B3: Compact ResNet-like model and comparison}
+The ResNet-like model used learning rate $10^{-3}$ and the selected batch size
+64. Its best checkpoint was epoch 14. It achieved validation accuracy 0.96374
+and test accuracy 0.86699, with test sensitivity 0.98974 and specificity
+0.66239 (TP/TN/FP/FN = 386/155/79/4).
+
+\begin{center}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Architecture & Accuracy & Sensitivity & Specificity & Error & Parameters & FLOPs \\
+\midrule
+AlexNet-like & 0.82212 & 0.99744 & 0.52991 & 0.17788 & 99,569 & 39,063,616 \\
+VGG-like     & 0.84936 & 0.98462 & 0.62393 & 0.15064 & 18,185 & 19,464,256 \\
+ResNet-like  & \textbf{0.86699} & 0.98974 & \textbf{0.66239} & \textbf{0.13301} & 77,169 & 25,297,024 \\
+\bottomrule
+\end{tabular}
+\captionof{table}{Test metrics and architecture costs. FLOPs count Conv2d and
+Linear operations with two FLOPs per multiply-accumulate; batch normalisation,
+ReLU, pooling, and residual additions are excluded.}\label{tab:b3}
+\end{center}
+
+The VGG-like network was smallest and cheapest, yet improved markedly over the
+AlexNet-like model; repeated $3\times3$ convolutions provide a useful accuracy/
+cost trade-off here. AlexNet-like had the most parameters and FLOPs but the
+lowest accuracy and specificity, so greater size did not imply better
+generalisation. Residual shortcuts can ease optimisation; here the deeper
+ResNet-like network obtained the best test accuracy and specificity, exceeding
+VGG-like by 1.76 percentage points in accuracy while using about 4.2 times as
+many parameters and 1.3 times the stated FLOPs. All three models had lower test than
+validation accuracy, driven mainly by false positives; this is consistent with
+overfitting and/or a partition shift, but the experiment cannot distinguish
+those causes. Results come from one seed, so small architecture differences
+should not be treated as robust rankings.
+
+\section{B4: Grad-CAM comparison}
+Five pneumonia test images were sampled without replacement using seed 2026
+(indices 13, 120, 241, 404, and 532). For each trained model, Grad-CAM used the
+last activated convolutional feature map and gradients of the pneumonia logit;
+the resulting non-negative map was bilinearly upsampled and independently
+normalised to $[0,1]$ for overlay.
+
+\begin{center}
+\includegraphics[width=0.94\textwidth]{b4_gradcam_comparison.png}
+\end{center}
+
+AlexNet-like generally produced broad central/lower-lung activation. VGG-like
+maps were fragmented and sometimes emphasised image edges. ResNet-like often
+concentrated near the lower image boundary, with a central response in one
+case. The architectures therefore did not identify a single consistent region
+across all five cases. These
+overlays are qualitative explanations of model sensitivity, not evidence that
+the highlighted pixels are clinically valid pneumonia lesions. No lesion
+annotations were available, per-image colour normalisation prevents magnitude
+comparison, and edge/border attention may reflect acquisition artefacts.
+
+\end{document}

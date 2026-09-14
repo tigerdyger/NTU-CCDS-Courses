@@ -26,9 +26,7 @@
 \vspace{-1.4em}
 
 \section*{Generative-AI declaration}
-OpenAI Codex was used for debugging, figure generation and report drafting.
-Its output was verified using unit tests, deterministic
-reruns, independent aggregation checks, and visual inspection of all figures.
+OpenAI Codex was used for debugging, figure generation and report polishing.
 
 \section{Experimental protocol}
 The data were split chronologically: 2017--2020 for training (87,370 rows),
@@ -140,9 +138,10 @@ layer. In standardised target space,
 \hat y = f_{\mathrm{deep}}(x)+\lambda f_{\mathrm{wide}}(x),
 \quad \lambda\in\{0,0.25,0.5,1,2\}.
 \]
-All A1 hyperparameters were fixed. Seed 42 and the 2017--2020/2021 split were
-used only to select $\lambda$; the lowest validation RMSE, 58,076.59 SGD,
-occurred at $\lambda=2$.
+The selected A1 architecture and training hyperparameters were fixed. Seed 42
+and the 2017--2020/2021 split were used only to select $\lambda$ and A3's epoch
+budget; the lowest validation RMSE, 58,076.59 SGD, occurred at $\lambda=2$ and
+epoch 3. The five final runs therefore retrained on 2017--2021 for three epochs.
 
 \begin{center}
 \begin{minipage}[t]{0.48\textwidth}
@@ -161,7 +160,7 @@ occurred at $\lambda=2$.
 Model & RMSE mean & RMSE SD & $R^2$ mean & $R^2$ SD \\
 \midrule
 Baseline ReLU & 98,059.90 & 3,498.80 & 0.6680 & 0.0240 \\
-Wide-and-deep ($\lambda=2$) & 98,714.00 & 5,698.09 & 0.6630 & 0.0398 \\
+Wide-and-deep ($\lambda=2$) & 102,507.98 & 4,121.13 & 0.6370 & 0.0292 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -169,7 +168,7 @@ Wide-and-deep ($\lambda=2$) & 98,714.00 & 5,698.09 & 0.6630 & 0.0398 \\
 The wide path can learn direct additive effects without forcing them through
 the nonlinear hidden layer, potentially making low-order trends easier to
 optimise. Here it improved the single selection run but did not provide a
-robust test benefit: across five seeds its mean RMSE was 654.11 SGD (0.67\%)
+robust test benefit: across five seeds its mean RMSE was 4,448.08 SGD (4.54\%)
 worse and its variability was higher. A likely limitation is redundancy: the
 deep branch can already represent linear effects, while the extra path changes
 optimisation and introduces additional parameters. Selecting $\lambda$ with
@@ -187,13 +186,14 @@ change in predicted price, in SGD.
 \includegraphics[width=0.92\textwidth]{a4_feature_importance.png}
 \end{center}
 
-Both models had the same top three features: \texttt{floor\_area\_sqm},
+Both models had the same top-three feature set: \texttt{floor\_area\_sqm},
 \texttt{flat\_model\_type}, and \texttt{remaining\_lease\_years}. Their mean
-absolute attributions were respectively 67,840, 45,104, and 42,465 SGD for the
-baseline, and 63,801, 46,078, and 41,891 SGD for wide-and-deep. This agreement
+absolute attributions in that order were 67,840, 45,104, and 42,465 SGD for the
+baseline, and 73,417, 37,776, and 47,252 SGD for wide-and-deep; the latter
+ranked remaining lease above flat model/type. This agreement on the set
 suggests that the added linear path did not fundamentally change the dominant
-predictive signals, although it redistributed some attribution among location
-features.
+predictive signals, although it redistributed their magnitudes and some
+attribution among location features.
 
 These values are not causal effects. Feature ablation can create unrealistic
 feature combinations, correlated predictors can share or transfer importance,
