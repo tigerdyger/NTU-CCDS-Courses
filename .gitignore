@@ -23,6 +23,9 @@ courses/*/lms-exports/
 /assignments/*/programming-assignments/*/submission/
 /assignments/*/programming-assignments/*/tests-local/
 
+# Keep current graded programming-assignment solutions out of the public repo
+/assignments/sc4001/programming-assignments/pa-01/
+
 # Large raw media should never be committed to this notes repository
 *.m4a
 *.mov
