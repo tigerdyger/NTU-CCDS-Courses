@@ -1,0 +1,23 @@
+\begin{tikzpicture}[
+  >=Latex,
+  state/.style={circle,draw=noteBlue,fill=noteBlue!8,thick,minimum size=0.9cm},
+  goal/.style={circle,draw=ntuRed,fill=ntuRed!10,thick,minimum size=0.9cm},
+  ordinary/.style={<->,thick,draw=gray!80},
+  reward/.style={->,very thick,draw=ntuRed},
+  lab/.style={font=\scriptsize,fill=white,inner sep=1pt}
+]
+  \node[state] (s1) at (0,2.2) {$1$};
+  \node[state] (s3) at (0,0.8) {$3$};
+  \node[state] (s4) at (0,-0.6) {$4$};
+  \node[state] (s2) at (-2.2,0.8) {$2$};
+  \node[state] (s0) at (-2.2,-0.6) {$0$};
+  \node[goal]  (s5) at (2.4,0.8) {$5$};
+
+  \draw[ordinary] (s1) -- node[lab,left]{$r=0$} (s3);
+  \draw[ordinary] (s3) -- node[lab,left]{$r=0$} (s4);
+  \draw[ordinary] (s2) -- node[lab,above]{$r=0$} (s3);
+  \draw[ordinary] (s0) -- node[lab,below]{$r=0$} (s4);
+  \draw[reward] (s1) -- node[lab,above,sloped]{$r=100$} (s5);
+  \draw[reward] (s4) -- node[lab,below,sloped]{$r=100$} (s5);
+  \node[align=left,font=\small,right=0.55cm of s5] {terminal\\state};
+\end{tikzpicture}

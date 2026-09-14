@@ -1,0 +1,63 @@
+% Lecture example set: SC3000-L05
+% Source: CZ3005 Module 5 pp. 23--27
+% Human verified: Yes
+
+\clearpage
+\exercisemeta
+  {SC3000-L05-EX}
+  {2026-09-14}
+  {Module 5 pp.~23--27}
+  {公式、数值与讲义内部参数差异已核对}
+  {已确认（2026-09-14）}
+
+\exercisequestion{SC3000-L05-E01}{五房间 Q-Learning 的奖励传播}
+
+\textbf{对应知识点：}
+\begin{itemize}
+  \item \relatedtopic{SC3000-L05-T01}{Temporal Difference 与 Q-Learning}
+  \item \relatedtopic{SC3000-L05-T02}{Off-Policy Control 与算法边界}
+\end{itemize}
+
+\subsubsection*{题目}
+
+讲义把房间 $0,\ldots,5$ 视为 states，合法房门视为 actions；进入目标房间 $5$ 的即时 reward 为 $100$，其他合法移动 reward 为 $0$。到达 $5$ 后 episode 结束。初始化 $Q_0(s,a)=0$，并取 $\alpha=0.01,\gamma=0.99$。
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/q-learning-five-room}
+  \caption{讲义五房间环境的 episodic 版本；红色边进入 terminal state 5 并获得 reward 100。}
+  \label{fig:sc3000-l05-five-room}
+\end{figure}
+
+计算第一次 transition $1\to5$ 后的 $Q(1,5)$；随后假设 $Q(1,5)=1$，计算一次 transition $3\to1$ 后的 $Q(3,1)$。说明奖励如何向前传播并提取 policy。
+
+\begin{checkedsolution}
+由于 $5$ 是 terminal state，第一次更新没有 future-value term：
+\[
+  Q_{\mathrm{new}}(1,5)
+  =0+0.01(100-0)
+  =\boxed{1}.
+\]
+随后从 $3$ 进入 $1$ 时即时 reward 为零，而 $\max_aQ(1,a)=Q(1,5)=1$，故
+\[
+  Q_{\mathrm{new}}(3,1)
+  =0+0.01\left(0+0.99\times1-0\right)
+  =\boxed{0.0099}.
+\]
+继续采样后，目标 reward 会沿合法路径逐步传播到离目标更远的 state-action pairs。训练后在每个非终止 state 选择
+\[
+  \pi(s)=\arg\max_aQ(s,a).
+\]
+实际收集经验仍可采用 $\varepsilon$-greedy behavior policy，以免尚未尝试的 actions 永远得不到更新。
+\end{checkedsolution}
+
+\subsubsection*{讲义参数核对}
+
+Module 5 p.~25 写 $\gamma=0.99$，但 p.~27 的最终表出现 $100,80,64,51$；这些数值满足
+\[
+  100,\quad0.8(100),\quad0.8^2(100),\quad0.8^3(100)\approx51,
+\]
+所以该表实际对应 $\gamma=0.8$。若使用 $\gamma=0.99$，相邻距离的值应接近 $100,99,98.01,97.03$。此外，讲义 reward matrix 仍给 state $5$ 保留 outgoing actions；若严格按“到达 5 即结束”的 episodic 定义，这些 actions 不再执行。做题时应以题目明确给出的 terminal condition 与 $\gamma$ 为准。
+
+\textbf{检查点：}\par
+terminal transition 的 target 只有即时 reward；非终止 transition 才加入 $\gamma\max_{a'}Q(s',a')$。

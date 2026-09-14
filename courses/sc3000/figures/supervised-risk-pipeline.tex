@@ -1,0 +1,22 @@
+\begin{tikzpicture}[
+  >=Latex,
+  node distance=1.15cm and 1.35cm,
+  box/.style={draw=noteBlue,rounded corners,thick,align=center,minimum height=0.95cm,minimum width=2.55cm,fill=noteBlue!5},
+  result/.style={draw=ntuRed,rounded corners,thick,align=center,minimum height=0.95cm,minimum width=2.55cm,fill=ntuRed!5},
+  flow/.style={->,thick}
+]
+  \node[box] (ptr) {unknown population\\$P_{\mathrm{tr}}(x,y)$};
+  \node[box,right=of ptr] (sample) {finite sample\\$\mathcal D=\{(x_i,y_i)\}_{i=1}^N$};
+  \node[box,right=of sample] (erm) {empirical risk\\$\widehat R_{\mathrm{tr}}(f)$};
+  \node[result,right=of erm] (model) {learned hypothesis\\$\widehat f$};
+
+  \node[box,below=1.35cm of ptr] (pts) {test population\\$P_{\mathrm{ts}}(x,y)$};
+  \node[result,right=2.7cm of pts] (risk) {generalization target\\$R_{\mathrm{ts}}(\widehat f)$};
+
+  \draw[flow] (ptr) -- node[above,font=\scriptsize]{i.i.d. sampling} (sample);
+  \draw[flow] (sample) -- node[above,font=\scriptsize]{average loss} (erm);
+  \draw[flow] (erm) -- node[above,font=\scriptsize]{minimize} (model);
+  \draw[flow] (model.south) |- (risk.east);
+  \draw[flow] (pts) -- (risk);
+  \draw[<->,dashed,thick,draw=verifyOrange] (ptr) -- node[right,font=\scriptsize,align=left]{$P_{\mathrm{tr}}=P_{\mathrm{ts}}$\\is an assumption} (pts);
+\end{tikzpicture}

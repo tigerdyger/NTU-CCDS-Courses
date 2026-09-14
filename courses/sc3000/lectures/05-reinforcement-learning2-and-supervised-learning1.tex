@@ -1,0 +1,155 @@
+% Actual class: 05
+% Slide decks: CZ3005 Module 5_Reinforcement Learning; CZ3005_Module_6_ML and PG
+% Exact scope: Module 5 pp. 20--31; Module 6 pp. 1--24, aligned with the Week 6 schedule
+% NTULearn supplement: None
+% Human verified: Concepts discussed and checks completed
+
+\section{第 05 节课：Reinforcement Learning 2 与 Supervised Learning 1}
+\label{lecture:SC3000-L05}
+
+\lecturemeta
+  {SC3000-L05}
+  {2026-09-14}
+  {CZ3005 Module 5；CZ3005 Module 6}
+  {Module 5 pp.~20--31；Module 6 pp.~1--24（对应 Week 6 schedule）}
+  {无}
+  {知识内容与简短检查题已讨论完成}
+
+\subsection{本讲主线}
+
+Monte Carlo（蒙特卡洛，MC）必须等待完整 episode（回合）结束。Q-Learning（Q 学习）改用一步 transition（转移）和当前 Q-value 构造 Temporal-Difference target（时序差分目标），从而可以在线更新；当 Q-table 无法覆盖巨大或连续的 state space（状态空间）时，DQN 用 neural network（神经网络）近似同一个 action-value function（动作价值函数）。后半节转入 Supervised Learning（监督学习）：从 labeled samples（带标签样本）选择 hypothesis（假设），以 empirical risk（经验风险）近似未知分布上的 expected risk（期望风险），并用 Gradient Descent（梯度下降）优化参数。
+
+\lecturetopic{SC3000-L05-T01}{Temporal Difference 与 Q-Learning}
+
+MC control 使用完整 sampled return $G_t$ 更新 $Q(S_t,A_t)$；Q-Learning 只需一步样本
+\[
+  (S_t,A_t,R_{t+1},S_{t+1}).
+\]
+对非终止的 $S_{t+1}$，定义
+\[
+  y_t=R_{t+1}+\gamma\max_{a'}Q_t(S_{t+1},a'),
+  \qquad
+  \delta_t=y_t-Q_t(S_t,A_t),
+\]
+并更新
+\[
+  \boxed{
+  Q_{t+1}(S_t,A_t)
+  =Q_t(S_t,A_t)+\alpha\delta_t}.
+\]
+$\alpha\in(0,1]$ 是 learning rate（学习率），$\gamma\in[0,1]$ 是 discount factor（折扣因子）。若 $S_{t+1}$ 为 terminal state（终止状态），future return 为零，故 $y_t=R_{t+1}$。
+
+该更新属于 bootstrapping（自举）：未知的完整 return 被当前估计 $\max_{a'}Q_t(S_{t+1},a')$ 替代。与 MC 的边界是：
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+  \toprule
+  Method & 更新目标 & 等待完整 episode \\
+  \midrule
+  Monte Carlo & sampled return $G_t$ & 是 \\
+  Q-Learning & $R_{t+1}+\gamma\max_{a'}Q(S_{t+1},a')$ & 否 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{对应例题：}\relatedexercise{SC3000-L05-E01}{五房间 Q-Learning 的奖励传播}。
+
+\lecturetopic{SC3000-L05-T02}{Off-Policy Control 与算法边界}
+
+实际收集经验时，可用 $\varepsilon$-greedy behavior policy（行为策略）兼顾 exploration（探索）与 exploitation（利用）；但 TD target 总是假设下一步选择 greedy action：
+\[
+  \max_{a'}Q(S_{t+1},a').
+\]
+behavior policy 与正在学习的 greedy target policy 可以不同，所以 Q-Learning 是 off-policy TD control（离策略时序差分控制）。一次 episode 中重复执行：选择 $A_t$、观察 $R_{t+1},S_{t+1}$、更新唯一的表项 $Q(S_t,A_t)$、再令 $S_t\leftarrow S_{t+1}$。
+
+在 finite tabular MDP（有限表格型 MDP）中，若所有 state-action pairs 得到充分探索，learning rates 满足标准随机逼近条件，且 rewards 有界、$\gamma<1$，Q-Learning 才具有收敛到 $Q^*$ 的理论保证。固定且过大的 $\alpha$、探索不足或 function approximation（函数近似）都会破坏这套简单保证。
+
+\lecturetopic{SC3000-L05-T03}{Deep Q-Network}
+
+表格表示为每个 $(s,a)$ 单独存储 $Q(s,a)$；面对图像、连续状态或巨大状态空间时，它既无法存储，也不能让相似 states 共享信息。DQN（深度 Q 网络）改用参数 $w$ 近似
+\[
+  Q(s,a;w)\approx Q^*(s,a).
+\]
+网络可以输入 $(s,a)$ 输出一个标量，也可以只输入 $s$、同时输出全部离散 actions 的 Q-values；讲义中的 Atari 架构采用后者。最近四帧图像共同构成 state，是为了让网络从位置变化中判断速度方向。
+
+基本训练目标仍来自 Q-Learning：
+\[
+  y_t=R_{t+1}+\gamma\max_{a'}Q(S_{t+1},a';w^-),
+  \qquad
+  L(w)=\bigl[y_t-Q(S_t,A_t;w)\bigr]^2.
+\]
+这里 $w^-$ 表示生成 target 的参数。讲义只给出“神经网络替代 Q-table”的核心思想；经典 DQN 还使用 experience replay（经验回放）降低连续样本相关性，并使用 target network（目标网络）避免预测与目标同时快速变化。DQN 改变的是表示与优化方式，不是 Bellman target。
+
+\lecturetopic{SC3000-L05-T04}{Supervised Learning 的任务与统计假设}
+
+Supervised Learning 从训练集
+\[
+  \mathcal D=\{(x_i,y_i)\}_{i=1}^{N},
+  \qquad x_i\in\mathbb R^m,
+\]
+学习映射 $f:\mathcal X\to\mathcal Y$。更严格地说，hypothesis space 是候选函数集合
+\[
+  \mathcal H\subseteq\{f\mid f:\mathcal X\to\mathcal Y\},
+\]
+学习算法从 $\mathcal H$ 中选择 $\widehat f$。目标不是保证训练点或每个未来样本上都有 $f(x)=y$，而是 generalization（泛化）：在未见数据上的平均损失尽可能小。
+
+讲义以 credit-risk estimation（信用风险估计）区分三类任务：
+\begin{center}
+\begin{tabularx}{0.9\textwidth}{@{}lXX@{}}
+  \toprule
+  Task & Output space & 讲义示例 \\
+  \midrule
+  Binary classification & 两个离散类别 & 是否偿还贷款 \\
+  Multiclass classification & 多个离散类别 & 准时、迟交、违约 \\
+  Regression & 连续数值 & 偿还百分比 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+类别写成 $1,2,3$ 只是 encoding（编码），不表示类别之间具有数值距离，也不会把 classification 变成 regression。
+
+理论通常假设
+\[
+  (x_i,y_i)\overset{\mathrm{iid}}{\sim}P_{\mathrm{tr}}(x,y),
+  \qquad
+  (x^*,y^*)\sim P_{\mathrm{ts}}(x,y),
+  \qquad
+  \boxed{P_{\mathrm{tr}}=P_{\mathrm{ts}}}.
+\]
+i.i.d. 同时要求 samples 独立且同分布；$P_{\mathrm{tr}}=P_{\mathrm{ts}}$ 是建模假设，不是现实保证。时间变化、不同医院或不同人群都可能产生 distribution shift（分布偏移）。Training 阶段估计的 feature transformation（特征变换）必须原样应用到 test data；若用 test information 拟合预处理参数，会造成 data leakage（数据泄漏）。
+
+\lecturetopic{SC3000-L05-T05}{Loss、Risk、ERM 与 Gradient Descent}
+
+对预测 $\widehat y=f(x)$，loss function（损失函数）衡量单个样本的误差：
+\[
+  \ell(f(x),y)\ge 0.
+\]
+分类可使用 zero-one loss 或 cross-entropy，回归常用 squared loss。分布 $P$ 上的 expected risk 为
+\[
+  R_P(f)=\mathbb E_{(x,y)\sim P}\!\left[\ell(f(x),y)\right].
+\]
+理想目标是 $\arg\min_{f\in\mathcal H}R_{\mathrm{ts}}(f)$，但 test labels 和真实分布不可用于训练。若 $P_{\mathrm{tr}}=P_{\mathrm{ts}}$，则 $R_{\mathrm{tr}}(f)=R_{\mathrm{ts}}(f)$；更一般的分布比值改写还要求 test distribution 的 support（支撑集）被 training distribution 覆盖。
+
+由于 $P_{\mathrm{tr}}$ 未知，只能以有限样本平均近似：
+\[
+  \widehat R_{\mathrm{tr}}(f)
+  =\frac1N\sum_{i=1}^{N}\ell(f(x_i),y_i),
+  \qquad
+  \widehat f=\arg\min_{f\in\mathcal H}\widehat R_{\mathrm{tr}}(f).
+\]
+这就是 Empirical Risk Minimization（经验风险最小化）。固定 $N$ 且目标中没有其他项时，删去 $1/N$ 不改变 argmin；若还包含 regularization（正则化）或固定数值 learning rate，则必须同步调整相对尺度。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.92\textwidth}{!}{\input{figures/supervised-risk-pipeline}}
+  \caption{未知训练分布产生有限样本；ERM 用经验风险近似训练分布上的期望风险，并在同分布假设下服务于测试泛化。}
+  \label{fig:sc3000-l05-supervised-risk}
+\end{figure}
+
+若 $f=f_w$ 由参数 $w$ 表示，令 $E(w)=\widehat R_{\mathrm{tr}}(f_w)$，Gradient Descent 更新为
+\[
+  \boxed{w_{k+1}=w_k-\rho\nabla_w E(w_k)}.
+\]
+负号来自梯度指向最陡上升方向。$\rho$ 太小会收敛缓慢，太大可能越过低点并震荡；凸目标在适当条件下可达 global minimum（全局最小值），neural network 的非凸目标一般没有这一保证。
+
+\subsection{一分钟回顾}
+
+Q-Learning 用一步 reward 与下一状态的 greedy Q estimate 构造 TD target，因此无需等待完整 episode，并因 behavior/target policies 可不同而属于 off-policy。DQN 以 neural network 近似相同的 Q-function。监督学习从 i.i.d. labeled samples 中选择 hypothesis；empirical risk 近似 training distribution 上的 expected risk，只有在 train/test 同分布等假设成立时，较小的训练风险才可能转化为良好泛化。
