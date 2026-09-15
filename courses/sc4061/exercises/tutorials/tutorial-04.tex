@@ -1,0 +1,202 @@
+% Tutorial set: 04
+% Source: T4.pdf, Tutorial 4 (Image Edge Processing), Questions 1--3
+% Reference: T4_Reference solutions.pptx, used only for answer checking
+% Session date: 2026-09-15
+% Human verified: Yes
+
+\clearpage
+\subsection{Tutorial 04：Image Edge Processing}
+\label{tutorial:SC4061-TUT04}
+
+\exercisemeta
+  {SC4061-TUT04}
+  {2026-09-15}
+  {T4.pdf，Questions 1--3；T4\_Reference solutions.pptx 仅用于核对}
+  {三题均已作答、讨论并完成订正}
+  {已确认（2026-09-15）}
+
+\exercisequestion{SC4061-TUT04-Q01}{Sobel Mask 的 Separable Implementation}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L05-T05}{Prewitt 与 Sobel Gradient Filters}
+
+\subsubsection*{题目}
+
+证明 Sobel masks（Sobel 卷积核）可以由一次一维 differencing（差分）和一次正交方向的一维 smoothing（平滑）依次实现：差分核为 $[-1,0,1]^{\mathsf T}$ 或其水平版本，平滑核为 $[1,2,1]$ 或其垂直版本。
+
+\begin{checkedsolution}
+令水平差分与垂直平滑分别为
+\[
+  d_x=\begin{bmatrix}-1&0&1\end{bmatrix},\qquad
+  s_y=\begin{bmatrix}1&2&1\end{bmatrix}^{\mathsf T}.
+\]
+二者的 outer product（外积）为
+\[
+  K_x=s_y d_x
+  =\begin{bmatrix}
+    -1&0&1\\
+    -2&0&2\\
+    -1&0&1
+  \end{bmatrix}.
+\]
+$K_x$ 计算沿 $x$ 的 intensity difference（强度差），因此响应 vertical edges（竖直边缘）。交换两个方向可得
+\[
+  K_y=d_y s_x
+  =\begin{bmatrix}
+    -1&-2&-1\\
+    0&0&0\\
+    1&2&1
+  \end{bmatrix},
+\]
+它计算沿 $y$ 的差分并响应 horizontal edges（水平边缘）。
+
+由 convolution（卷积）的结合律，二维 Sobel filtering 可写成
+\[
+  f*K_x=(f*d_x)*s_y=(f*s_y)*d_x.
+\]
+因此先差分再平滑或先平滑再差分都得到同一二维结果。若软件实际执行 cross-correlation（互相关）而没有翻转 kernel，输出可能整体变号；这会改变 gradient orientation（梯度朝向）$180^\circ$，但不会改变 gradient magnitude 或 edge location。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT04-Q02}{LoG Kernel、Filtering Response 与 Zero Crossing}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L05-T06}{Laplacian of Gaussian 与 Zero Crossing}
+
+\subsubsection*{题目}
+
+令
+\[
+  h(r)=-\exp\!\left(-\frac{r^2}{2\sigma^2}\right),
+  \qquad r^2=x^2+y^2.
+\]
+（a）详细推导 $\nabla^2h(r)$。（b）使用离散 LoG kernel
+\[
+  L=\begin{bmatrix}
+    0&0&-1&0&0\\
+    0&-1&-2&-1&0\\
+    -1&-2&16&-2&-1\\
+    0&-1&-2&-1&0\\
+    0&0&-1&0&0
+  \end{bmatrix}
+\]
+对两幅 $12\times13$ 图像做 valid filtering（不补零，只保留 kernel 完全落入图像的位置），并比较结果。两幅图像的 12 行分别重复以下 row profiles：
+\[
+  x_{\mathrm{step}}=
+  [0,0,0,0,0,0,1,1,1,1,1,1,1],
+\]
+\[
+  x_{\mathrm{ramp}}=
+  [0,0,0,0,0,0,0.5,1,1,1,1,1,1].
+\]
+
+\begin{checkedsolution}
+记 $q=(x^2+y^2)/(2\sigma^2)$。链式法则给出
+\[
+  \frac{\partial h}{\partial x}
+  =\frac{x}{\sigma^2}e^{-q},\qquad
+  \frac{\partial^2h}{\partial x^2}
+  =-\frac{x^2-\sigma^2}{\sigma^4}e^{-q}.
+\]
+同理，
+\[
+  \frac{\partial^2h}{\partial y^2}
+  =-\frac{y^2-\sigma^2}{\sigma^4}e^{-q}.
+\]
+所以
+\[
+  \boxed{
+  \nabla^2h(r)
+  =-\frac{r^2-2\sigma^2}{\sigma^4}
+  \exp\!\left(-\frac{r^2}{2\sigma^2}\right)}.
+\]
+题目采用的是 negative unnormalised Gaussian（负的未归一化高斯函数），所以 kernel 中心为正。若从通常的 positive normalised Gaussian
+\[
+  G_\sigma(r)=\frac{1}{2\pi\sigma^2}
+  e^{-r^2/(2\sigma^2)}
+\]
+出发，则
+\[
+  \nabla^2G_\sigma(r)
+  =\frac{r^2-2\sigma^2}{2\pi\sigma^6}
+  e^{-r^2/(2\sigma^2)},
+\]
+与题目 convention（约定）整体异号并多一个归一化系数；二者的 zero crossing 都位于 $r=\sqrt2\sigma$。
+
+因为图像的每一行都相同，二维 filtering 可约化为一维。将 $L$ 的每列求和，得到 effective kernel（等效卷积核）
+\[
+  \ell=[-1,-4,10,-4,-1].
+\]
+输入高度与宽度分别从 $12,13$ 变成
+\[
+  12-5+1=8,\qquad 13-5+1=9.
+\]
+每个输出均有 8 个相同行，其 row profiles 为
+\[
+  \boxed{y_{\mathrm{step}}
+  =[0,0,-1,-5,5,1,0,0,0]},
+\]
+\[
+  \boxed{y_{\mathrm{ramp}}
+  =[0,0,-0.5,-3,0,3,0.5,0,0]}.
+\]
+Reference solutions 的渐变响应末尾漏写了一个 $0$；由 $13-5+1=9$ 可确认完整输出必须有 9 列。
+
+Abrupt step（突变阶跃）产生较强的正负 double-lobe response（双瓣响应），zero crossing 位于 $-5$ 与 $5$ 之间。加入 $0.5$ 的过渡后，响应峰值降至 $\pm3$，并在边缘中心出现一个精确的零。LoG 以 sign change（符号变化）定位边缘；整体改变 kernel sign 不改变 zero-crossing location。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT04-Q03}{Hough Line Geometry 与 Parameter-space Voting}
+
+\textbf{对应讲义：}
+\relatedtopic{SC4061-L06-T01}{Edgel Linking 与 Hough Line Geometry}；
+\relatedtopic{SC4061-L06-T02}{Image--Hough Duality、Voting 与 Generalization}
+
+\subsubsection*{题目}
+
+直线可写为
+\[
+  \rho=x\cos\theta+y\sin\theta.
+\]
+（a）从几何上说明 $\rho$ 与 $\theta$；（b）在可行时将直线写成 $y=mx+c$；（c）固定图像点 $(x,y)$，证明它在 $(\theta,\rho)$ parameter space（参数空间）中对应 sinusoid（正弦曲线）$\rho=K\cos\alpha$；（d）解释两条以及多条 sinusoids 的交点分别对应什么图像结构。
+
+\begin{checkedsolution}
+直线的单位法向量为
+\[
+  \mathbf n=(\cos\theta,\sin\theta)^{\mathsf T}.
+\]
+$\theta$ 是 $\mathbf n$ 与 $x$ 轴的夹角，$\rho$ 是原点到直线的 signed distance（有符号距离），而距离原点最近的直线点为 $\rho\mathbf n$。
+
+当 $\sin\theta\ne0$ 时，
+\[
+  y=-\frac{\cos\theta}{\sin\theta}x
+  +\frac{\rho}{\sin\theta}
+  =-\cot\theta\,x+\rho\csc\theta.
+\]
+因此 $m=-\cot\theta$，$c=\rho\csc\theta$。当 $\sin\theta=0$ 时，直线为 $x=\rho/\cos\theta$，即 vertical line（竖直线），不能写成具有有限 slope 的 $y=mx+c$。Normal form（法线式）正是通过 $\rho,\theta$ 避免 slope singularity（斜率奇点）。
+
+对固定点 $(x,y)$，令
+\[
+  R=\sqrt{x^2+y^2},\qquad
+  \phi=\operatorname{atan2}(y,x),\qquad
+  x=R\cos\phi,\quad y=R\sin\phi.
+\]
+代入直线方程：
+\begin{align*}
+  \rho(\theta)
+  &=R\cos\phi\cos\theta+R\sin\phi\sin\theta\\
+  &=\boxed{R\cos(\theta-\phi)}.
+\end{align*}
+所以题目中的 $K=R$，而 $\alpha$ 可取 $\theta-\phi$；由于 cosine（余弦）是偶函数，写成 $R\cos(\phi-\theta)$ 也完全等价。Reference solutions 使用 $\tan^{-1}(y/x)$ 表示 $\phi$，但严格实现时应使用 $\operatorname{atan2}(y,x)$，否则不能正确区分象限，且 $x=0$ 时会发生除零。
+
+每个 edgel（边缘像素）在 Hough space 中给所有经过它的直线投票，因此形成一条 sinusoid。两条 sinusoids 的交点表示两个图像点共同确定的一条直线；多条 sinusoids 在同一 $(\rho,\theta)$ 附近相交，表示多个 edgels 共线，并在 accumulator（累加器）中形成较强 peak。离散实现中受 parameter quantisation（参数量化）和噪声影响，投票通常形成邻近 bins 的峰簇，而不是理想的精确交点。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/hough-duality-voting}}
+  \caption{Q3 的 image--Hough duality：image space 中的共线 edgels 在 Hough space 中产生共同参数峰。图为依据课程内容绘制的原创示意图。}
+  \label{fig:sc4061-tut04-hough-voting}
+\end{figure}
+\end{checkedsolution}
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1 利用 separability（可分离性）把二维 Sobel convolution 拆为差分与平滑；Q2 连接 continuous LoG derivation、discrete filtering response 与 zero crossing，并用输出尺寸发现参考答案漏项；Q3 在 image space 与 Hough space 之间切换变量角色，以 signed normal form 统一表示普通直线和竖直线。复习时应优先保留 kernel direction、sign convention、valid-output size、$\sin\theta=0$ 特例与 $\operatorname{atan2}$ 的象限信息。
