@@ -1,0 +1,212 @@
+% Tutorial set: 05
+% Source: tut5.pdf, Tutorial Five (Process Synchronization - Part II), pp. 5-1--5-2 (PDF pp. 1--2), Questions 1--3
+% Reference solution: not provided; answers checked against the standard semaphore semantics from Lectures 9--10
+% Session date: 2026-09-15
+% Human verified: Yes
+
+\clearpage
+\subsection{Tutorial 05：Process Synchronization Part II}
+\label{tutorial:SC2005-TUT05}
+
+\exercisemeta
+  {SC2005-TUT05}
+  {2026-09-15}
+  {tut5.pdf，pp.~5-1--5-2（PDF pp.~1--2），Questions 1--3；原文件未附参考答案}
+  {三题均已作答，并依据 Lecture 9--10 的 semaphore 标准语义完成订正}
+  {已确认（2026-09-15）}
+
+\exercisequestion{SC2005-TUT05-Q01}{两个 Basket Semaphores 的 Deadlock-free Acquisition}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L10-T01}{Semaphore 的系统化设计}；
+\relatedtopic{SC2005-L10-T02}{Deadlock 与 Starvation}
+
+\subsubsection*{题目}
+
+Apples 与 oranges 在随机时刻分别进入两个 baskets。Alice 每次需要从对应 baskets 取出恰好 1 个 apple 与 2 个 oranges 才能配对得分。Apple basket 与 orange basket 分别由 semaphore $A$ 与 $O$ 保护；访问 basket 前必须取得对应 semaphore。
+
+只允许在下列五个框中放入任意数量（可为零）的 \texttt{Wait(A)}、\texttt{Wait(O)}、\texttt{Signal(A)}、\texttt{Signal(O)}。补全程序，并保证即使其他 players 采用不同代码，Alice 的 acquisition pattern（获取模式）也不会参与形成 deadlock。
+
+\begin{verbatim}
+[1]
+// Pick 1 apple
+
+[2]
+if (at least 2 oranges in basket) {
+    // Pick 2 oranges and pair with apple
+[3]
+} else {
+[4]
+    // Drop 1 apple back in basket
+[5]
+}
+\end{verbatim}
+
+\begin{checkedsolution}
+一种不同时持有两个 basket locks 的填写为
+\begin{verbatim}
+[1] Wait(A)
+
+// Pick 1 apple
+
+[2] Signal(A)
+    Wait(O)
+
+if (at least 2 oranges in basket) {
+    // Pick 2 oranges and pair with apple
+[3] Signal(O)
+} else {
+[4] Signal(O)
+    Wait(A)
+
+    // Drop 1 apple back in basket
+[5] Signal(A)
+}
+\end{verbatim}
+
+Alice 取出 apple 后可暂时私有地持有它，不必继续锁住 apple basket。她先释放 $A$，之后才等待 $O$；若 oranges 不足，又先释放 $O$，再等待 $A$ 并放回 apple。因此 Alice 在任何 \texttt{Wait} 处都不持有另一 basket semaphore，不可能成为 circular wait（循环等待）中的 ``hold one, wait for another'' 节点。
+
+该结论假定其他 players 仍遵守 semaphore protocol（最终释放已取得的锁）。若其他代码永久不释放 semaphore，或多个其他 players 已经彼此 deadlock，Alice 可能被间接阻塞；任何只修改 Alice 本地代码的方案都无法排除这种外部故障。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT05-Q02}{Shifted Semaphore Value 与 Off-by-one Conditions}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L09-T02}{Binary Semaphore 实现 Mutual Exclusion}；
+\relatedtopic{SC2005-L09-T04}{Blocking Semaphore：Value 与 Waiting Queue}
+
+\subsubsection*{题目}
+
+假设下列 \texttt{Wait} 与 \texttt{Signal} system calls（系统调用）均为 atomic，并以初值 $S.value=0$ 的 semaphore 保护每个 process 的 critical section。判断该实现是否保证 mutual exclusion（互斥）与 progress（推进性），并说明理由。
+
+\begin{verbatim}
+Wait(S):                         Signal(S):
+    S.value--                        S.value++
+    if (S.value < -1)                if (S.value <= 0)
+        block()                          wakeup()
+
+Process Pi:
+    while (1) {
+        Wait(S)
+        critical section
+        Signal(S)
+        remainder section
+    }
+\end{verbatim}
+
+\begin{checkedsolution}
+该实现把常见初值为 $1$ 的 binary semaphore value 整体下移一位。其状态含义为
+\[
+  S.value=0: \text{无 holder、无 waiter},
+\]
+\[
+  S.value=-(k+1):\ \text{一名 holder 与 $k$ 名 waiting processes}.
+\]
+前三个 processes 依次执行 \texttt{Wait} 时：
+\begin{center}
+\small
+\begin{tabular}{@{}lcl@{}}
+  \toprule
+  Operation & New value & Result \\
+  \midrule
+  $P_1:\ \texttt{Wait(S)}$ & $-1$ & 不阻塞，进入 critical section \\
+  $P_2:\ \texttt{Wait(S)}$ & $-2$ & $-2<-1$，进入 waiting queue \\
+  $P_3:\ \texttt{Wait(S)}$ & $-3$ & $-3<-1$，进入 waiting queue \\
+  \bottomrule
+\end{tabular}
+\end{center}
+因此任意时刻只有第一个未阻塞的 process 位于 critical section，\textbf{mutual exclusion 成立}。
+
+若 $P_1$ 离开时有两个 waiters，\texttt{Signal} 使
+\[
+  -3\longrightarrow-2,
+\]
+条件 $S.value\le0$ 成立，系统唤醒一个 waiter；之后每次 holder 释放许可都会继续唤醒下一名 waiter。因此在 scheduler 与 waiting queue 正常工作的前提下，\textbf{progress 成立}。
+
+边界问题发生在没有 waiters 时：
+\[
+  -1\xrightarrow{\texttt{Signal}}0,
+\]
+代码仍会执行 \texttt{wakeup()}，但 queue 为空。若 conventional contract 规定 ``对空队列调用 \texttt{wakeup} 是安全的 no-op''，这只是多余调用，不破坏两个性质；若该行为未定义，则题目不足以给出无条件安全保证。对于本题的 shifted representation，更精确的唤醒条件是
+\[
+  \boxed{S.value<0}.
+\]
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT05-Q03}{用 TestAndSet 保护 Blocking Semaphore Internals}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L08-T04}{Synchronization Hardware 与 TestAndSet}；
+\relatedtopic{SC2005-L09-T04}{Blocking Semaphore：Value 与 Waiting Queue}；
+\relatedtopic{SC2005-L09-T05}{Blocking 实现的原子边界与选择}
+
+\subsubsection*{题目}
+
+给定
+\begin{verbatim}
+typedef struct {
+    int value;
+    struct process *L;
+} semaphore;
+\end{verbatim}
+说明如何用 TestAndSet instruction（测试并置位指令）实现 semaphore 的 \texttt{Wait(S)} 与 \texttt{Signal(S)}。注意 $S.value$ 和 process queue $S.L$ 都是多个 processes 共享的变量。
+
+\begin{checkedsolution}
+原结构缺少保护内部状态的 lock。实现时必须为每个 semaphore 增加一个初值为 \texttt{false} 的 \texttt{guard}，或在结构外维护一一对应的 guard：
+\begin{verbatim}
+typedef struct {
+    int value;
+    struct process *L;
+    bool guard;              // false: unlocked, true: locked
+} semaphore;
+\end{verbatim}
+采用标准 TestAndSet 语义：它原子地返回旧值并把 target 写为 \texttt{true}。内部 guard 的 acquire/release 为
+\begin{verbatim}
+acquire_guard(S):
+    while (TestAndSet(&S.guard))
+        ;                   // short spin only
+
+release_guard(S):
+    S.guard = false
+\end{verbatim}
+
+Blocking semaphore 可写为
+\begin{verbatim}
+Wait(S):
+    acquire_guard(S)
+    S.value--
+
+    if (S.value < 0) {
+        enqueue(S.L, current_process)
+        block_and_release(current_process, &S.guard)
+    } else {
+        release_guard(S)
+    }
+
+Signal(S):
+    acquire_guard(S)
+    S.value++
+
+    if (S.value <= 0) {
+        P = dequeue(S.L)
+        wakeup(P)
+    }
+
+    release_guard(S)
+\end{verbatim}
+
+\texttt{guard} 只保护对 $S.value$ 与 $S.L$ 的短暂更新；等待 resource permit（资源许可）的 process 应进入 blocked state，而不能一直持有 guard 或长期 spinning。
+
+\texttt{Wait} 必须先把 \texttt{current\_process} 加入 $S.L$，再阻塞；若先 \texttt{block()}，后面的 enqueue 根本不会在睡眠前执行。更细致地说，也不能简单写成
+\begin{verbatim}
+release_guard(S)
+block()
+\end{verbatim}
+因为 \texttt{Signal} 可能在两句之间执行：它尝试唤醒尚未 blocked 的 process，随后该 process 才睡眠，造成 lost wakeup（唤醒丢失）。真实 kernel 需要 \texttt{block\_and\_release} 原子协议，或在 guard 保护下先 enqueue 并把 process state 标为 blocked，再释放 guard 并调用 scheduler。
+
+同理，\texttt{Signal} 应从 $S.L$ dequeue 一个具体 process 再 \texttt{wakeup(P)}；向 queue 中加入元素属于 \texttt{Wait} 的职责。
+\end{checkedsolution}
+
+\subsubsection*{本次 Tutorial 收口}
+
+Q1 说明跨多个 resources 的安全代码不只需要 ``最终释放''，还要检查每个 blocking point 当时持有哪些 locks；Q2 展示 semaphore value 可以采用不同数值编码，但 block/wakeup 阈值必须与状态 invariant 一致；Q3 区分用于短暂保护 semaphore internals 的 TestAndSet guard 与等待 resource permit 的 blocking queue，并揭示 enqueue、state transition、unlock 和 scheduling 之间的 lost-wakeup race。
