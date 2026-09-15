@@ -1,0 +1,99 @@
+% Actual class: 06
+% Slide deck: L4 (full) Edge slides
+% Exact scope: L4 pp. 20--40 (Parts 2--3)
+% NTULearn supplement: transcripts 58958 and 58957
+% Human verified: Yes
+
+\section{第 06 节课：Edge Linking and Deep Edge}
+\label{lecture:SC4061-L06}
+
+\lecturemeta
+  {SC4061-L06}
+  {2026-09-15}
+  {L4 (full) Edge slides}
+  {L4 pp.~20--40（Part 2 与 Part 3）}
+  {课程视频 Edge Part 2 与 Part 3（字幕 58958、58957 核对）}
+  {已确认（2026-09-15）}
+
+\subsection{本讲主线}
+
+Canny 等 detector 最终只对单个 pixel 判断是否为 edgel（边缘元素）；edge linking（边缘连接）还要从全局判断哪些 edgels 属于同一条 edge。Hough transform（霍夫变换）把这种全局组合问题改写为 parameter-space voting（参数空间投票）。课程随后以 Harris、SIFT 和 RCF 为扩展阅读，说明视觉表示从 edge 走向 corner、feature point，再走向由 CNN 学习 multi-level、multi-scale edge features。
+
+\lecturetopic{SC4061-L06-T01}{Edgel Linking 与 Hough Line Geometry}
+
+Thresholding 后得到 binary map $E(x,y)\in\{0,1\}$；其中的 $1$ 只表示一个 edgel，并未给出完整 edge、所属分组或全局方程。此前 Sobel、LoG、Canny 主要依赖 local neighbourhood，而 linking 必须利用相距较远像素之间的共线或共曲线关系。
+
+令直线的单位法向量为
+\[
+  \mathbf n=(\cos\theta,\sin\theta)^{\mathsf T}.
+\]
+原点到直线的 signed distance（带符号距离）为 $\rho$，则直线上任一点 $\mathbf p=(x,y)^{\mathsf T}$ 满足
+\[
+  \boxed{\mathbf n^{\mathsf T}\mathbf p=\rho}
+  \qquad\Longleftrightarrow\qquad
+  \boxed{x\cos\theta+y\sin\theta=\rho}.
+\]
+Normal form（法线式）对 vertical line 也保持有限参数；相比之下 $y=ax+b$ 无法以有限 slope $a$ 表示竖直线。严格地说，参数具有
+\[
+  (\rho,\theta)\sim(-\rho,\theta+\pi)
+\]
+的冗余；只有规定例如 $\theta\in[-\pi/2,\pi/2)$ 且允许 signed $\rho$ 后，才可把一对参数视为唯一的直线。
+
+\lecturetopic{SC4061-L06-T02}{Image--Hough Duality、Voting 与 Generalization}
+
+同一方程有两种互补解释：固定 $(\rho,\theta)$，变化的 $(x,y)$ 在 image space 中组成一条直线；固定 edgel $(x_p,y_p)$，变化的参数满足
+\[
+  \rho(\theta)=x_p\cos\theta+y_p\sin\theta,
+\]
+在 Hough space 中形成一条 sinusoid（正弦曲线）。因此一个 edgel ``给所有经过它的直线投票''，等价于沿该 sinusoid 给离散 accumulator $A(\rho,\theta)$ 加一。共线 edgels 的 curves 在同一 $(\rho^*,\theta^*)$ 附近相交并形成 peak。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/hough-duality-voting}}
+  \caption{Image--Hough duality：image space 中同一直线上的多个 edgels，在 Hough space 中投票给共同的 parameter peak。}
+  \label{fig:sc4061-l06-hough-voting}
+\end{figure}
+
+实际算法把 $\theta$ 与 $\rho$ 量化为 bins。过粗会合并邻近直线；过细会把同一 noisy edge 的票分散到邻近 bins，并增加内存与计算量。Peak 给出的是 infinite line；若要得到 finite segment，还需沿该直线寻找 supporting edgels，并用 gap tolerance 决定端点。高票通常意味着有更多共线支持，但不必然严格等于最长线，还受 edge thickness、sampling density、quantization 与 thresholding 影响。
+
+\textbf{对应例题：}
+\begin{itemize}
+  \item \relatedexercise{SC4061-L06-E01}{单点 Hough Curve 与共线投票}；
+  \item \relatedexercise{SC4061-L06-E02}{Hough 参数特殊情形 Quiz}。
+\end{itemize}
+
+Hough transform 可推广到任意 parameterized curve
+\[
+  F(x,y;\boldsymbol\phi)=0.
+\]
+例如圆需要 $\boldsymbol\phi=(a,b,r)$，accumulator 由二维变为三维。若第 $j$ 个参数离散为 $B_j$ 个 bins，存储规模为 $\prod_j B_j$；因此参数维数增加会迅速带来 computational cost，而不只是增加一个简单循环。
+
+\lecturetopic{SC4061-L06-T03}{Feature Points、RCF 与 Vision Levels}
+
+Extended reading 从 edge 扩展到 Harris corner，再到 SIFT keypoint：corner 在两个独立方向上都有明显 intensity change；更一般的 feature point 只要求局部结构 distinctive（可区分），并可追求 scale/rotation robustness。讲义并未展开二者的完整算法，重点是说明 edge 只是视觉特征的一种。
+
+RCF（Richer Convolutional Features for Edge Detection）以 VGG-16 的多个 convolution stages 产生 side outputs。Shallow layers 保留高分辨率与精确定位，却容易响应 texture/noise；deep layers 具有更大 receptive field 和更强 semantic context，却较粗糙。RCF 将不同层的 edge evidence resize 后融合，实现 image-to-image dense prediction。讲义引用论文在 BSDS500 上报告 ODS F-measure $0.811$（8 FPS）及 fast version $0.806$（30 FPS）；这些是原论文实验结果，不是本课程重新验证的普遍保证。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.94\textwidth}{!}{\input{figures/rcf-multilevel-multiscale}}
+  \caption{RCF 中两种互补的信息融合：multi-level 来自不同网络深度，multi-scale 来自不同输入尺寸。}
+  \label{fig:sc4061-l06-rcf-fusion}
+\end{figure}
+
+\begin{center}
+\begin{tabular}{lll}
+  \toprule
+  概念 & 改变的对象 & 主要作用 \\
+  \midrule
+  Multi-level & 同一次 network 中不同深度的 feature maps & 结合定位细节与语义上下文 \\
+  Multi-scale & 不同尺寸的 input images & 适应不同大小的结构 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Multi-scale pipeline 先构建 image pyramid，对每个尺度分别执行 RCF，再以 bilinear interpolation 恢复到原尺寸并 average。课程前半段的层次可概括为 low-level：image $\to$ image；middle-level：image $\to$ feature；high-level：image/features $\to$ decision。边界不是绝对的，例如 edge map 形式上仍是 image，但作为下游输入时通常视为 middle-level feature。智能测量与缺陷检测中，高质量 low/middle-level output 本身也可能是最终目标。
+
+\subsection{一分钟回顾}
+
+Edge detector 产生 edgels，Hough transform 再用 global voting 恢复参数化 edge。一个 image point 对应 Hough sinusoid，多个共线点共享 accumulator peak；$\theta$ 描述 normal direction 而非 edge tangent。RCF 以 shallow/deep feature fusion 实现 multi-level edge detection，再以 image pyramid 引入 multi-scale information。有效研究迭代应由结果分析指导修改，而不是只做 random trial。

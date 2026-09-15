@@ -1,0 +1,78 @@
+% Lecture example set: SC4061-L06
+% Sources: L4 pp. 20--40; video transcripts 58958 and 58957
+% Human verified: Yes
+
+\clearpage
+
+\exercisemeta
+  {SC4061-L06-EX}
+  {2026-09-15}
+  {L4 (full) Edge slides pp.~20--40；Edge Part 2--3 视频讲解}
+  {Hough transform 数值例与讲义 quiz 已核对}
+  {已确认（2026-09-15）}
+
+\exercisequestion{SC4061-L06-E01}{单点 Hough Curve 与共线投票}
+
+\textbf{类型：}worked example（基于 L4 pp.~24--29 及视频讲解）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L06-T02}{Image--Hough Duality、Voting 与 Generalization}
+
+\subsubsection*{题目}
+
+给定 edgel $(x_p,y_p)=(50,50)$，写出其 Hough curve，并求 $\theta=0^\circ,-90^\circ,45^\circ$ 时的 $\rho$ 及对应直线。再说明多个共线 edgels 如何产生一个 Hough peak。
+
+\begin{checkedsolution}
+固定 image point 后
+\[
+  \rho(\theta)=50\cos\theta+50\sin\theta.
+\]
+三个参数点分别为
+\[
+\begin{array}{ccl}
+  \theta=0^\circ      &:& \rho=50,\quad x=50,\\
+  \theta=-90^\circ    &:& \rho=-50,\quad y=50,\\
+  \theta=45^\circ     &:& \rho=50\sqrt2,\quad x+y=100.
+\end{array}
+\]
+因此同一个 edgel 会给多条经过它的候选直线投票。若多个 edgels 共线，它们各自的 Hough sinusoids 都经过表示该直线的同一参数点 $(\rho^*,\theta^*)$，使 accumulator 在此形成 peak。
+\end{checkedsolution}
+
+\textbf{检查点：}Image point 对应 Hough curve；image line 对应 Hough point。不要把这两个方向倒置。
+
+\exercisequestion{SC4061-L06-E02}{Hough 参数特殊情形 Quiz}
+
+\textbf{类型：}lecture quiz（L4 p.~32；答案由 Part 3 视频给出）。
+
+\textbf{对应知识点：}
+\relatedtopic{SC4061-L06-T01}{Edgel Linking 与 Hough Line Geometry}；
+\relatedtopic{SC4061-L06-T02}{Image--Hough Duality、Voting 与 Generalization}
+
+\subsubsection*{题目}
+
+\begin{enumerate}
+  \item $(\rho,\theta)=(0,0)$ 表示哪条直线？
+  \begin{enumerate}
+    \item $x$-axis；\item $y$-axis；\item $x=1$；\item $y=1$。
+  \end{enumerate}
+  \item Image point $(x,y)=(0,0)$ 所投的参数集合在 Hough space 中呈现为什么？
+  \begin{enumerate}
+    \item 一条直线；\item 一条一般 sinusoid。
+  \end{enumerate}
+\end{enumerate}
+
+\begin{checkedsolution}
+第一题代入 normal form：
+\[
+  x\cos0+y\sin0=0\quad\Longrightarrow\quad x=0,
+\]
+故为 $y$-axis，选 (b)。$\theta$ 是 normal direction；normal 水平时，直线竖直。
+
+第二题固定原点后
+\[
+  \rho(\theta)=0\cos\theta+0\sin\theta=0.
+\]
+所以对任意 $\theta$ 都有 $\rho=0$，在 Hough space 中是一条直线，选 (a)。一般点产生 sinusoid，原点是退化的特殊情形。
+\end{checkedsolution}
+
+\textbf{检查点：}先代入 $x\cos\theta+y\sin\theta=\rho$，再判断几何方向，能避免把 normal 与 line direction 混淆。

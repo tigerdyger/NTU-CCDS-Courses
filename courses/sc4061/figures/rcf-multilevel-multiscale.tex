@@ -1,0 +1,29 @@
+\begin{tikzpicture}[font=\small,>=Latex,node distance=0.55cm and 0.65cm]
+  \tikzset{
+    box/.style={draw=noteBlue,rounded corners=2pt,minimum width=2.25cm,
+      minimum height=0.85cm,align=center,fill=blue!4},
+    fusion/.style={draw=ntuRed,rounded corners=2pt,minimum width=2.25cm,
+      minimum height=0.85cm,align=center,fill=red!3},
+    arrow/.style={->,thick,noteBlue}
+  }
+
+  \node[font=\bfseries,anchor=east] (mlabel) {Multi-level};
+  \node[box,right=of mlabel] (s1) {shallow stage\\fine/local};
+  \node[box,right=of s1] (s3) {middle stage\\intermediate};
+  \node[box,right=of s3] (s5) {deep stage\\coarse/semantic};
+  \node[fusion,right=of s5] (fuse) {resize and fuse\\edge map};
+  \draw[arrow] (s1) -- (s3);
+  \draw[arrow] (s3) -- (s5);
+  \draw[arrow] (s1.north) to[bend left=18] (fuse.north);
+  \draw[arrow] (s3.north) to[bend left=13] (fuse.north west);
+  \draw[arrow] (s5) -- (fuse);
+
+  \node[font=\bfseries,anchor=east,below=1.55cm of mlabel] (slabel) {Multi-scale};
+  \node[box,right=of slabel] (pyr) {image pyramid\\$1\times,\,s_2,\,s_3$};
+  \node[box,right=of pyr] (rcf) {shared RCF\\forward passes};
+  \node[box,right=of rcf] (resize) {bilinear\\resize};
+  \node[fusion,right=of resize] (avg) {average\\edge map};
+  \draw[arrow] (pyr) -- (rcf);
+  \draw[arrow] (rcf) -- (resize);
+  \draw[arrow] (resize) -- (avg);
+\end{tikzpicture}
