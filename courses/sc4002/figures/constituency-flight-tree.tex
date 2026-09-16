@@ -1,0 +1,24 @@
+% Original TikZ redraw from SC4002 Week 6, slide 8.
+% Follows the displayed tree and productions (Nominal -> Nominal Noun).
+\begin{tikzpicture}[x=1cm,y=0.9cm,
+  every node/.style={font=\small,inner sep=2pt},
+  edge/.style={draw=noteBlue,thick}]
+  \node (s) at (3.5,0) {S};
+  \node (np1) at (0.7,-0.9) {NP};
+  \node (vp) at (5.1,-0.9) {VP};
+  \node (pro) at (0.7,-1.8) {Pronoun};
+  \node (v) at (3.1,-1.8) {Verb};
+  \node (np2) at (6.4,-1.8) {NP};
+  \node (det) at (4.9,-2.7) {Det};
+  \node (nom) at (7.5,-2.7) {Nominal};
+  \node (nom1) at (6.5,-3.6) {Nominal};
+  \node (n2) at (8.8,-3.6) {Noun};
+  \node (n1) at (6.5,-4.5) {Noun};
+  \node[text=ntuRed] (i) at (0.7,-5.3) {I};
+  \node[text=ntuRed] (prefer) at (3.1,-5.3) {prefer};
+  \node[text=ntuRed] (a) at (4.9,-5.3) {a};
+  \node[text=ntuRed] (morning) at (6.5,-5.3) {morning};
+  \node[text=ntuRed] (flight) at (8.8,-5.3) {flight};
+  \foreach \parent/\child in {s/np1,s/vp,np1/pro,pro/i,vp/v,v/prefer,vp/np2,np2/det,det/a,np2/nom,nom/nom1,nom/n2,nom1/n1,n1/morning,n2/flight}
+    \draw[edge] (\parent) -- (\child);
+\end{tikzpicture}

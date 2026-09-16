@@ -1,0 +1,154 @@
+% Actual class: 06
+% Source: Week 6-Constitency Parsing.pdf (original filename spelling)
+% Exact scope: PDF / slide pp. 1--36, complete chapter
+% Video supplement: transcript 61156 checked locally; no timestamps supplied
+% Human verification: learner requested notes on 2026-09-16 after the explanation.
+% Source examples explained by the assistant, not independently solved by the learner.
+
+\section{第 06 节课：Constituency Grammars and Parsing}
+\label{lecture:SC4002-L06}
+
+\lecturemeta
+  {SC4002-L06}
+  {2026-09-16}
+  {Week 6-Constitency Parsing（原文件名）；正文为 Constituency Grammars and Parsing}
+  {PDF / slide pp.~1--36；整份讲义}
+  {课堂字幕 61156 已在本地核对，覆盖至 shallow parsing；无时间戳，原稿不收入仓库}
+  {用户听完讲解后请求整理（2026-09-16）；例题由助手讲解及核对}
+
+\subsection{本讲主线与范围}
+
+POS tagging（词性标注）描述单词的类别；constituency parsing（成分句法分析）恢复词如何组合成短语、短语如何嵌套成句子的 hierarchical structure（层次结构）。主线为 CFG 规定合法组合、structural ambiguity 产生多个候选结构、CNF 将规则二元化、CKY 按区间动态规划并回溯成树，最后用 PARSEVAL 评估。只需平面短语时可使用 chunking。
+
+来源分工：pp.~3--12 为 grammar，pp.~14--18 为 ambiguity，pp.~19--31 为 CKY，pp.~32--34 为扩展、评估和 shallow parsing。句型、subcategorization、CCG 及 neural CKY 按讲义与视频定位简述，不额外展开训练算法。下文的递推符号、复杂度说明和计数边界属于对讲义机制的补充形式化。
+
+\lecturetopic{SC4002-L06-T01}{Constituency、CFG 与 Treebanks}
+
+Constituent（句法成分）是能作为整体参与更大结构的词或词组。\texttt{Harry the Horse}、\texttt{they} 都可构成 noun phrase（名词短语，NP）；\texttt{on September seventeenth} 可作为 prepositional phrase（介词短语，PP）整体移动到句首、句中或句末。短语不必含多个词，代词也可独自构成 NP。
+
+Context-free grammar（上下文无关文法，CFG）由 productions（产生式）及 lexical rules（词汇规则）描述组合。每条规则左侧是单个 non-terminal（非终结符），右侧是\emph{有顺序}的符号串。例如：
+\[
+\begin{aligned}
+  S&\rightarrow NP\ VP, & VP&\rightarrow Verb\ NP,\\
+  NP&\rightarrow Det\ Nominal, & PP&\rightarrow Preposition\ NP,\\
+  Det&\rightarrow\texttt{a}\mid\texttt{the}, & Noun&\rightarrow\texttt{flight}.
+\end{aligned}
+\]
+Terminal（终结符）是实际词，如 \texttt{flight}；\texttt{Noun}、\texttt{Det}、NP 等类别仍是非终结符。Nominal 是讲义中 NP 内部的名词性部分，不能与 NP 随意互换。``Context-free'' 指规则应用不以左侧符号周围的符号为条件，不是说自然语言理解无需上下文。
+
+从 start symbol（起始符号，通常为 $S$）展开到词串是 derivation（推导）；可生成的所有词串组成该文法的 language。给定词串寻找推导及 parse tree（句法树）是 parsing。Grammar 规定什么组合被允许，parsing algorithm 负责搜索这些组合；文法解析失败也可能来自覆盖不足或未知词，不能直接证明自然语言句子不合语法。
+
+Treebank（树库）保存句子及其标注树，常由自动解析后人工修订得到。每个父节点及其有序子节点可提取一条产生式。Penn Treebank 提供典型 constituency annotations；Universal Dependencies 使用 dependency representation（依存表示），两者不是同一种树结构。
+
+\subsubsection{句型与替代文法（了解）}
+
+Declarative（陈述句）常用 $S\rightarrow NP\ VP$，imperative（祈使句）可用 $S\rightarrow VP$，yes/no question（一般疑问句）可用 $S\rightarrow Aux\ NP\ VP$。Wh-question 还需区分疑问成分是否为主语。Subcategorization frame（次范畴化框架）描述动词可接的 complements（补足成分），如一个 NP、两个 NP 或特定 PP；同一动词可有不止一种用法。
+
+Combinatory Categorial Grammar（组合范畴语法，CCG；FYI）用函数类别描述组合：$X/Y$ 向右接收 $Y$ 后返回 $X$，$X\backslash Y$ 向左接收 $Y$。讲义 \texttt{United serves Miami} 中，\texttt{serves} 的 $(S\backslash NP)/NP$ 先接右侧 \texttt{Miami}，得到 $S\backslash NP$，再接左侧 \texttt{United}，得到 $S$。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L06-E01}{\texttt{I prefer a morning flight} 的完整树}。
+
+\lecturetopic{SC4002-L06-T02}{Structural Ambiguity：Attachment 与 Coordination}
+
+Structural ambiguity（结构歧义）指同一词串在给定文法下具有多种合法的 parse trees；不等于某个单词有多个词义。
+
+\begin{itemize}
+  \item Attachment ambiguity（附着歧义）：一个修饰成分接到不同节点。例如 \texttt{with a revolver} 可以修饰射击动作，也可以修饰被射击的罪犯。
+  \item Coordination ambiguity（并列歧义）：并列连接及修饰作用的范围不同。例如 \texttt{[old men] and women} 只限定 men 年老；\texttt{old [men and women]} 同时限定两组人年老。第一种没有说明 women 的年龄。
+\end{itemize}
+
+Syntax（句法）上的合法性不保证 semantics（语义）或语境上的合理性。基本 CFG/CKY 不会仅凭常识自动排除 ``穿着睡衣的大象'' 或 ``飞行中的铁塔''。寻找全部合法结构与选择最合理结构是两个问题。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L06-E02}{睡衣、大象与并列范围}。
+
+\lecturetopic{SC4002-L06-T03}{CNF 与 CKY：按区间组合并回溯成树}
+\nopagebreak[4]
+
+\subsubsection{Chomsky Normal Form（乔姆斯基范式）}
+
+本讲不处理空串，标准 CKY 使用的 CNF 只允许
+\[
+  \boxed{A\rightarrow B\ C}\qquad\text{或}\qquad\boxed{A\rightarrow w},
+\]
+其中 $A,B,C$ 为非终结符，$w$ 为单个终结符。也就是：一个词作为基础，或两个相邻成分组合成父成分。三类转换为：
+
+\begin{enumerate}
+  \item \textbf{分离混合规则中的终结符：}
+  $INF\text{-}VP\rightarrow\texttt{to}\ VP$ 改为
+  $TO\rightarrow\texttt{to}$ 与 $INF\text{-}VP\rightarrow TO\ VP$。
+  \item \textbf{消去 unit production（单一非终结符产生式）：}
+  $S\rightarrow VP$ 需将 VP 的所有有效展开传播给 S，而不是任选一条。
+  例如 $S\Rightarrow VP\Rightarrow Verb\Rightarrow\texttt{book}$ 转换后可得到
+  $S\rightarrow\texttt{book}$；该规则符合 CNF，原来的 $S\rightarrow VP$ 不符合。
+  \item \textbf{将长规则二元化：}
+  $VP\rightarrow Verb\ NP\ PP$ 改为
+  $X2\rightarrow Verb\ NP$ 与 $VP\rightarrow X2\ PP$。
+\end{enumerate}
+
+转换保持可生成的词串，而不要求树形完全相同；输出时须消除 $X2$ 等辅助节点并恢复原文法的单链结构。补充边界：一般含空串的 CFG 需额外处理 $\varepsilon$，不能不加条件地只用上述两种形式生成空串。
+
+\subsubsection{Chart、递推与依赖顺序}
+
+给句子 $n$ 个词的边界编号 $0,\ldots,n$。记 $C[i,j]$ 为两边界之间文本可取的所有非终结符；这里沿用讲义的方括号，但区间语义相当于 token 索引的半开区间 $[i,j)$。初始化：
+\[
+  C[i,i+1]=\{A:A\rightarrow w_i\text{ 是词汇规则}\}.
+\]
+对更长区间，枚举 $i<k<j$，使用
+\[
+  \boxed{
+  B\in C[i,k],\ D\in C[k,j],\ A\rightarrow B\ D
+  \quad\Longrightarrow\quad A\in C[i,j].}
+\]
+这要求：左右两段相邻且完整覆盖父区间、左右类别有序匹配、文法确实存在相应规则。两个子格非空仍不保证能合并。讲义从左向右逐列、每列从下向上填写；按 span length 从短到长填写也满足相同依赖。
+
+Backpointer（回溯指针）对每次成功组合保存 $(k,B,D)$ 及子格来源。相同父类别的多个来源必须保留，不能因 ``已出现 S'' 就丢掉其他推导。完整句子的接受条件是
+\[
+  \boxed{S\in C[0,n]},
+\]
+而不是 $C[0,n]\ne\varnothing$。从整句 S 沿指针回溯，并恢复原文法结构，才能得到完整 parse trees。
+
+与 Viterbi 相比，CKY 的子问题是 ``文本区间＋句法类别''，而不是 ``序列位置＋终点状态''。补充复杂度：朴素实现检查 $O(n^2)$ 个区间、每区间 $O(n)$ 个切分点及二元规则集 $R_2$，时间为 $O(n^3|R_2|)$，固定文法时为 $O(n^3)$。Chart 可共享保存多棵树的子结构，但显式枚举全部树仍可能需要指数规模的输出。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L06-E03}{航班例句的完整 CKY chart 与三种推导}。
+
+\lecturetopic{SC4002-L06-T04}{Parse Selection 与 PARSEVAL Evaluation}
+
+\subsubsection{Neural CKY（FYI）：评分与结构化搜索}
+
+基础 CKY 判断文法允许哪些解析，并不直接解决 disambiguation（消歧）。讲义的 span-based constituency parsing 先用 neural classifier 为区间与标签计算 $score(i,j,l)$，再由修改后的 CKY 组合这些分数，寻找最佳完整树。例如 $score(1,3,NP)$ 对应例题中的 \texttt{the flight}。逐区间独立取最高分不一定得到一棵兼容的树；此处只需理解评分与结构搜索的分工，不展开网络及训练细节。
+
+\subsubsection{PARSEVAL：带标签成分的精确匹配}
+
+将预测树和 gold-standard tree（人工参考树）中的成分表示为 $(i,j,l)$。一个预测成分正确，当且仅当参考树中存在\textbf{相同起点、终点和非终结符标签}的成分；例如 $(1,3,NP)$。边界正确但标签错误，或标签正确但边界偏移，都不算匹配。
+
+令匹配成分数为 $M$，预测成分数为 $N_{\mathrm{pred}}$，参考成分数为 $N_{\mathrm{gold}}$，则
+\[
+  P=\frac{M}{N_{\mathrm{pred}}},\qquad
+  R=\frac{M}{N_{\mathrm{gold}}},\qquad
+  F_1=\frac{2PR}{P+R}.
+\]
+Precision 问 ``预测出的成分有多少正确''，recall 问 ``参考成分有多少被找回''。这是 constituent-level matching，不是只有整棵树完全一致才计分。实际评测须统一根节点、POS 节点、标点及零分母的计数约定；这些实现约定不改变讲义的三项匹配标准。
+
+\lecturetopic{SC4002-L06-T05}{Shallow Parsing、Chunking 与 BIO}
+
+Shallow parsing（浅层句法分析）不要求恢复所有嵌套关系。Chunking（组块分析）识别并分类 flat、non-overlapping、non-recursive 的基本片段：segmenting 确定边界，labeling 确定组块类型。讲义 p.~34 的句子切分为
+\begin{center}
+  \texttt{[NP The morning flight] [PP from] [NP Denver] [VP has arrived]}
+\end{center}
+这里 \texttt{[PP from]} 是浅层 PP chunk，不是按照 $PP\rightarrow Preposition\ NP$ 已构造好的完整 PP 子树；完整解析还可以把 \texttt{from Denver} 作为 PP，并分析它修饰哪个成分。
+
+\begin{center}
+\small
+\begin{tabular}{@{}lllllll@{}}
+  \toprule
+  The & morning & flight & from & Denver & has & arrived \\
+  \midrule
+  B-NP & I-NP & I-NP & B-PP & B-NP & B-VP & I-VP \\
+  \bottomrule
+\end{tabular}
+\end{center}
+上表是对讲义组块的 BIO 展开，暂略句末标点；标点处理取决于标注规范。它与 NER 共用 sequence-labeling 表达方式，但目标标签是短语类型而非实体类型。普通单层 BIO 不能表示完整 constituency tree 中的嵌套成分。
+
+\subsection{一分钟回顾}
+
+CFG 用有序产生式描述词与短语的嵌套组合；结构歧义使同一词串可能对应多棵树。CNF 将规则限制为两个非终结符或一个终结符，CKY 再按文本区间动态规划：枚举切分点、检查有序规则、保存所有成功组合的回溯来源，最后从整句的 S 恢复解析树。不同句法树不必对应不同语义；基础 CKY 也不会自动选择最合理的一棵。PARSEVAL 同时匹配成分的起点、终点与标签；只需平面、非重叠的基本短语时，可用 BIO 表达的 chunking 代替完整解析。

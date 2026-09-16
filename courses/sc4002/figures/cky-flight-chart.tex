@@ -1,0 +1,36 @@
+% Original TikZ redraw; SC4002 Week 6 slides 23--30, verified with slide 21 rules.
+% Category sets only; three distinct S backpointers are explained in E03.
+\begin{tikzpicture}[x=1cm,y=1cm,
+  every node/.style={font=\small,align=center,inner sep=2pt}]
+  \foreach \i in {0,...,4}{
+    \pgfmathtruncatemacro{\firstj}{\i+1}
+    \foreach \j in {\firstj,...,5}{
+      \draw[draw=noteBlue!60,fill=noteBlue!5]
+        ({2.45*(\j-1)},{-1.32*\i}) rectangle ++(2.45,-1.32);
+      \node[font=\scriptsize,text=black!65]
+        at ({2.45*(\j-0.5)},{-1.32*\i-1.12}) {$[\i,\j]$};
+    }
+  }
+  \foreach \j/\word in {1/Book,2/the,3/flight,4/through,5/Houston}
+    \node at ({2.45*(\j-0.5)},0.38) {\word};
+  \node at (1.225,-0.46) {S, VP, Verb\\Nominal, Noun};
+  \node at (3.675,-0.46) {$\varnothing$};
+  \node at (6.125,-0.46) {S, VP, X2};
+  \node at (8.575,-0.46) {$\varnothing$};
+  \node[text=ntuRed] at (11.025,-0.46) {S, VP, X2\\\scriptsize S: 3 derivations};
+  \node at (3.675,-1.78) {Det};
+  \node at (6.125,-1.78) {NP};
+  \node at (8.575,-1.78) {$\varnothing$};
+  \node at (11.025,-1.78) {NP};
+  \node at (6.125,-3.10) {Nominal, Noun};
+  \node at (8.575,-3.10) {$\varnothing$};
+  \node at (11.025,-3.10) {Nominal};
+  \node at (8.575,-4.42) {Preposition};
+  \node at (11.025,-4.42) {PP};
+  \node at (11.025,-5.74) {NP\\Proper-Noun};
+  \node[anchor=north west,align=left,text width=4.3cm,font=\small]
+    at (0,-2.85) {边界编号：$0,1,\ldots,5$。\\
+    $[1,3]$: \texttt{the flight}\\
+    $[3,5]$: \texttt{through Houston}\\[0.6em]
+    从左向右逐列填表；\\每列从下向上。};
+\end{tikzpicture}

@@ -1,0 +1,158 @@
+% Related lecture: SC4002-L06
+% Source: Week 6-Constitency Parsing, PDF/slide pp. 8, 15--18, 21--31
+% E01--E03: lecture examples restated with solutions.
+% Human verification: learner requested notes on 2026-09-16 after the explanation.
+% E01--E03 were explained and source-checked by assistant, not independently solved.
+
+\exercisemeta
+  {SC4002-L06-EX}
+  {2026-09-16}
+  {Week 6-Constitency Parsing pp.~8, 15--18, 21--31；本地课堂字幕 61156}
+  {E01--E03 为讲义例题重述与已核对解答，非 Tutorial}
+  {用户听完讲解后请求整理；例题由助手讲解及核对}
+
+\exercisequestion{SC4002-L06-E01}{CFG 例题：I prefer a morning flight}
+
+\textbf{类型与来源：}lecture worked example，讲义 p.~8；按该页产生式与树重述。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L06-T01}{Constituency、CFG 与 Treebanks}。
+
+\subsubsection*{题意与条件}
+
+利用以下规则解析 \texttt{I prefer a morning flight}，说明 NP 与 Nominal 的区别：
+\[
+\begin{aligned}
+  S&\rightarrow NP\ VP,& NP&\rightarrow Pronoun\mid Det\ Nominal,\\
+  VP&\rightarrow Verb\ NP,& Nominal&\rightarrow Nominal\ Noun\mid Noun,\\
+  Pronoun&\rightarrow\texttt{I},& Verb&\rightarrow\texttt{prefer},\\
+  Det&\rightarrow\texttt{a},& Noun&\rightarrow\texttt{morning}\mid\texttt{flight}.
+\end{aligned}
+\]
+
+\begin{workedsolution}
+主干 $S\rightarrow NP\ VP$ 分出主语 \texttt{I} 和 VP \texttt{prefer a morning flight}。VP 再由 Verb 与宾语 NP 构成；宾语 NP 使用 $NP\rightarrow Det\ Nominal$，其中 Nominal 覆盖 \texttt{morning flight}。最后以 $Nominal\rightarrow Nominal\ Noun$ 展开，左侧 Nominal 再经 Noun 产生 \texttt{morning}，右侧 Noun 产生 \texttt{flight}。
+
+\begin{center}
+  \input{figures/constituency-flight-tree}
+
+  {\small 原创重绘；依据 SC4002 Week 6 p.~8 的产生式与树。}
+\end{center}
+
+树叶依次还原原句。Nominal 覆盖 \texttt{morning flight}，加入 \texttt{a} 后经给定规则成为 NP；类别与覆盖范围都需按树区分。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L06-E02}{结构歧义：PP Attachment 与 Coordination}
+
+\textbf{类型与来源：}lecture examples，讲义 pp.~15--18；括号为对原图结构的简化表达，不展开词汇层。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L06-T02}{Structural Ambiguity}。
+
+\subsubsection*{题意}
+
+说明 \texttt{I shot an elephant in my pajamas} 中 PP 的两种附着方式，以及 \texttt{old men and women} 中形容词的两种作用范围。再解释为什么 CFG 合法不等于语义合理。
+
+\begin{workedsolution}
+\begin{enumerate}
+  \item \texttt{I shot [an elephant [in my pajamas]]}：PP 在宾语 NP 的名词性部分内部，表示大象穿着睡衣。\texttt{I [[shot an elephant] [in my pajamas]]}：PP 接到 VP 层，通常表示说话者穿着睡衣进行射击。
+  \item \texttt{[old men] and women} 只说明 men 年老，women 的年龄未说明；\texttt{old [men and women]} 同时修饰两组人。
+\end{enumerate}
+同理，\texttt{A policeman shot the criminal with a revolver} 的 PP 可描述射击工具，也可描述罪犯携带的物品。\texttt{We saw the Eiffel Tower flying to Paris} 通常希望表达 ``我们飞往巴黎时看到铁塔''，而错误附着会产生 ``铁塔在飞'' 的解释。语法规则约束组合形式，语义、常识与语境才帮助在候选树中消歧；不应把不常见的语义直接等同于文法不允许。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L06-E03}{CKY：Book the flight through Houston}
+
+\textbf{类型与来源：}lecture worked example，讲义 pp.~21--31；三条 S 推导按 p.~30 的 $S_1,S_2,S_3$ 编号。以下公式与简化树是对该例的展开，不是额外编造的句子。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L06-T03}{CNF 与 CKY}。
+
+\subsubsection*{题意与文法}
+
+用 CNF grammar 解析 \texttt{Book the flight through Houston}，填出 chart，解释最后一列，并回溯整句的三种 S 推导。边界为
+\[
+  0\ \texttt{Book}\ 1\ \texttt{the}\ 2\ \texttt{flight}\ 3\
+  \texttt{through}\ 4\ \texttt{Houston}\ 5.
+\]
+讲义 p.~21 的二元规则如下；词汇规则只列本句所需者，其余词不会参与本次推导。句首 \texttt{Book} 按讲义匹配词汇项 \texttt{book}。
+\[
+\begin{aligned}
+  S&\rightarrow NP\ VP\mid X1\ VP\mid Verb\ NP
+       \mid X2\ PP\mid Verb\ PP\mid VP\ PP,\\
+  X1&\rightarrow Aux\ NP,\qquad X2\rightarrow Verb\ NP,\\
+  NP&\rightarrow Det\ Nominal,\\
+  Nominal&\rightarrow Nominal\ Noun\mid Nominal\ PP,\\
+  VP&\rightarrow Verb\ NP\mid X2\ PP\mid Verb\ PP\mid VP\ PP,\\
+  PP&\rightarrow Preposition\ NP.
+\end{aligned}
+\]
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+  \toprule
+  词汇项 & 可直接产生它的非终结符 \\
+  \midrule
+  \texttt{book} & S, VP, Verb, Nominal, Noun \\
+  \texttt{the} & Det \\
+  \texttt{flight} & Nominal, Noun \\
+  \texttt{through} & Preposition \\
+  \texttt{Houston} & NP, Proper-Noun \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+S、VP、Nominal 的直接词汇规则来自消去单链，例如 $S\Rightarrow VP\Rightarrow Verb\Rightarrow\texttt{book}$；因此表内类别不只是 POS tags。
+
+\begin{workedsolution}
+\textbf{短区间。}先填五个单词对应的 $C[i,i+1]$。随后
+\[
+\begin{aligned}
+  Det[1,2]+Nominal[2,3]&\xRightarrow{NP\rightarrow Det\ Nominal}NP[1,3],\\
+  Verb[0,1]+NP[1,3]&\Longrightarrow S[0,3],\ VP[0,3],\ X2[0,3].
+\end{aligned}
+\]
+第二行同时命中三条规则，不能只保留其中一个父类别。完整 chart 的\emph{类别集合}如下；重复的同类推导另存 backpointers，不通过重复类别名表达。
+
+\begin{center}
+  \input{figures/cky-flight-chart}
+
+  {\small 原创重绘；依据讲义 pp.~21--30。$\varnothing$ 表示当前文法没有合法成分。}
+\end{center}
+
+\textbf{最后一列。}除已填好的 $C[4,5]=\{NP,Proper\text{-}Noun\}$ 外，由下向上计算：
+\begin{enumerate}
+  \item $C[3,5]$：以 $k=4$ 切为 \texttt{through} 与 \texttt{Houston}，由 $PP\rightarrow Preposition\ NP$ 得到 PP。
+  \item $C[2,5]$：以 $k=3$ 切为 \texttt{flight} 与 \texttt{through Houston}，由 $Nominal\rightarrow Nominal\ PP$ 得到 Nominal；$k=4$ 的左格为空。
+  \item $C[1,5]$：必须检查三个切分点，只有 $k=2$ 成功：
+\end{enumerate}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}cllX@{}}
+  \toprule
+  $k$ & 左格 & 右格 & 是否能合并 \\
+  \midrule
+  2 & $C[1,2]=\{Det\}$ & $C[2,5]=\{Nominal\}$ & 有 $NP\rightarrow Det\ Nominal$，得到 NP \\
+  3 & $C[1,3]=\{NP\}$ & $C[3,5]=\{PP\}$ & 无 $NP\rightarrow NP\ PP$，也无其他匹配规则 \\
+  4 & $C[1,4]=\varnothing$ & $C[4,5]$ 非空 & 左格为空，不成立 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+所以 $C[1,5]=\{NP\}$。这里特别说明：$k=3$ 的两格都非空仍不能合并，因为不得临时添加文法中没有的规则。
+
+\textbf{整句的三条 S 推导。}在 $C[0,5]$ 中，$k=1$ 命中一条 S 规则，$k=3$ 命中两条；$k=2,4$ 均因左格为空失败：
+\[
+\begin{aligned}
+  S_1[0,5]&\rightarrow Verb[0,1]\ NP[1,5],\\
+  S_2[0,5]&\rightarrow VP[0,3]\ PP[3,5],\\
+  S_3[0,5]&\rightarrow X2[0,3]\ PP[3,5].
+\end{aligned}
+\]
+下标仅区分 S 的三个来源，不是三个新文法类别。整个格子的类别集合为 $\{S,VP,X2\}$，但只有以起始符号 S 为根的推导是完整句子解析；VP 本身也有多个推导。
+
+\textbf{恢复原文法。}每个 S 都恢复 $S\rightarrow VP$。第三种还展开并删除辅助 $X2$；NP、Nominal 等处被压缩的词汇单链也要恢复。省略词汇层后，三棵树的主要分组为：
+\begin{enumerate}
+  \item $S_1$：$[_{VP}\ Verb\ [_{NP}\ Det\ [_{Nominal}\ Nominal\ PP]]]$。PP 在宾语的名词性部分内，修饰 flight。
+  \item $S_2$：$[_{VP}\ [_{VP}\ Verb\ NP]\ PP]$。先构成 \texttt{Book the flight} 这个 VP，再附加 PP。
+  \item $S_3$：$[_{VP}\ Verb\ NP\ PP]$。来自原文法的三分支规则 $VP\rightarrow Verb\ NP\ PP$。
+\end{enumerate}
+第二、三种都将 PP 置于 VP 层面，但一个包含嵌套 VP，一个直接有三个子节点。三棵句法树不必对应三种不同语义。仅存集合 $\{S,VP,X2\}$ 不足以恢复这些差异，必须保留每个成功组合的 backpointer。
+\end{workedsolution}
