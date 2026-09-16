@@ -1,0 +1,26 @@
+% Original trellis reconstructed from Tutorial 4 Q3, observation sequence 311233112.
+\begin{tikzpicture}[
+  state/.style={circle,draw=noteBlue,fill=blue!3,minimum size=5mm,inner sep=1pt,font=\small},
+  kept/.style={-{Latex[length=1.5mm]},draw=black!35,line width=0.4pt},
+  best/.style={-{Latex[length=1.8mm]},draw=ntuRed,line width=1.2pt}
+]
+  \node[anchor=east,font=\small] at (-0.45,0) {$H$};
+  \node[anchor=east,font=\small] at (-0.45,-1.15) {$C$};
+  \foreach \i/\obs in {1/3,2/1,3/1,4/2,5/3,6/3,7/1,8/1,9/2} {
+    \node[font=\small] at ({1.4*(\i-1)},0.65) {$\i:\obs$};
+    \node[state] (H\i) at ({1.4*(\i-1)},0) {$H$};
+    \node[state] (C\i) at ({1.4*(\i-1)},-1.15) {$C$};
+  }
+  \foreach \prev/\now in {H1/H2,H2/H3,C3/H4,H4/H5,H5/H6,H6/H7,H7/H8,C8/H9,H1/C2,C2/C3,C3/C4,C4/C5,H5/C6,H6/C7,C7/C8,C8/C9} {
+    \draw[kept] (\prev) -- (\now);
+  }
+  \foreach \prev/\now in {H1/C2,C2/C3,C3/H4,H4/H5,H5/H6,H6/C7,C7/C8,C8/C9} {
+    \draw[best] (\prev) -- (\now);
+  }
+  \foreach \selected in {H1,C2,C3,H4,H5,H6,C7,C8,C9} {
+    \node[state,draw=ntuRed,fill=red!10] at (\selected) {\strut};
+  }
+  % Restore readable state letters over highlighted node fills.
+  \foreach \i in {1,4,5,6} {\node[font=\small] at (H\i) {$H$};}
+  \foreach \i in {2,3,7,8,9} {\node[font=\small] at (C\i) {$C$};}
+\end{tikzpicture}
