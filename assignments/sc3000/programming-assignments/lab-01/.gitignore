@@ -1,0 +1,13 @@
+# Active assessed work and downloaded teaching materials remain local.
+/work/
+/.venv/
+/outputs/
+/checkpoints/
+/submission/
+/tests-local/
+/.jupyter/
+**/.ipynb_checkpoints/
+__pycache__/
+*.pyc
+*.pt
+*.pkl

@@ -1,0 +1,8 @@
+# Local setup only; dependencies actually used by the supplied notebook.
+# Versions shared with the existing, working local PyTorch environment.
+torch==2.13.0
+numpy==2.4.6
+matplotlib==3.11.1
+tqdm==4.70.1
+jupyterlab>=4,<5
+ipykernel>=6,<8
