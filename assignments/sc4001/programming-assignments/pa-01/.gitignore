@@ -1,0 +1,11 @@
+# Default-deny: keep assessed work and all newly created files local.
+# Only these reviewed documentation and environment files may be published.
+*
+!/.gitignore
+!/README.md
+!/.python-version
+!/pyproject.toml
+!/uv.lock
+!/cluster/
+!/cluster/tc1_setup_env.sbatch
+!/cluster/tc1_environment_probe.sbatch
