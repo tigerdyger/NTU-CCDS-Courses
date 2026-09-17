@@ -99,7 +99,7 @@ $B$ 在取得由 $A$ 产生的唯一 permit 前无法执行。
 
 常见 deadlock prevention（死锁预防）包括：
 \begin{itemize}
-  \item 最多允许四位 philosophers 同时尝试取 chopsticks；至少留下一根空闲 chopstick，使相邻者能够取得第二根、完成并释放资源。
+  \item 最多允许四位 philosophers 同时参与取 chopsticks。若假设参与者全部阻塞，则每人至多持一根，必有空闲 chopstick，五人等待环无法闭合；拿齐两根者能够吃饭并释放资源。
   \item 将“同时取得两根 chopsticks”做成 atomic operation。
   \item 采用 asymmetric ordering（非对称顺序）或全局资源编号顺序，例如奇偶 philosopher 以相反顺序取用。
 \end{itemize}

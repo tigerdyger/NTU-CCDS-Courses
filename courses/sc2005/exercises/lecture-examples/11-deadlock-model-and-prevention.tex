@@ -1,0 +1,121 @@
+% Based on templates/lecture-example.tex.
+% Related lecture: SC2005-L11, 2026-09-17.
+% Sources: Part5 (Deadlocks).pdf, slides 5.4, 5.10--5.12, 5.22.
+% E01--E04: source examples; E05: source diagram with explicitly added proof.
+% No conversational concept-check questions are included.
+% Human verified: lecture discussion completed; source graphs visually checked.
+
+\exercisemeta
+  {SC2005-L11-EX}
+  {2026-09-17}
+  {Part 5，pp.~5.4、5.10--5.12、5.22（PDF 页码相同）}
+  {讲义例题的资源实例、箭头方向与完成顺序已核对；排序证明为补充推导}
+  {原始讲义与解答已核对（2026-09-17）}
+
+\exercisequestion{SC2005-L11-E01}{两个 Semaphore 的危险交错}
+
+\textbf{来源：}讲义 p.~5.4，Example 2。\quad
+\textbf{对应：}\relatedtopic{SC2005-L11-T01}{Deadlock 与资源分配模型}。
+
+设 $A=B=1$。$P_0$ 依次执行 \texttt{wait(A)}、\texttt{wait(B)}；
+$P_1$ 则依次执行 \texttt{wait(B)}、\texttt{wait(A)}。两者都在拿齐资源并完成操作后才释放。解释 context switch 如何导致死锁。
+
+\begin{checkedsolution}
+一种危险的交错为
+\[
+\begin{aligned}
+  &P_0:\texttt{wait(A)} &&\text{成功，持有 }A;\\
+  &P_1:\texttt{wait(B)} &&\text{成功，持有 }B;\\
+  &P_1:\texttt{wait(A)} &&\text{阻塞，等待 }P_0;\\
+  &P_0:\texttt{wait(B)} &&\text{阻塞，等待 }P_1.
+\end{aligned}
+\]
+两者都到不了后面的释放操作。若某个进程先拿齐、完成并释放，则另一种交错可能顺利结束；一次成功运行不能证明该获取顺序安全。讲义 Example 1 的两种 tape drives 也是相同的“各持一种、再等另一种”结构。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L11-E02}{资源分配图：有等待但没有死锁}
+
+\textbf{来源：}讲义 p.~5.10。\quad
+\textbf{对应：}\relatedtopic{SC2005-L11-T01}{Deadlock 与资源分配模型}。
+
+下图重绘了讲义的三个状态，圆为 process，矩形内每个点为一个 resource instance。红色箭头是 request，蓝色箭头是 assignment；绿色标出本例可先完成的 processes。图 (a) 中能否满足所有请求？给出一个完成顺序。
+
+\begin{center}
+  \resizebox{0.99\textwidth}{!}{\input{figures/deadlock-resource-graphs}}
+  \par\small 根据讲义 pp.~5.10--5.12 的节点、实例数和边自行重绘；不增加额外资源需求。
+\end{center}
+
+\begin{checkedsolution}
+图 (a) 中 $P_1$ 持有一个 $R_2$、等待 $R_1$；
+$P_2$ 持有 $R_1$ 和另一个 $R_2$、等待 $R_3$；
+$P_3$ 持有 $R_3$、没有新的请求。故可按
+\[
+  P_3\longrightarrow P_2\longrightarrow P_1
+\]
+完成：$P_3$ 先释放 $R_3$，$P_2$ 随后完成并释放 $R_1$，最后满足 $P_1$。这里假定图中列出的需求被满足后，进程能完成并归还资源；等待并不等于死锁。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L11-E03}{资源分配图：新增请求形成死锁}
+
+\textbf{来源：}讲义 p.~5.11。\quad
+\textbf{对应：}\relatedtopic{SC2005-L11-T01}{Deadlock 与资源分配模型}。
+
+在图 (a) 的分配状态上增加 $P_3\rightarrow R_2$，得到图 (b)。判断是否死锁，并指出相应的环。
+
+\begin{checkedsolution}
+$R_2$ 的两个实例分别由 $P_1,P_2$ 持有，而两者又分别等待 $R_1,R_3$。原本可先完成的 $P_3$ 也在等待，相关进程都无法释放资源。可见两个环：
+\[
+\begin{aligned}
+  &P_1\rightarrow R_1\rightarrow P_2\rightarrow R_3
+    \rightarrow P_3\rightarrow R_2\rightarrow P_1,\\
+  &P_2\rightarrow R_3\rightarrow P_3\rightarrow R_2\rightarrow P_2.
+\end{aligned}
+\]
+系统存在死锁。虽然 $R_4$ 的三个实例均空闲，但它是不同类型，不能代替被请求的资源。$R_2$ 有多个实例也没有自动解决问题，因为其全部实例都被阻塞链中的进程占着。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L11-E04}{资源分配图：有环但没有死锁}
+
+\textbf{来源：}讲义 p.~5.12。\quad
+\textbf{对应：}\relatedtopic{SC2005-L11-T01}{Deadlock 与资源分配模型}。
+
+图 (c) 中 $R_1$ 有两个实例，分给 $P_2,P_3$；$R_2$ 有两个实例，分给 $P_1,P_4$。
+$P_1$ 请求 $R_1$，$P_3$ 请求 $R_2$。解释为何存在环，却仍可让所有进程完成。
+
+\begin{checkedsolution}
+图中确有
+\[
+  P_1\rightarrow R_1\rightarrow P_3\rightarrow R_2\rightarrow P_1,
+\]
+但环外的 $P_2,P_4$ 没有等待请求，可以分别释放 $R_1,R_2$ 的另一实例。讲义给出的一个完成顺序是
+\[
+  P_2\longrightarrow P_4\longrightarrow P_3\longrightarrow P_1.
+\]
+前两者完成后，$P_3$ 可获得一个 $R_2$ 并完成，随后 $P_1$ 也能完成。该顺序并不唯一：$P_2$ 释放 $R_1$ 后，$P_1$ 也已可能继续。
+
+关键不是“多实例使图上的环消失”，而是 \textbf{同类的替代实例可解除某个请求}。只有当它空闲，或其 holder 能先完成并释放时才有帮助。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L11-E05}{筷子排序为何排除循环等待}
+
+\textbf{来源：}讲义 p.~5.22，Chopstick Ordering 图示；以下反证为补充推导。\quad
+\textbf{对应：}\relatedtopic{SC2005-L11-T02}{Deadlock Conditions 与 Prevention}。
+
+五根筷子编号为 $0,\ldots,4$。$A,B,C,D$ 分别需要相邻的
+$(0,1),(1,2),(2,3),(3,4)$，$E$ 需要 $(4,0)$。所有人均按较小编号在先获取。说明各人的顺序及其防止 circular wait 的理由。
+
+\begin{center}
+  \resizebox{0.87\textwidth}{!}{\input{figures/chopstick-global-order}}
+  \par\small 根据讲义图示整理为全局编号顺序；这里的箭头表示同一人的先后获取顺序，不是 RAG 的分配边。
+\end{center}
+
+\begin{checkedsolution}
+顺序为 $A:0\rightarrow1$、$B:1\rightarrow2$、$C:2\rightarrow3$、
+$D:3\rightarrow4$、$E:0\rightarrow4$。特别地，$E$ 不能按圆桌方向取成 $4\rightarrow0$。
+
+假设仍存在等待环。沿环依次记录进程持有、并使前一进程等待的资源编号 $r_0,\ldots,r_k$。每位持有者只能继续申请更大编号，因而
+\[
+  r_0<r_1<\cdots<r_k<r_0,
+\]
+矛盾。所以统一 acquisition order（获取顺序）排除了 circular wait。证明不要求统一释放顺序，也不保证 starvation freedom；所有相关参与者必须遵守同一获取规则。
+\end{checkedsolution}

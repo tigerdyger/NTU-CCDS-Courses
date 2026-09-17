@@ -1,0 +1,68 @@
+% Original TikZ rendering of the graph states in Part 5, slides 5.10--5.12.
+% Retains all resource counts and directed edges, including unused R4.
+\begin{tikzpicture}[
+  >=Latex,
+  proc/.style={circle,draw=noteBlue,thick,fill=blue!5,minimum size=7mm,inner sep=1pt,font=\small},
+  ready/.style={proc,draw=green!45!black,fill=green!8},
+  res/.style={rectangle,draw=black!70,thick,fill=black!4,minimum width=7mm,minimum height=7mm},
+  request/.style={-{Latex[length=2mm]},thick,draw=ntuRed},
+  assigned/.style={-{Latex[length=2mm]},thick,draw=noteBlue},
+  every label/.style={font=\small}
+]
+  \foreach \panel/\shift in {a/0,b/5.1} {
+    \begin{scope}[xshift=\shift cm]
+      \node[font=\small\bfseries] at (1.8,4.85)
+        {\if a\panel (a) 无环，无死锁\else (b) 有环，有死锁\fi};
+      \node[proc] (p1\panel) at (0.15,2.55) {$P_1$};
+      \node[proc] (p2\panel) at (1.85,2.55) {$P_2$};
+      \if a\panel
+        \node[ready] (p3\panel) at (3.55,2.55) {$P_3$};
+      \else
+        \node[proc] (p3\panel) at (3.55,2.55) {$P_3$};
+      \fi
+      \node[res,label=above:$R_1$] (r1\panel) at (0.95,3.95) {};
+      \node[res,label=above:$R_3$] (r3\panel) at (2.70,3.95) {};
+      \node[res,minimum height=10mm,label=below:$R_2$] (r2\panel) at (0.95,0.95) {};
+      \node[res,minimum height=13mm,label=below:$R_4$] (r4\panel) at (2.70,0.80) {};
+      \coordinate (r2upper\panel) at (0.95,1.15);
+      \coordinate (r2lower\panel) at (0.95,0.75);
+      \fill (r1\panel) circle (1.4pt);
+      \fill (r3\panel) circle (1.4pt);
+      \fill (r2upper\panel) circle (1.4pt);
+      \fill (r2lower\panel) circle (1.4pt);
+      \foreach \y in {0.45,0.80,1.15} \fill (2.70,\y) circle (1.4pt);
+      \draw[request] (p1\panel.north east) -- (r1\panel.south west);
+      \draw[assigned] (r1\panel.center) -- (p2\panel.north west);
+      \draw[request] (p2\panel.north east) -- (r3\panel.south west);
+      \draw[assigned] (r3\panel.center) -- (p3\panel.north west);
+      \draw[assigned] (r2lower\panel) -- (p1\panel.south east);
+      \draw[assigned] (r2upper\panel) -- (p2\panel.south west);
+      \if b\panel
+        \draw[request] (p3\panel.south west) -- (r2\panel.east);
+      \fi
+      \node[font=\small] at (1.80,-0.45)
+        {\if a\panel $P_3\to P_2\to P_1$\else 新增 $P_3\to R_2$\fi};
+    \end{scope}
+  }
+  \begin{scope}[xshift=10.4cm]
+    \node[font=\small\bfseries] at (1.9,4.85) {(c) 有环，无死锁};
+    \node[proc] (p1c) at (0.1,2.45) {$P_1$};
+    \node[ready] (p2c) at (3.5,4.05) {$P_2$};
+    \node[proc] (p3c) at (3.5,2.45) {$P_3$};
+    \node[ready] (p4c) at (3.5,0.60) {$P_4$};
+    \node[res,minimum height=10mm,label=above:$R_1$] (r1c) at (1.45,3.70) {};
+    \node[res,minimum height=10mm,label=below:$R_2$] (r2c) at (1.45,0.95) {};
+    \coordinate (r1top) at (1.45,3.90);
+    \coordinate (r1bottom) at (1.45,3.50);
+    \coordinate (r2top) at (1.45,1.15);
+    \coordinate (r2bottom) at (1.45,0.75);
+    \foreach \point in {r1top,r1bottom,r2top,r2bottom} \fill (\point) circle (1.4pt);
+    \draw[request] (p1c.north east) -- (r1c.south west);
+    \draw[assigned] (r1top) -- (p2c.south west);
+    \draw[assigned] (r1bottom) -- (p3c.north west);
+    \draw[request] (p3c.south west) -- (r2c.north east);
+    \draw[assigned] (r2top) -- (p1c.south east);
+    \draw[assigned] (r2bottom) -- (p4c.north west);
+    \node[font=\small] at (1.9,-0.45) {$P_2\to P_4\to P_3\to P_1$};
+  \end{scope}
+\end{tikzpicture}

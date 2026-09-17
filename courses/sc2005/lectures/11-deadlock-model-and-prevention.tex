@@ -1,0 +1,142 @@
+% Based on templates/lecture.tex.
+% Actual class: 11, 2026-09-17
+% Source: Part5 (Deadlocks).pdf, Part 5: Deadlocks and Starvation
+% Scope: slides 5.1--5.23; substantive content 5.4--5.22.
+% Slide 5.23 is the avoidance transition; avoidance starts at 5.24.
+% Video coverage: Part 5.1 and Part 5.2, reported by the student.
+% No downloadable video/transcript; do not infer unrecorded classroom additions.
+% Human verified: scope reported by student; discussion completed 2026-09-17.
+
+\section{第 11 节课：Deadlock、资源模型与死锁预防}
+\label{lecture:SC2005-L11}
+
+\lecturemeta
+  {SC2005-L11}
+  {2026-09-17}
+  {Part 5: Deadlocks and Starvation，讲义 \texttt{Part5 (Deadlocks).pdf}}
+  {pp.~5.1--5.23（PDF pp.~1--23）；实质 pp.~5.4--5.22}
+  {用户报告 Part 5.1 与 Part 5.2 已讲完；无可用视频或字幕，内容按讲义核对}
+  {课堂范围由用户说明；原始讲义已核对（2026-09-17）}
+
+\keyidea{Semaphore 保证单个 resource 的互斥访问，却不自动保证多个 resources 的获取不会互相卡住。本讲先用 resource-allocation graph 表示等待，再通过破坏必要条件设计 deadlock prevention。p.~5.23 仅是过渡页；p.~5.24 起的 avoidance 不属于本讲范围。}
+
+\lecturetopic{SC2005-L11-T01}{Deadlock 与资源分配模型}
+
+\subsubsection{Deadlock、等待与 Starvation}
+
+Deadlock（死锁）是一个 blocked-process set（阻塞进程集合）：成员各自持有 resource，同时等待集合中其他成员持有、且无法自行释放出来的 resource。仅有 waiting（等待）不等于 deadlock；若某个 holder 仍能运行并释放资源，等待链就可能解除。死锁可以只涉及部分 processes，并不要求整个 OS 停止。
+
+Starvation（饥饿）则指系统中其他 processes 仍能推进，但某个 requester 长期得不到资源或调度机会。\textbf{Deadlock freedom 不等于 starvation freedom。}
+
+讲义 p.~5.4 的 tape-drive 与 semaphore 例子都体现“各持一种、再等另一种”；p.~5.5 的狭桥例子以车辆倒退说明 release（释放）与 rollback（回退）。若入口已经严格保证整桥同一时刻只进入一辆车，图中的迎面对堵就被预防了，不能把这一简化图示当成完整入口协议。
+
+\textbf{对应讲义例题：}\relatedexercise{SC2005-L11-E01}{两个 Semaphore 的危险交错}。
+
+\subsubsection{Resource Type 与 Instance}
+
+系统有 resource types（资源类型）$R_1,\ldots,R_m$，类型 $R_i$ 有 $W_i$ 个 identical instances（相同、可替换的实例），如同类 I/O devices、可分配 memory space 或 semaphore permits。每个 process 按
+\[
+  \text{Request（申请）}\longrightarrow
+  \text{Use（使用）}\longrightarrow
+  \text{Release（释放）}
+\]
+使用资源。申请的是指定类型的一定数量实例；同类实例可以替代，不同类型不能随意互换。
+
+\subsubsection{Resource-Allocation Graph 与 Cycle 判据}
+
+Resource-Allocation Graph（资源分配图，RAG）包含 process nodes 与 resource-type nodes：
+\begin{center}
+\begin{tabularx}{0.97\textwidth}{@{}lX@{}}
+  \toprule
+  记号 & 含义 \\
+  \midrule
+  圆形 $P_i$ & 一个 process \\
+  矩形 $R_j$ 中的黑点 & 每点代表该类型的一个 instance \\
+  $P_i\rightarrow R_j$ & Request edge：$P_i$ 正在申请 $R_j$ 的实例 \\
+  $R_j\rightarrow P_i$ & Assignment edge：从具体实例出发，表示它已分配给 $P_i$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+请求满足时删除 request edge，并建立相应 assignment edge；释放资源时删除 assignment edge。对图中已表示的资源请求，假定需求满足后 process 可继续执行并最终归还资源，则讲义 pp.~5.10--5.13 的判据为
+\begin{center}
+\begin{tabularx}{0.97\textwidth}{@{}lX@{}}
+  \toprule
+  图的性质 & 结论 \\
+  \midrule
+  无 cycle（环） & 无 deadlock \\
+  有 cycle，且每类资源均只有一个实例 & 有 deadlock \\
+  有 cycle，且资源可能有多个实例 & 可能 deadlock，也可能不 deadlock，须检查其他实例能否释放 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{多实例并不会让图中的环自动消失。}它可能让请求被另一个空闲实例，或由环外可运行进程释放的实例满足，从而解除等待；若所有相关实例也都被互相等待的进程占住，仍可能死锁。
+
+\textbf{对应讲义例题：}
+\relatedexercise{SC2005-L11-E02}{有等待但没有死锁}；
+\relatedexercise{SC2005-L11-E03}{新增请求形成死锁}；
+\relatedexercise{SC2005-L11-E04}{有环但没有死锁}。
+
+\lecturetopic{SC2005-L11-T02}{Deadlock Conditions 与 Prevention}
+
+\subsubsection{四个必要条件}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{4.05cm}X@{}}
+  \toprule
+  条件 & 精确含义 \\
+  \midrule
+  Mutual exclusion（互斥） &
+  一个不可共享的 resource instance 同时只能由一个 process 使用；不是整个 resource type 只能被一人使用。 \\
+  Hold and wait（持有并等待） &
+  等待额外资源时仍持有至少一个资源；先释放旧资源、再请求新资源不属于此情形。 \\
+  No preemption（不可抢占） &
+  已分配资源不能被强行收回，只能由 holder 释放；抢占 CPU 时间片不等于释放它持有的锁或设备。 \\
+  Circular wait（循环等待） &
+  存在首尾相接的等待链，$P_0$ 等 $P_1$ 持有的资源，依此类推，最后又等回 $P_0$。 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+讲义 pp.~5.15--5.16 将它们作为 necessary conditions（必要条件）；一般多实例情形不能仅据等待环判定 deadlock。Prevention 所用的逻辑是
+\[
+  \text{Deadlock}\Longrightarrow C_1\land C_2\land C_3\land C_4,
+  \qquad
+  \text{保证至少一项不成立}\Longrightarrow\text{无此类 deadlock}.
+\]
+无需同时消除四项，也不能把“存在可能导致死锁的规则”当成“当前已经死锁”。
+
+\subsubsection{处理策略与 Dining Philosophers}
+
+讲义 p.~5.18 区分：确保系统不进入 deadlock、允许发生后检测与恢复、以及不提供通用处理而接受其风险。今天的 prevention（预防）通过资源使用规则破坏必要条件；下一部分 avoidance（避免）才讨论按资源分配状态动态决定是否允许请求。
+
+在 Dining-Philosophers Problem（哲学家就餐问题）中，五根筷子分别由初值为 $1$ 的 binary semaphore 保护。朴素协议为
+\begin{verbatim}
+wait(chopstick[i]);
+wait(chopstick[(i + 1) % 5]);
+eat;
+signal(chopstick[i]);
+signal(chopstick[(i + 1) % 5]);
+think;
+\end{verbatim}
+若五人都先完成第一条 \texttt{wait}，便各持一根并等待邻居的另一根；没人能吃饭，也到不了后面的 \texttt{signal}。
+
+\subsubsection{逐项破坏必要条件}
+
+\begin{enumerate}
+  \item \textbf{消除 mutual exclusion：}只对本来可共享的资源适用。筷子不能同时给两个人用，因此本例不能通过取消互斥解决。
+  \item \textbf{消除 hold and wait：}只有能同时取得所需两根筷子时才分配，否则不占着任何一根等待。检查与分配必须作为受同步保护的整体；先检查再分别执行两个可阻塞的 \texttt{wait} 仍有 race。此类 all-or-nothing 规则可能降低利用率，也不自动保证公平。
+  \item \textbf{允许回收或回退已有分配：}拿不到第二根就撤销第一根的占用，之后重试。讲义将此归在针对 no preemption 的处理下。实现时必须能发现获取失败或由资源管理者执行回退；普通阻塞式 \texttt{wait} 后的释放语句可能根本执行不到。
+  \item \textbf{消除 circular wait：}限制参与人数、采用 odd--even（奇偶非对称）获取顺序，或按统一 resource ordering（资源编号顺序）获取，见下文。
+\end{enumerate}
+
+\textbf{限制四人。}进入取筷子过程前先取得名额，归还筷子后才退出。若假设所有参与者均阻塞，则他们各自至多持有一根（拿齐两根者能吃饭）；最多四人使五人等待环无法闭合，至少有人能够继续。不能据此声称“任何时刻都必有一根空闲筷子”，因为正常吃饭者会持有两根。
+
+\textbf{Odd--even。}让奇偶 philosophers 以相反方向先取左右筷子，打破所有人沿同一方向各取一根的对称结构。\textbf{统一排序。}给筷子编号 $0,\ldots,4$，所有人均先取小编号、再取大编号，排除首尾回绕的等待。
+
+\textbf{必要补充：}这些方案不自动消除 starvation。回收/重试还须保证可实施性与进展；资源编号规则要求所有相关参与者遵守，统一释放顺序不能代替统一获取顺序。
+
+\textbf{对应讲义图示与补充证明：}
+\relatedexercise{SC2005-L11-E05}{筷子排序为何排除循环等待}。
+
+\textbf{一分钟回顾。}RAG 中 process 指向 resource 表示申请，resource instance 指向 process 表示已分配。无环则无死锁；有环在单实例模型下足以判定，在多实例模型下还要看替代实例能否释放。Prevention 破坏互斥、持有并等待、不可抢占、循环等待中的至少一个必要条件；按统一编号递增获取资源可排除等待环，但不自动保证无饥饿。

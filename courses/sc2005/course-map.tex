@@ -3,10 +3,14 @@
 本表同时记录实际课堂顺序、原始材料范围和对应练习。主题与习题通过稳定 ID 关联，不依赖会变化的 PDF 页码。
 
 \small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{4.05cm}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{1.45cm}@{}}
+% Allow the growing lecture map to break between rows, with repeated headers.
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{4.05cm}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}p{\dimexpr\textwidth-9.9cm-8\tabcolsep\relax}>{\raggedright\arraybackslash}p{1.45cm}@{}}
   \toprule
   课堂 & 原始材料与精确范围 & 主题 ID & 习题/代码作业 ID & 状态 \\
   \midrule
+  \endhead
+  \bottomrule
+  \endfoot
   \shortstack[l]{L01\\2026-08-13} & 课程说明与考核安排（无知识点材料） & --- & --- & 无知识点笔记 \\
   \shortstack[l]{L02\\2026-08-14}
     & Course Intro（行政）；Part 1 pp.~1--46；Tutorial One p.~1；视频 Part 1.1--1.3
@@ -53,8 +57,12 @@
     & \shortstack[l]{\texttt{SC2005-L10}\\\texttt{T01--T06}}
     & \shortstack[l]{\texttt{SC2005-L10}\\\texttt{E01--E05}}
     & 已确认 \\
-  \bottomrule
-\end{tabularx}
+  \shortstack[l]{L11\\2026-09-17}
+    & Part 5 pp.~5.1--5.23（实质 5.4--5.22）；用户报告 Part 5.1--5.2，无字幕
+    & \shortstack[l]{\texttt{SC2005-L11}\\\texttt{T01--T02}}
+    & \shortstack[l]{\texttt{SC2005-L11}\\\texttt{E01--E05}}
+    & 已确认 \\
+\end{longtable}
 
 \medskip
 \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{4.05cm}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{1.45cm}@{}}

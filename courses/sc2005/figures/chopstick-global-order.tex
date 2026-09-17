@@ -1,0 +1,14 @@
+% Original ordering diagram based on Part 5, slide 5.22.
+% Arrows encode each philosopher's acquisition order, NOT RAG edges.
+\begin{tikzpicture}[
+  >=Latex,
+  resource/.style={draw=noteBlue,thick,fill=blue!5,rounded corners=2pt,minimum size=9mm,font=\large},
+  order/.style={-{Latex[length=2.6mm]},very thick,draw=noteBlue},
+  every node/.append style={font=\small}
+]
+  \foreach \i in {0,...,4} \node[resource] (c\i) at (2.6*\i,0) {$\i$};
+  \foreach \i/\j/\name in {0/1/A,1/2/B,2/3/C,3/4/D}
+    \draw[order] (c\i) -- node[above] {$\name$} (c\j);
+  \draw[order,draw=ntuRed] (c0.south) to[out=-60,in=-120]
+    node[below,text=ntuRed] {$E:\ 0\rightarrow4$，不能回绕成 $4\rightarrow0$} (c4.south);
+\end{tikzpicture}

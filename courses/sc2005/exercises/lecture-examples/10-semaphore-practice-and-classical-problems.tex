@@ -75,7 +75,7 @@ Producer 先取得 \texttt{mutex}，但因 \texttt{empty=0} 在 \texttt{Wait(emp
 五位 philosophers 围绕五根 chopsticks 就餐。为什么将“同时尝试取 chopsticks 的 philosophers 数量”限制为最多四人可以防止经典 circular deadlock？该限制是否自动消除 starvation？
 
 \begin{checkedsolution}
-最多四人参与时，五根 chopsticks 中至少有一根未被持有。与该空缺相邻、已经取得另一根 chopstick 的 philosopher 能取得第二根并完成就餐，随后释放两根，从而保证不可能形成五人闭合的 circular wait。
+先假设所有参与取筷子的 philosophers 都被阻塞。此时每人至多持有一根 chopstick，因为拿齐两根者能够吃饭并释放资源；最多四人使五根 chopsticks 中至少一根空闲，完整的五人等待环无法闭合，总有参与者能够继续。这不是说任意时刻都必有一根空闲，因为正常吃饭者会持有两根。名额应在取第一根之前取得、归还筷子之后释放。
 
 该方案只保证上述 deadlock 不发生，不自动消除 starvation；若 semaphore queue 或调度不公平，某位 philosopher 仍可能长期无法得到两根 chopsticks。
 \end{checkedsolution}
