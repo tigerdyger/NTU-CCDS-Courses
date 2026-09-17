@@ -1,0 +1,159 @@
+% Based on templates/lecture.tex.
+% Lecture: 12, 2026-09-18.
+% Source: Part5 (Deadlocks).pdf, slides 5.24--5.41 (PDF pp. 24--41).
+% Avoidance: 5.24--5.37; transition: 5.38; detection: 5.39--5.41.
+% Slide 5.39 marks itself and subsequent chapter slides as not examinable.
+% Scope supplied by the student; content checked against the slides, without video/transcript.
+
+\section{第 12 节课：Banker's Algorithm 与死锁检测}
+\label{lecture:SC2005-L12}
+
+\lecturemeta
+  {SC2005-L12}
+  {2026-09-18}
+  {Part 5: Deadlocks and Starvation，\texttt{Part5 (Deadlocks).pdf}}
+  {pp.~5.24--5.41（PDF pp.~24--41）；5.39 起讲义标注非考试范围}
+  {Part 5.3--5.4；无视频或字幕，内容按讲义核对}
+  {范围按用户指定；原始讲义已核对}
+
+\keyidea{资源现在够给，不代表给出后仍安全。Deadlock avoidance 在每次分配前检查系统是否保留安全完成序列；Banker's Algorithm 用最大需求与当前分配进行这项判断。}
+
+\lecturetopic{SC2005-L12-T01}{Safe State 与 Banker's 资源模型}
+
+\subsubsection{从 Prevention 到 Avoidance}
+
+Prevention（预防）通过使用规则破坏死锁的必要条件；avoidance（避免）则动态检查 resource-allocation state（资源分配状态），只批准分配后仍为 safe 的请求。它不必一开始就禁止所有 hold-and-wait，但不能只看眼前库存。
+
+Safe state（安全状态）指\textbf{存在至少一个} safe completion sequence（安全完成序列）。对于序列 $\langle P_{i_1},\ldots,P_{i_n}\rangle$，每个进程的剩余最大需求都能由初始空闲资源与前面进程释放的资源满足：
+\[
+  Need_{i_k}\le Available+\sum_{\ell<k}Allocation_{i_\ell},
+  \qquad k=1,\ldots,n.
+\]
+这是将讲义 p.~5.25 的文字条件用 Banker's 记号写出；所有向量比较均逐分量进行。安全序列是一份可完成性的证明，不要求 CPU 真实按该顺序串行运行，也不要求所有排列都安全。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{3.3cm}X@{}}
+  \toprule
+  状态 & 判断含义 \\
+  \midrule
+  Safe（安全） & 在声明的需求及资源归还假设下，存在让所有进程完成的顺序。 \\
+  Unsafe（不安全） & 找不到上述保证；实际可能不申请到最大数量或提前释放资源，因此不等于已经死锁。 \\
+  Deadlocked（已死锁） & 已有相互等待而不能推进的进程集合；属于 unsafe 状态。 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+当前 safe 不意味着今后可以任意批准请求：每次分配仍须保持安全。
+
+\textbf{对应讲义例题：}\relatedexercise{SC2005-L12-E01}{一个安全序列就足够}。
+
+\subsubsection{数据结构与假设}
+
+Banker's Algorithm（银行家算法）适用于每类资源可有多个实例的模型。讲义 p.~5.28 要求每个进程预先声明各类资源的最大需求，并在获得所需资源后于有限时间内完成、归还资源。
+
+设 $n$ 为进程数、$m$ 为资源类型数；下标 $i$ 表示进程的一整行，下标 $j$ 表示资源类型。
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lllX@{}}
+  \toprule
+  名称 & 维度 & 记号 & 含义 \\
+  \midrule
+  Available & $m$ & $Available[j]$ & 类型 $j$ 当前空闲的实例数。 \\
+  Max & $n\times m$ & $Max[i,j]$ & 进程 $i$ 声明的类型 $j$ 最大需求。 \\
+  Allocation & $n\times m$ & $Allocation[i,j]$ & 进程 $i$ 当前持有的类型 $j$ 实例数。 \\
+  Need & $n\times m$ & $Need[i,j]$ & 为满足最大需求，进程 $i$ 最多还可能需要的数量。 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+\[
+  \boxed{Need=Max-Allocation},\qquad
+  u\le v\iff \forall j,\ u[j]\le v[j].
+\]
+Need 不一定等于进程当前提出的那一笔 Request；资源可以分批申请。不同类型不可相互抵扣，不能将向量各分量求和后比较。固定资源总量时，还可用 $Available+\sum_i Allocation_i=Total$ 检查账目。
+
+\lecturetopic{SC2005-L12-T02}{Banker's Part 1：Safety Algorithm}
+
+\subsubsection{用 Work 模拟完成序列}
+
+Safety Algorithm（安全算法，p.~5.30）判断\textbf{给定快照}是否 safe，不直接执行真实的进程调度。Work 是长度 $m$ 的模拟空闲资源向量，Finish 是长度 $n$ 的模拟完成标记。
+
+\begin{enumerate}
+  \item 初始化 $Work\leftarrow Available$ 的副本，所有 $Finish[i]\leftarrow false$。
+  \item 找任意一个满足 $Finish[i]=false$ 且 $Need_i\le Work$ 的进程。
+  \item 找到则模拟其完成：$Work\leftarrow Work+Allocation_i$，$Finish[i]\leftarrow true$，再回到上一步。
+  \item 若找不到任何候选，结束检查。全部 Finish 为 true 则 safe，否则 unsafe。
+\end{enumerate}
+某个进程暂时不满足条件，应继续检查其他未完成进程，不能立即判为 unsafe。若有多个候选可任选其一：完成后 Work 逐分量不减，不会让其他已可满足的进程变得不可满足，因此无需回溯所有排列。
+
+\subsubsection{为何只加 Allocation：补充推导}
+
+把“补齐需求后完成”的资源流展开：先借出 $Need_i$，完成时收回它原有的 $Allocation_i$ 与刚借出的 $Need_i$，故
+\[
+  Work_{\mathrm{new}}
+  =Work-Need_i+(Allocation_i+Need_i)
+  =\boxed{Work+Allocation_i}.
+\]
+这是算法更新式的解释，不要求实现时真的先减 Need 再加回。每轮保持
+\[
+  Work=Available+\sum_{i:\,Finish[i]=true}Allocation_i.
+\]
+Work 与 Finish 都是检查用的临时量；检查成功并不代表所有进程已经真实完成，也不能把最终 Work 写回实际 Available。
+
+\textbf{对应讲义例题：}\relatedexercise{SC2005-L12-E02}{五进程、三类资源的完整安全检查}。
+
+\lecturetopic{SC2005-L12-T03}{Banker's Part 2：Resource-Request Algorithm}
+
+Resource-Request Algorithm（资源请求算法，pp.~5.34--5.35）处理进程 $P_i$ 当前的一笔请求 $Request_i$。其第一个比较对象是\textbf{剩余 Need}，不是不扣除已有分配的 Max。
+
+\begin{enumerate}
+  \item 若 $Request_i\nleq Need_i$，请求超过声明的上限，\textbf{报错}。
+  \item 否则检查 $Request_i\le Available$；资源不足则\textbf{等待}，不改变原状态。
+  \item 前两项均通过才进行\textbf{试分配}，记试算状态为
+  \[
+    \begin{aligned}
+      Available'&=Available-Request_i,\\
+      Allocation_i'&=Allocation_i+Request_i,\\
+      Need_i'&=Need_i-Request_i.
+    \end{aligned}
+  \]
+  Max 与其他进程的 Allocation、Need 不变。
+  \item 对试算状态调用 Safety Algorithm。Safe 则批准；unsafe 则\textbf{恢复试分配前的状态并等待}，不是报告已经发生死锁。
+\end{enumerate}
+
+\begin{center}
+  \input{figures/bankers-request-flow}
+  \par\small 根据讲义 pp.~5.34--5.35 自行整理的请求审批流程。
+\end{center}
+
+\textbf{边界。}某类资源的 Available 为零不必然 unsafe；仍可能有不再需要该类资源的进程先完成。即使整个 Available 为零，也要检查是否有 $Need_i=\mathbf0$ 的进程可以释放已有资源。
+
+\textbf{对应讲义例题：}
+\relatedexercise{SC2005-L12-E03}{批准 $P_1$ 的请求}；
+\relatedexercise{SC2005-L12-E04}{超额请求与不安全试分配}。
+
+\lecturetopic{SC2005-L12-T04}{Deadlock Detection：讲义标注非考试范围}
+
+\textbf{范围说明。}p.~5.38 是过渡页；p.~5.39 明确标注此页及本章后续页 not examinable。本节按指定范围只概括 pp.~5.39--5.41，不纳入 5.42 起的检测例题或恢复细节。
+
+Detection（检测）允许死锁发生，再依据当前资源分配与请求检测，之后交由 recovery（恢复）处理。单实例可检查资源分配图中的环；多实例使用下面的消去式算法。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+  \toprule
+  对比 & Safety Algorithm & Detection Algorithm \\
+  \midrule
+  核心输入 & 最大剩余需求 $Need_i$ & 当前等待请求 $Request_i$ \\
+  可消去条件 & $Need_i\le Work$ & $Request_i\le Work$ \\
+  Finish 初值 & 所有进程均为 false & 已持有资源者为 false，零分配者为 true \\
+  无法全部消去 & Unsafe，不等于已经死锁 & 在当前请求模型下，剩余未消去的持有资源者被判为 deadlocked \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+检测中的 Available 仍是各类资源的\textbf{空闲实例数}，Allocation 是当前分配；Request 是 $n\times m$ 的当前请求矩阵，不需要由 Max 推算 Need。算法为
+\begin{enumerate}
+  \item $Work\leftarrow Available$；若 $Allocation_i\ne\mathbf0$，设 $Finish[i]=false$，否则设为 true。
+  \item 反复找 $Finish[i]=false$ 且 $Request_i\le Work$ 的进程；模拟其请求得到满足后完成并归还资源，令 $Work\leftarrow Work+Allocation_i$、$Finish[i]\leftarrow true$。
+  \item 找不到候选时，仍为 false 的进程构成算法报告的死锁进程集合；若无剩余，则本次未检测到死锁。
+\end{enumerate}
+零分配进程不会占着资源阻止别人，因而先被排除出持有资源者的检测集合；其 Finish 初始为 true 不表示现实中已经结束，也不表示它不会等待。检测通过只针对当前快照，不保证以后的新请求仍不会死锁。
+
+\textbf{一分钟回顾。}Safe 要求存在一个可满足最大需求的完成序列；unsafe 不等于已经 deadlocked。Banker's 先用 $Need=Max-Allocation$ 记账，再通过 $Need_i\le Work$ 与 $Work\leftarrow Work+Allocation_i$ 寻找安全序列。处理新请求时，按“上限、库存、试分配、安全检查”决定报错、等待或批准；试算失败要回滚。非考试补充中的 detection 使用当前 Request，而不是未来最大剩余 Need。

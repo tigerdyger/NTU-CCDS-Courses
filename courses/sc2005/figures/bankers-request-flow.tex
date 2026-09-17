@@ -1,0 +1,24 @@
+% Original flowchart based on Part5 (Deadlocks).pdf, slides 5.34--5.35.
+% Checks and tentative allocation are ordered; error and waiting are distinct.
+\begin{tikzpicture}[
+  box/.style={draw=noteBlue,thick,rounded corners=2pt,fill=blue!4,
+    text width=4.15cm,minimum height=8mm,align=center,font=\small,inner sep=5pt},
+  outcome/.style={box,text width=3.45cm},
+  edge/.style={-{Latex[length=2mm]},thick,draw=noteBlue}
+]
+  \node[box] (claim) at (0,0) {$Request_i\le Need_i$？};
+  \node[box] (stock) at (0,-1.25) {$Request_i\le Available$？};
+  \node[box] (trial) at (0,-2.55) {按上式试分配\\只修改试算状态};
+  \node[box] (safety) at (0,-4.05) {运行 Safety Algorithm\\试算状态是否 safe？};
+  \node[box,draw=green!45!black,fill=green!8] (grant) at (0,-5.45) {批准，保留分配后的状态};
+  \node[outcome,draw=ntuRed,fill=red!4] (error) at (6.35,0) {报错：超出最大需求};
+  \node[outcome] (wait) at (6.35,-1.25) {等待：当前库存不足\\原状态不变};
+  \node[outcome,draw=ntuRed,fill=red!4] (rollback) at (6.35,-4.05) {恢复试分配前的状态\\请求者等待};
+  \draw[edge] (claim) -- node[right,font=\small] {是} (stock);
+  \draw[edge] (stock) -- node[right,font=\small] {是} (trial);
+  \draw[edge] (trial) -- (safety);
+  \draw[edge] (safety) -- node[right,font=\small] {是} (grant);
+  \draw[edge,draw=ntuRed] (claim) -- node[above,font=\small] {否} (error);
+  \draw[edge] (stock) -- node[above,font=\small] {否} (wait);
+  \draw[edge,draw=ntuRed] (safety) -- node[above,font=\small] {否} (rollback);
+\end{tikzpicture}
