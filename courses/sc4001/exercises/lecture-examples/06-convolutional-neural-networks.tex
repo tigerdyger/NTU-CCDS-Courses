@@ -1,0 +1,133 @@
+% Related lecture: SC4001-L06
+% Sources: 6_cnn pp. 61--65 and 93--99; no formal-exam question reproduced
+% Human verified: Yes for stated dimensions and example 1 numerics
+
+\exercisegroup{SC4001-L06-EX}{第 06 讲：Convolutional Neural Networks}
+
+\exercisemeta
+  {SC4001-L06-EX}
+  {2026-09-18}
+  {6\_cnn pp.~61--65、93--99；例题数值与维度已独立核算}
+  {例题 1 数值、例题 2--3 维度已核对；所引用 notebook 未随讲义提供，未复现其图像或实验曲线}
+  {已确认（2026-09-18）}
+
+\exercisequestion{SC4001-L06-E01}{卷积、Sigmoid 与 Max Pooling}
+
+\textbf{对应知识点：}
+\begin{itemize}
+  \item \relatedtopic{SC4001-L06-T02}{Convolution 的运算、尺寸与参数}
+  \item \relatedtopic{SC4001-L06-T03}{Activation 与 Pooling}
+\end{itemize}
+
+\subsubsection*{题目（讲义 Example 1，pp.~61--63）}
+
+输入图像 $X$、单个 $3\times3$ filter $W$ 与 bias 如下：
+\[
+X=\begin{bmatrix}
+0.5&-0.1&0.2&0.3&0.5\\
+0.8&0.1&-0.5&0.5&0.1\\
+-1.0&0.2&0&0.3&-0.2\\
+0.7&0.1&0.2&-0.6&0.3\\
+-0.4&0&0.2&0.3&-0.3
+\end{bmatrix},\qquad
+W=\begin{bmatrix}0&1&1\\1&0&1\\1&1&0\end{bmatrix},\qquad b=0.05.
+\]
+卷积 stride 为 $1$，随后逐点使用 sigmoid，再以 $2\times2$、stride $2$ 做 max pooling。分别求 VALID（无 padding）与 SAME（四周补一圈零）时的输出。
+
+\begin{workedsolution}
+VALID 的卷积输出边长为 $5-3+1=3$。左上位置逐项计算：
+\[
+u_{1,1}=0.05+(-0.1+0.2)+(0.8-0.5)+(-1.0+0.2)=-0.35.
+\]
+其余位置同理，pre-activation map 为
+\[
+U_{\rm valid}=\begin{bmatrix}
+-0.35&1.35&0.75\\-0.55&0.85&0.05\\0.75&0.05&1.15
+\end{bmatrix}.
+\]
+逐点施加 $\sigma(u)=1/(1+e^{-u})$，得到约
+\[
+\sigma(U_{\rm valid})=\begin{bmatrix}
+0.413&0.794&0.679\\0.366&0.701&0.512\\0.679&0.512&0.760
+\end{bmatrix}.
+\]
+$2\times2$、stride $2$ 只有一个完整 pooling window，其最大值为 $\boxed{0.794}$，故最终为 $1\times1$。
+
+SAME 情形在输入周围补一圈零，卷积输出变为 $5\times5$，pre-activation map 为
+\[
+U_{\rm same}=\begin{bmatrix}
+0.75&1.65&-0.15&0.75&0.95\\
+-0.45&-0.35&1.35&0.75&1.15\\
+1.85&-0.55&0.85&0.05&0.15\\
+-1.05&0.75&0.05&1.15&-0.75\\
+0.85&0.15&-0.05&-0.35&0.65
+\end{bmatrix}.
+\]
+Sigmoid 单调递增，故可先对每个 pooling window 找最大 $u$，再算 sigmoid：
+\[
+\begin{bmatrix}
+\sigma(1.65)&\sigma(1.35)\\
+\sigma(1.85)&\sigma(1.15)
+\end{bmatrix}
+\approx
+\boxed{\begin{bmatrix}0.839&0.794\\0.864&0.760\end{bmatrix}}.
+\]
+输出为 $2\times2$，第 5 行、第 5 列没有组成完整的 $2\times2$ pooling window。
+\end{workedsolution}
+
+\textbf{检查点：}先确定卷积结果的空间尺寸，再做 activation 与 pooling；SAME 的边界值必须包含 zero padding，而不能沿用 VALID 的结果。
+
+\exercisequestion{SC4001-L06-E02}{MNIST 固定滤波器的维度链}
+
+\textbf{对应知识点：}
+\begin{itemize}
+  \item \relatedtopic{SC4001-L06-T02}{Convolution 的运算、尺寸与参数}
+  \item \relatedtopic{SC4001-L06-T03}{Activation 与 Pooling}
+\end{itemize}
+
+\subsubsection*{题目（讲义 Example 2，pp.~64--65）}
+
+对一张 $1\times28\times28$ MNIST 图像应用三个固定的 $3\times3$ filters，bias 均为零，VALID 卷积 stride 为 $1$；随后每张输出图做 $2\times2$、stride $2$ 的 pooling。求每一步的 tensor shape，并说明每一步的通道数由什么决定。
+
+\begin{workedsolution}
+输入只有一个通道，所以每个 filter 的深度也为 $1$。三个 filters 产生三个 output feature maps，卷积后的空间尺寸为 $28-3+1=26$，故
+\[
+  \boxed{1\times28\times28\ \longrightarrow\ 3\times26\times26}.
+\]
+Pooling 只对每个 feature map 的空间窗口聚合，保持通道数 $3$，边长变为 $26/2=13$：
+\[
+  \boxed{3\times26\times26\ \longrightarrow\ 3\times13\times13}.
+\]
+具体 feature-map 像素值依赖题目所引用的图像 notebook；该 notebook 未随本次讲义提供，因此这里不伪造输出图。
+\end{workedsolution}
+
+\textbf{检查点：}Filter 数决定输出通道数；pooling 通常不改变通道数。
+
+\exercisequestion{SC4001-L06-E03}{MNIST CNN 的结构与训练示例}
+
+\textbf{对应知识点：}
+\begin{itemize}
+  \item \relatedtopic{SC4001-L06-T04}{CNN 分类头与损失}
+  \item \relatedtopic{SC4001-L06-T05}{训练流程与 Data Preprocessing}
+\end{itemize}
+
+\subsubsection*{题目（讲义 Example 3，pp.~93--99）}
+
+讲义展示的 MNIST CNN 接收 $1\times28\times28$ 图像：先用 32 个 $5\times5$ filters 做 SAME 卷积并池化，再用 64 个 $5\times5$ filters 做 SAME 卷积并池化，两个 pooling layers 均将空间边长减半，最后展平并输出 10 类分数。求各阶段的 shape，并说明分类 loss 的输入应是什么。
+
+\begin{workedsolution}
+两次 SAME 卷积保持空间边长，两次 pooling 分别令 $28\to14\to7$。因此
+\[
+\boxed{
+1\times28\times28
+\to32\times28\times28
+\to32\times14\times14
+\to64\times14\times14
+\to64\times7\times7
+\to3136
+\to10}.
+\]
+Flatten 后的 $3136=64\cdot7\cdot7$ 是 feature vector 的长度。最终 linear layer 输出 10 个 raw logits；交给 PyTorch \texttt{CrossEntropyLoss} 时不预先做 softmax。讲义给出的曲线与 feature-map 可视化用于观察学习过程，但未提供完整配套 notebook，不能仅凭曲线声称独立复现实验结果。
+\end{workedsolution}
+
+\textbf{检查点：}SAME 只说明该例卷积的空间尺寸不变；输出通道仍由 filters 个数决定，最终 10 是类别数。

@@ -1,0 +1,14 @@
+\begin{tikzpicture}[
+  >=Latex,
+  stage/.style={draw=noteBlue, rounded corners, align=center, minimum width=2.45cm, minimum height=1.2cm, fill=blue!5},
+  arrow/.style={->, thick, draw=noteBlue},
+  node distance=0.55cm
+]
+  \node[stage] (input) {Input image\\$C_{\rm in}\times H\times W$};
+  \node[stage, right=of input] (conv) {$K$ shared filters\\$K\times H'\times W'$};
+  \node[stage, right=of conv] (pool) {Pooling\\$K\times H''\times W''$};
+  \node[stage, right=of pool] (head) {Flatten + FC\\class logits};
+  \draw[arrow] (input) -- (conv);
+  \draw[arrow] (conv) -- (pool);
+  \draw[arrow] (pool) -- (head);
+\end{tikzpicture}

@@ -1,0 +1,129 @@
+% Actual class: 06
+% Slide decks: 6_cnn; L6_summary
+% Exact scope: 6_cnn pp. 1--101; L6_summary pp. 1--35
+% Video supplement: Lecture6_Part1 and Lecture6_Part2; slide progression checked from sampled frames
+% Human verified: Yes (slide content); videos have no readable captions, spoken details not transcribed
+
+\section{第 06 节课：Convolutional Neural Networks}
+\label{lecture:SC4001-L06}
+
+\lecturemeta
+  {SC4001-L06}
+  {2026-09-18}
+  {6\_cnn；L6\_summary}
+  {主讲义 pp.~1--101；Summary pp.~1--35}
+  {Lecture6\_Part1（45:21）与 Lecture6\_Part2（37:55）；已抽查画面范围，无可读字幕；口头补充未转录}
+  {已确认（2026-09-18；讲义例题与关键数值已核对）}
+
+\subsection{本讲主线}
+
+CNN（Convolutional Neural Network，卷积神经网络）利用图像的空间结构：先用共享的局部 filters（滤波器）提取 feature maps（特征图），再通过 pooling（池化）缩小空间维度，最后完成分类。训练仍依赖 loss、backpropagation 和 optimizer；CNN 改变的是网络的连接结构，而不是监督学习的基本目标。
+
+\lecturetopic{SC4001-L06-T01}{局部连接、权重共享与 Feature Maps}
+
+直接把图像展平后交给 fully connected layer（全连接层），没有在参数结构中显式利用局部相邻关系，且参数量随输入大小快速增长。Convolutional layer（卷积层）令一个 filter 只连接局部窗口，并在不同位置重复使用同一组权重；一个 filter 生成一个 output feature map，多个 filters 生成多个 output channels。卷积对输入平移具有 equivariance（等变性）：局部图案移动，其响应通常也移动；这不是严格的 translation invariance（平移不变性）。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/cnn-feature-pipeline}}
+  \caption{CNN 中空间尺寸与通道数的不同角色：卷积决定输出通道，池化通常只缩小空间尺寸。本图为原创结构示意。}
+  \label{fig:sc4001-l06-pipeline}
+\end{figure}
+
+\lecturetopic{SC4001-L06-T02}{Convolution 的运算、尺寸与参数}
+
+对输入 $X\in\mathbb R^{C_{\mathrm{in}}\times H\times W}$，一个大小为 $C_{\mathrm{in}}\times F_h\times F_w$ 的 filter $W^{(k)}$ 必须覆盖\emph{全部}输入通道。以零基下标表示，不翻转核的计算为
+\[
+  U^{(k)}_{i,j}=b_k+
+  \sum_{c=0}^{C_{\mathrm{in}}-1}
+  \sum_{a=0}^{F_h-1}\sum_{b=0}^{F_w-1}
+  W^{(k)}_{c,a,b}\,X^{\mathrm{pad}}_{c,iS_h+a,jS_w+b}.
+\]
+深度学习实现通常实际执行 cross-correlation（互相关），即不翻转核，但沿用 convolution 这一名称。$K$ 个 filters 产生 $K$ 个输出通道。若每个 filter 有一个 bias，则参数量为
+\[
+  \boxed{K(C_{\mathrm{in}}F_hF_w+1)}.
+\]
+输入通道数决定\emph{每个核的深度}，filter 数决定\emph{输出通道数}；padding 与 stride 不增加可学习参数。
+
+零填充 $P_h,P_w$、步长 $S_h,S_w$ 下，输出空间尺寸为
+\[
+  H_{\mathrm{out}}=\left\lfloor\frac{H+2P_h-F_h}{S_h}\right\rfloor+1,
+  \qquad
+  W_{\mathrm{out}}=\left\lfloor\frac{W+2P_w-F_w}{S_w}\right\rfloor+1,
+\]
+前提是核能够至少覆盖一个有效窗口。VALID 通常指不补零；对奇数边长 $F$、stride $1$，取 $P=(F-1)/2$ 可保持空间尺寸，即常见的 SAME 情形。SAME 在其他 stride 和框架中有更具体的补零规则，不能仅靠名称推断全部边界行为。讲义省略 floor 的公式默认了整除情形。
+
+例：$3\times32\times32$ 输入，10 个 $3\times5\times5$ filters，stride $1$、padding $2$，得到 $10\times32\times32$ 输出；参数为 $10(3\cdot5^2+1)=760$。
+
+\textbf{对应例题：}
+\begin{itemize}
+  \item \relatedexercise{SC4001-L06-E01}{卷积、Sigmoid 与 Max Pooling}
+  \item \relatedexercise{SC4001-L06-E02}{MNIST 固定滤波器的维度链}
+\end{itemize}
+
+\lecturetopic{SC4001-L06-T03}{Activation 与 Pooling}
+
+Activation function（激活函数）逐元素提供非线性；若多层仅进行线性/仿射变换，整体仍可合并为一次仿射变换。讲义介绍 sigmoid、tanh 和 ReLU；具体例题指定 sigmoid，不意味着所有 CNN 都用 sigmoid。
+
+Pooling（池化）对每个局部窗口做聚合。Max pooling 取最大值，average pooling 取均值。通常不改变通道数，但缩小 $H,W$；若窗口不能完整覆盖边界，具体是否舍弃或补齐取决于设置。池化可能提高对小范围位移的容忍度，也会丢失精确位置信息；不能保证全局平移不变。
+
+卷积层输出常经 flatten（展平）送入全连接分类头。Flatten 本身只改变张量形状，不丢弃数值；普通全连接权重不再强制保持卷积的局部连接与权重共享。
+
+\lecturetopic{SC4001-L06-T04}{CNN 分类头与损失}
+
+多类别分类头输出 raw logits $u_1,\ldots,u_C$，softmax 与 cross-entropy 为
+\[
+  p_i=\frac{e^{u_i}}{\sum_{j=1}^{C}e^{u_j}},
+  \qquad L=-\log p_y,
+\]
+其中 $y$ 为真实类别。主讲义的 softmax 分子下标误写为 $j$，正确应为 $i$。
+
+PyTorch \texttt{CrossEntropyLoss} 直接接收 logits，不应提前手动 softmax；其内部采用数值稳定的 log-softmax 计算。二分类的 \texttt{BCEWithLogitsLoss} 同样直接接收 raw logit，但它与多类别 cross-entropy 是不同损失。
+
+讲义 MNIST architecture 示例给出
+\[
+\begin{aligned}
+  1\times28\times28
+  &\xrightarrow{\text{conv, SAME}}32\times28\times28
+  \xrightarrow{\text{pool}}32\times14\times14\\
+  &\xrightarrow{\text{conv, SAME}}64\times14\times14
+  \xrightarrow{\text{pool}}64\times7\times7\\
+  &\xrightarrow{\text{flatten}}3136
+  \xrightarrow{\text{FC}}10.
+\end{aligned}
+\]
+其中 $3136=64\cdot7\cdot7$ 是 flatten 后的特征数，不应误认为必须再额外设置一个有 3136 个神经元的 hidden FC layer。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L06-E03}{MNIST CNN 的结构与训练示例}。
+
+\lecturetopic{SC4001-L06-T05}{训练流程与 Data Preprocessing}
+
+监督训练重复执行 mini-batch 前向计算、loss、backpropagation（反向传播）及参数更新。Training set 用于更新权重；validation set 用于模型与超参数选择；test set 留作最后一次独立评估。Training loss 降低不自动意味着 generalization（泛化）改善。
+
+常见 preprocessing（预处理）包括减去 training-set mean image，或按通道计算 training-set mean 与 standard deviation 后做标准化。\emph{统计量只在 training set 上拟合}，并原样用于 validation/test；若用 test 样本重新计算训练所需统计量，会发生数据泄漏。推理时还须保持与训练一致的通道顺序、像素尺度和归一化规则。
+
+\lecturetopic{SC4001-L06-T06}{从 SGD 到 Adam}
+
+对参数 $w$ 和 batch gradient $g_t$，普通 SGD 执行 $w_{t+1}=w_t-\alpha_t g_t$。Learning-rate annealing（学习率退火）令 $\alpha_t$ 随训练进程改变；过大可能震荡，过小则训练缓慢。其余优化器的关键区别是保留哪种历史信息：
+\begin{itemize}
+  \item Momentum（动量法）平滑近期\emph{梯度方向}，缓解反复摆动；
+  \item AdaGrad 累计所有历史\emph{梯度平方}，按坐标缩放步长；累计量单调增加，长期有效步长可能过小；
+  \item RMSprop 对梯度平方使用 exponential moving average（指数移动平均），使久远历史的影响衰减；
+  \item Adam 同时维护梯度的一阶矩和梯度平方的二阶矩，并做初期 bias correction（偏差修正）。
+\end{itemize}
+
+Adam 的一种标准记法为
+\[
+  m_t=\beta_1m_{t-1}+(1-\beta_1)g_t,
+  \quad v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2,
+\]
+\[
+  \hat m_t=\frac{m_t}{1-\beta_1^t},
+  \quad \hat v_t=\frac{v_t}{1-\beta_2^t},
+  \quad w_{t+1}=w_t-\alpha\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}.
+\]
+平方、开方和除法均逐坐标执行；$t$ 从 $1$ 开始。主讲义偏差修正公式漏写了 $\beta_1^t,\beta_2^t$ 的时间指数，不能照原式实现。优化器效果仍取决于任务、学习率及其他设置；讲义最后的对比页引用未提供的 notebook，不足以独立复核定量差异。
+
+\subsection{一分钟回顾}
+
+一个卷积核跨越全部输入通道并生成一个输出通道；输出尺寸由输入、核、stride 与 padding 决定，参数量由核大小、输入通道和输出核数决定。Activation 提供非线性，pooling 缩小空间维度但丢失部分位置细节。分类头输出 logits，softmax--cross-entropy 负责多类学习；训练集统计量不能从 test set 估计。Momentum、AdaGrad、RMSprop、Adam 分别以不同方式利用梯度及梯度平方的历史。
