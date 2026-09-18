@@ -1,0 +1,151 @@
+% Tutorial set: 04
+% Source: Part 1-Tutorial 4-Questions.pdf, printed p. 1 (PDF p. 1), Questions 1--5
+% Session date: 2026-09-18 (Week 6)
+% Verification: source and derivations checked; no official solution supplied
+
+\exercisegroup{SC2008-TUT04}{Tutorial 04：Connections、Virtual Circuits 与 Switching Delay}
+\label{tutorial:SC2008-TUT04}
+
+\exercisemeta
+  {SC2008-TUT04}
+  {2026-09-18（Week 6）}
+  {Part 1-Tutorial 4-Questions，p.~1（PDF p.~1），Questions 1--5}
+  {已核对原题与推导；未提供官方参考答案}
+  {已完成讨论；以下为整理后的解答}
+
+
+\exercisequestion{SC2008-TUT04-Q01}{Connectionless 与 Connection-Oriented Communication}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L05-T02}{Datagram 与 Virtual Circuit}
+
+\textbf{题目。}Connectionless communication（无连接通信）与 connection-oriented communication（面向连接通信）的主要区别是什么？
+
+\begin{checkedsolution}
+根本区别是：正式传送数据前，是否需要建立 logical connection（逻辑连接），并在通信期间维护相关 connection state（连接状态）。
+\begin{itemize}
+  \item \textbf{Connection-oriented：}先建立连接，再在连接上下文中传送数据，结束后释放连接及其状态。
+  \item \textbf{Connectionless：}无须预先建立这样的连接；数据以独立单元发送，不依赖事先建立的连接上下文。
+\end{itemize}
+逻辑连接不等于独占一条 physical link（物理链路），也不自动保证 reliable delivery（可靠交付）；是否提供重传等可靠性机制取决于具体协议。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT04-Q02}{Virtual Circuit 是否仍需要 Routing 能力}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L05-T02}{Datagram 与 Virtual Circuit}
+
+\textbf{题目。}数据报方式把每个 packet（分组）作为独立单元进行路由；虚电路中的数据分组则沿预先确定的路径传送。是否因此可以认为 virtual-circuit network（虚电路网络）不需要把单个分组从任意源节点路由到任意目的节点的能力？解释原因。
+
+\textbf{术语说明。}原题第一句使用 packet-switched networks，结合对比语境应理解为 datagram networks（数据报网络）；virtual circuit 本身也属于 packet switching（分组交换）。
+
+\begin{checkedsolution}
+\textbf{不能这样认为，虚电路网络仍需要路由能力。}必须区分两个阶段：
+\begin{enumerate}[label=(\arabic*),itemsep=0pt,topsep=0pt]
+  \item \textbf{Connection establishment（连接建立）：}尚无该连接的既定路径。网络需要选择从源到目的的路径，将 connection-setup request（连接建立请求）送达目的节点，并在沿途建立 forwarding state（转发状态）。
+  \item \textbf{Data transfer（数据传输）：}路径建立后，数据分组可依据 virtual-circuit identifier（虚电路标识符）和已有转发状态沿该路径传送，无须对每个分组重新进行完整的端到端路径选择。
+\end{enumerate}
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT04-Q03}{Two-Hop Pipeline 的 Minimum Data Rate}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L05-T04}{Store-and-Forward Pipeline}
+
+\textbf{题目。}源节点 $S$ 与目的节点 $D$ 通过一个中间节点 $I$ 连接，即 $S\to I\to D$。一条 $1000$-byte message（消息）分成四个 packets，每个 packet 另有 $50$-byte header（首部）。所有 links（链路）的 data rate 相同。忽略 propagation delay（传播时延），求使整条消息在 $100$ ms 内传完的最小链路速率。原题提示：pipeline effect（流水线效应）。
+
+\textbf{模型假设。}四个 packets 等长，节点 $I$ 采用 store-and-forward（存储转发），完整收到一个 packet 后才转发；两段 links 可以并行工作，忽略 processing（处理）和 queuing（排队）时延。
+
+\begin{checkedsolution}
+每个 packet 的 payload（有效载荷）为 $1000/4=250$ bytes，因此含 header 的总长度为
+\[
+  L=250+50=300\ \mathrm{bytes}=2400\ \mathrm{bits}.
+\]
+设链路速率为 $R$ bps，单个 packet 在一段 link 上的 transmission delay（发送时延）为 $t_p=L/R$。第一个 packet 到达 $D$ 需要 $2t_p$，其余三个每隔 $t_p$ 到达：
+\[
+  T=2t_p+(4-1)t_p=5t_p=\frac{12000}{R}.
+\]
+
+\begin{center}
+  \input{figures/tutorial04-two-hop-pipeline}
+\end{center}
+
+因而要求
+\[
+  \frac{12000}{R}\le0.1
+  \quad\Longrightarrow\quad
+  \boxed{R_{\min}=120000\ \mathrm{bps}=120\ \mathrm{kbps}}.
+\]
+一般地，$n$ 个等长 packets 通过 $k$ 段同速率 links，在上述简化条件下有 $T=(n+k-1)L/R$。这里 $L$ 必须用 bits；pipeline 允许不同 links 同时工作，所以不能把总时间算成 $nkL/R$。
+\end{checkedsolution}
+
+\begin{samepage}
+\exercisequestion{SC2008-TUT04-Q04}{Switching Time 与 Long-Distance Propagation}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L05-T03}{Nodal Delay 的四个分量}
+
+\textbf{题目。}一个 store-and-forward packet-switched network 的单次 switching time（交换处理时间）为 $10\ \mu\mathrm{s}$。若 client（客户端）在 New York，server（服务器）在 California，这一交换处理时间是否很可能成为 client-server response time（响应时间）的主要因素？假设信号在 copper（铜线）和 fiber（光纤）中的传播速度均为真空光速的 $2/3$。
+\par
+\end{samepage}
+
+\begin{checkedsolution}
+\textbf{通常不是。}题目没有给出实际线路长度，因此采用数量级估计，而非声称精确的端到端响应时间。取代表性距离 $\ell\approx4000$ km（辅助估计，非题目给定），传播速度为
+\[
+  v=\frac23c\approx2\times10^8\ \mathrm{m/s}.
+\]
+单程 propagation delay 约为
+\[
+  t_{\mathrm{prop}}=\frac{\ell}{v}
+  =\frac{4\times10^6}{2\times10^8}
+  =0.02\ \mathrm{s}=20\ \mathrm{ms}.
+\]
+单次 switching time 为 $10\ \mu\mathrm{s}=10^{-5}$ s，两者之比为
+\[
+  \frac{t_{\mathrm{prop}}}{t_{\mathrm{switch}}}
+  \approx\frac{2\times10^{-2}}{10^{-5}}=2000.
+\]
+因此在这两项的比较中，纽约到加州的长距离传播远大于单次交换处理。若考虑请求与响应往返，单是传播就约为 $40$ ms。实际响应时间还取决于线路、交换节点数、发送、排队和服务器处理等因素，不能仅凭本题数据精确求出。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT04-Q05}{Circuit Switching 与 Packet Switching 的 Delay Comparison}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2008-L05-T04}{Store-and-Forward Pipeline}；\par
+\relatedtopic{SC2008-L05-T05}{Circuit 与 Packet Delay 的比较}
+
+\textbf{题目。}沿 $k$-hop path（含 $k$ 段链路的路径）发送一条 $x$-bit message。Circuit-switched network（电路交换网络）的建立时间为 $s$ 秒；每 hop 的 propagation delay 为 $d$ 秒；packet size 为 $p$ bits；各 link 的 data rate 为 $b$ bps。比较电路交换与 lightly loaded packet-switched network（轻载分组交换网络）的总时延，并给出分组交换更快的条件。
+
+\textbf{模型假设。}按标准简化模型，$x/p$ 为正整数，分组交换采用 store-and-forward；不另计 header、processing、queuing、重传或分组网络的 setup 开销。$s$ 是整条电路的建立时间，而非每 hop 各需 $s$ 秒；两种方式均从开始通信计时，到目的节点收到最后一个 bit 为止。
+
+\begin{checkedsolution}
+\textbf{电路交换。}建立电路后，比特流沿路径连续传送，中间节点无须收完整条消息再发送。因此发送整条消息的时间只计一次 $x/b$，再加上 $k$ 段传播：
+\[
+  \boxed{T_{\mathrm{circuit}}=s+\frac{x}{b}+kd}.
+\]
+
+\begin{samepage}
+\textbf{分组交换。}共有 $n=x/p$ 个等长 packets。第一个 packet 经过 $k$ hops 需要 $k(p/b+d)$，后续 $n-1$ 个 packets 每隔 $p/b$ 到达：
+\[
+\begin{aligned}
+  T_{\mathrm{packet}}
+    &=k\left(\frac{p}{b}+d\right)
+      +\left(\frac{x}{p}-1\right)\frac{p}{b}\\
+    &=\boxed{\frac{x}{b}+kd+(k-1)\frac{p}{b}}.
+\end{aligned}
+\]
+\end{samepage}
+
+\textbf{比较。}两种方式共有的 $x/b$ 与 $kd$ 抵消，因此
+\[
+\begin{aligned}
+  T_{\mathrm{packet}}<T_{\mathrm{circuit}}
+  &\iff (k-1)\frac{p}{b}<s.
+\end{aligned}
+\]
+即当电路建立时间大于分组方式额外的存储转发开销时，分组交换更快：
+\[
+  \boxed{s>(k-1)\frac{p}{b}}.
+\]
+等号成立时两者一样快，反向不等式下电路交换更快。这里比较的是一次包含 setup 的完整传输；若电路已经建立，则不能再次计入 $s$。若加入 packet headers、不同链路速率或排队等因素，必须重新建模，不能把本式视为普遍结论。
+\end{checkedsolution}

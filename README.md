@@ -48,6 +48,10 @@
 | 手写作业题目 | `SC2005-HW01-Q03` |
 | 编程作业 | `SC2005-LAB01` |
 
+PDF 中的习题采用三级层次：内容类别（讲义例题 / Tutorial）→ 题组（某一讲或某次 Tutorial）→ 具体题目。例如 `8.4` 是 Tutorial 04，题目依次为 `8.4.1`、`8.4.2`；同一题组内的题目不再占用与题组平级的编号。显示编号可随文档结构变化，上表中的稳定 ID 和交叉引用保持不变。
+
+课程入口用 `groupedexercises` 环境包住习题部分；题组使用 `\exercisegroup`，题目使用 `\exercisequestion`。新增内容沿用 `templates/lecture-example.tex` 或 `templates/tutorial.tex`。书面作业册不启用此环境，保留原有编号层级。
+
 ## 编译
 
 编译需要安装包含 `latexmk` 和 XeLaTeX 的 TeX Live 或 MacTeX。

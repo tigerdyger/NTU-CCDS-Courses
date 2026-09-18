@@ -79,10 +79,36 @@
   \recordid{#1}\par
 }
 
+% Course notes use category -> exercise group -> question. Written-assignment
+% documents retain their existing section -> question hierarchy.
+\newcommand{\exercisegroup}[2]{%
+  \subsection{#2}\label{exercisegroup:#1}%
+}
+
+\newcommand{\exercisequestionheading}{\subsection}
+
+\newenvironment{groupedexercises}
+  {\renewcommand{\exercisequestionheading}{\subsubsection}}
+  {}
+
 \newcommand{\exercisequestion}[2]{%
-  \subsection{#2}\label{exercise:#1}%
+  \exercisequestionheading{#2}\label{exercise:#1}%
   \recordid{#1}\par
 }
+
+% A compact notes TOC with enough number width for headings such as 14.10.3.
+% The local group leaves written-assignment TOCs and body spacing unchanged.
+\makeatletter
+\newcommand{\coursenotestoc}{%
+  \begingroup
+  \small
+  \setlength{\parskip}{0.15em}%
+  \renewcommand*\l@subsection{\@dottedtocline{2}{1.5em}{3.0em}}%
+  \renewcommand*\l@subsubsection{\@dottedtocline{3}{4.5em}{4.2em}}%
+  \tableofcontents
+  \endgroup
+}
+\makeatother
 
 \newcommand{\relatedtopic}[2]{%
   \hyperref[topic:#1]{#2}~(\texttt{#1})%
