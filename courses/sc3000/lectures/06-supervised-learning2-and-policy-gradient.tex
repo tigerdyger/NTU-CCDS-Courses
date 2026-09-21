@@ -1,0 +1,161 @@
+% Source: CZ3005_Module_6_ML and PG, slides 25--52.
+% Week 7 schedule: Module 1 slide 3; actual classroom endpoint unconfirmed.
+\section{第 06 节课：Supervised Learning 2 与 Policy Gradient}
+\label{lecture:SC3000-L06}
+
+\lecturemeta
+  {SC3000-L06}
+  {2026-09-21}
+  {CZ3005 Module 6: ML and PG}
+  {pp.~25--52（对应 Week 7 的 Supervised Learning 2 与 Reinforcement Learning 3）}
+  {无视频或字幕；范围依据时间表和讲义分段核对}
+  {本范围已学习；实际课堂终点未确认}
+
+\subsection{本讲主线}
+
+上节完成了 Module 5 的强化学习内容，但课程安排中的 Reinforcement Learning 3 位于 Module 6 末尾，主题是 Policy Gradient（策略梯度）。本讲先用概率模型连接监督学习、最大似然估计与 GPT，再说明如何直接优化策略的期望回报。Module 6 p.~53 是结束页；暂定的 Diffusion Model 不属于本讲，留待 recess week 补课。
+
+\lecturetopic{SC3000-L06-T01}{概率规则与 Bayes 定理}
+
+对离散随机变量，joint probability（联合概率）描述同时发生的事件，marginal probability（边缘概率）通过对另一变量求和得到：
+\[
+  P(x)=\sum_yP(x,y),\qquad
+  P(x,y)=P(x\mid y)P(y)=P(y\mid x)P(x).
+\]
+连续变量则使用概率密度与积分。在 $P(x)>0$ 时，Bayes 定理给出
+\[
+  \boxed{P(y\mid x)=\frac{P(x\mid y)P(y)}{P(x)}}.
+\]
+其中 $P(y)$ 是 prior（先验），$P(x\mid y)$ 是 likelihood（似然），$P(y\mid x)$ 是 posterior（后验），$P(x)$ 是 evidence（证据或归一化因子）。条件概率总是固定条件后再归一化，例如 $\sum_yP(y\mid x)=1$；不能把 $P(y\mid x)$ 与 $P(x\mid y)$ 混为一谈。
+
+\lecturetopic{SC3000-L06-T02}{Maximum Likelihood 与 Cross-Entropy}
+
+给定独立同分布的训练样本 $\mathcal D=\{(x_i,y_i)\}_{i=1}^{N}$，条件模型 $P_w(y\mid x)$ 的 likelihood 为
+\[
+  \mathcal L(w)=\prod_{i=1}^{N}P_w(y_i\mid x_i).
+\]
+Maximum Likelihood Estimation（最大似然估计，MLE）选择使观测标签最可能的参数。由于对数严格单调递增，在似然为正的区域有
+\begin{align*}
+  w^*
+  &=\arg\max_w\mathcal L(w)
+   =\arg\max_w\sum_{i=1}^{N}\log P_w(y_i\mid x_i)\\
+  &=\arg\min_w\underbrace{\left[-\sum_{i=1}^{N}\log P_w(y_i\mid x_i)\right]}_{L_{\mathrm{NLL}}(w)}.
+\end{align*}
+负对数似然称为 negative log-likelihood（NLL）。取对数把连乘变成求和，可避免直接连乘许多小概率造成数值下溢；它保留最优参数，但不意味着原目标与对数目标的数值或梯度相同。
+
+对 $K$ 类分类，若 $y_{ic}$ 是 one-hot 标签，$p_{ic}=P_w(Y=c\mid x_i)$，则
+\[
+  L_{\mathrm{CE}}=-\sum_i\sum_{c=1}^{K}y_{ic}\log p_{ic}
+  =-\sum_i\log P_w(y_i\mid x_i)=L_{\mathrm{NLL}}.
+\]
+这连接了上节的 empirical risk minimization 与本节的概率解释：使用交叉熵时，最小化经验损失就是最大化正确标签的条件似然。
+
+这里数据固定、参数变化；likelihood 不是参数 $w$ 的概率分布。MLE 也不等于给参数设置先验后进行 Bayesian inference。含噪数据、冲突标签或有限模型容量下，不能保证每个正确类别的概率都达到 $1$。
+
+\lecturetopic{SC3000-L06-T03}{Bayesian Classifier 与 Naive Bayes}
+
+在各类误判代价相同的 zero-one loss 下，Bayesian classifier 选择最大后验类别：
+\[
+  \hat y=\arg\max_cP(c\mid x)
+  =\arg\max_cP(x\mid c)P(c).
+\]
+对同一个输入 $x$，分母 $P(x)$ 对所有候选类别相同，所以可从 argmax 中省略；先验 $P(c)$ 一般不能省略，除非各类先验确实相等。
+
+若 $x=(x_1,\ldots,x_d)$ 含多个特征，直接估计完整的 $P(x_1,\ldots,x_d\mid c)$ 需要覆盖大量特征组合，有限数据容易造成稀疏。Naive Bayes（朴素贝叶斯）假设：\textbf{给定类别后，各特征条件独立}，于是
+\[
+  P(x\mid c)=\prod_{j=1}^{d}P(x_j\mid c),\qquad
+  \boxed{\hat y=\arg\max_cP(c)\prod_{j=1}^{d}P(x_j\mid c)}.
+\]
+这不是说特征在总体上相互独立，也不是概率链式法则自动给出的结论；它是为简化估计而增加的建模假设。实际计算可比较 log-score：
+\[
+  \log P(c)+\sum_j\log P(x_j\mid c).
+\]
+连续特征对应条件密度，或先离散化再估计类别概率。讲义提到 Bayesian belief networks，但明确不在此处展开。
+
+\textbf{对应例题：}\relatedexercise{SC3000-L06-E01}{利用资产、职业和收入判断是否偿还贷款}。
+
+\lecturetopic{SC3000-L06-T04}{GPT：自回归模型与下一 Token 预测}
+
+对 token 序列 $x_{1:n}$，概率链式法则给出
+\[
+  P_\theta(x_{1:n})=\prod_{i=1}^{n}P_\theta(x_i\mid x_{<i}),
+  \qquad
+  L(\theta)=-\sum_{i=1}^{n}\log P_\theta(x_i\mid x_{<i}).
+\]
+首项可用起始标记 BOS 表示空前缀。与 Naive Bayes 不同，这个分解\textbf{没有假设 tokens 相互独立}；下一个 token 的分布依赖先前的 tokens。实际模型以有限 context window 近似可用历史。
+
+训练时把原文右移一位作为标签，在真实前缀上预测真实的下一个 token，称为 teacher forcing；causal mask（因果掩码）阻止模型看到未来标签。标签来自文本自身，因此这种训练通常称为 self-supervised learning（自监督学习）。推理时则反复把模型生成的 token 接到前缀后，继续预测。
+
+Module 6 pp.~42--47 展示 nanoGPT 的准备、训练和生成过程。p.~47 比较 iteration 0 与 iteration 5000 的 Shakespeare 风格输出：训练后文本更接近英语和剧本形式，但这不等于语义完全正确，也不是泛化性能的定量证明。这里记录演示原理，不要求为了本讲重新训练一次。
+
+\textbf{对应例题：}\relatedexercise{SC3000-L06-E02}{从一句文本构造下一 token 训练目标}。
+
+\lecturetopic{SC3000-L06-T05}{Policy Gradient：直接优化期望回报}
+
+\subsubsection*{策略、轨迹与目标}
+
+Q-Learning 先估计动作价值，再据此选动作；Policy Gradient 直接参数化随机策略
+\[
+  \pi_\theta(a\mid s)=P_\theta(A_t=a\mid S_t=s),
+  \qquad J(\theta)=\mathbb E_{\tau\sim P_\theta}[G(\tau)].
+\]
+$G(\tau)$ 表示一次轨迹的累计回报，例如 $\sum_{t=1}^{T}\gamma^{t-1}r_t$。目标是\emph{最大化} $J$，因此使用 gradient ascent（梯度上升）。
+
+对有限时域轨迹 $\tau=(s_1,a_1,\ldots,s_T,a_T,s_{T+1})$，在 Markov 环境与 Markov 策略下，
+\[
+  \boxed{P_\theta(\tau)=\rho_0(s_1)
+    \prod_{t=1}^{T}\pi_\theta(a_t\mid s_t)
+    P(s_{t+1}\mid s_t,a_t)}.
+\]
+$\rho_0$ 是初始状态分布。环境转移必须保留动作 $a_t$：同一状态采取不同动作通常会到达不同的下一状态。讲义 p.~50 的简写及中间条件化步骤不能用来断言“给定未来之后，动作仍只依赖当前状态”；这里按时间顺序使用正确的链式分解。
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/policy-gradient-trajectory}
+  \caption{按 Module 6 p.~50 的交互过程重绘。策略产生动作，环境根据状态与动作产生下一状态；二者共同决定轨迹概率。}
+  \label{fig:sc3000-l06-trajectory}
+\end{figure}
+
+\subsubsection*{Log-Derivative Trick}
+
+假设环境的初始分布、转移机制及给定轨迹的回报函数不显式依赖 $\theta$，且可交换求导与求和。在正概率轨迹上，利用 $\nabla p=p\nabla\log p$：
+\begin{align*}
+  \nabla_\theta J(\theta)
+  &=\sum_\tau G(\tau)\nabla_\theta P_\theta(\tau)\\
+  &=\sum_\tau P_\theta(\tau)G(\tau)\nabla_\theta\log P_\theta(\tau)\\
+  &=\mathbb E_{\tau\sim P_\theta}
+      [G(\tau)\nabla_\theta\log P_\theta(\tau)].
+\end{align*}
+连续情形将求和替换为积分。对\emph{固定的一条轨迹}取对数，有
+\begin{align*}
+  \log P_\theta(\tau)
+  &=\log\rho_0(s_1)+\sum_{t=1}^{T}\log\pi_\theta(a_t\mid s_t)
+    +\sum_{t=1}^{T}\log P(s_{t+1}\mid s_t,a_t),\\
+  \nabla_\theta\log P_\theta(\tau)
+  &=\sum_{t=1}^{T}\nabla_\theta\log\pi_\theta(a_t\mid s_t).
+\end{align*}
+因此得到基本的策略梯度：
+\[
+  \boxed{\nabla_\theta J(\theta)=
+    \mathbb E_{\tau\sim P_\theta}\!\left[
+      G(\tau)\sum_{t=1}^{T}\nabla_\theta\log\pi_\theta(a_t\mid s_t)
+    \right]}.
+\]
+环境项消失，是因为\textbf{环境机制不随策略参数改变}，不是因为访问状态的分布不变。换了策略，会选择不同动作、访问不同状态，整个 $P_\theta(\tau)$ 仍然依赖 $\theta$。该推导不需要对环境转移函数求导，也不要求事先知道转移概率的数值。
+
+\subsubsection*{从公式到采样更新}
+
+用当前策略采样 $M$ 条轨迹，记录动作及回报，构造 Monte Carlo 梯度估计：
+\[
+  \hat g=\frac1M\sum_{k=1}^{M}G(\tau_k)
+       \sum_{t=1}^{T}\nabla_\theta
+       \log\pi_\theta(a_t^{(k)}\mid s_t^{(k)}),
+  \qquad \theta\leftarrow\theta+\alpha\hat g.
+\]
+这就是基本 REINFORCE 思路：用回报为产生该轨迹的动作 log-probability 梯度加权。高回报轨迹提供更大的权重，但一次带噪声的有限样本更新不保证真实性能必然提高。若所有原始回报都为正，较差轨迹也可能得到正向权重；“优于平均才鼓励”需要引入 baseline，而不是原始公式自动具有的性质。
+
+监督学习 MLE 在固定数据上提高观测标签的概率；策略梯度则在当前策略产生的数据上，以回报加权提高动作概率。两者都出现 log-probability，却优化不同目标，不能把二者当成同一个训练任务。
+
+\subsection{一分钟回顾}
+
+Bayes 定理连接 prior、likelihood 与 posterior；分类时可省掉相同的 evidence，但不能随意省掉类别先验。MLE、最大 log-likelihood 与最小 NLL 具有相同最优参数；分类 NLL 就是 one-hot cross-entropy。Naive Bayes 假设给定类别后的特征条件独立，而 GPT 用概率链式法则建模依赖历史的序列。Policy Gradient 将期望回报的梯度写成“回报乘以动作 log-probability 梯度”的期望：环境机制不含策略参数，但策略改变仍会改变轨迹分布。

@@ -1,0 +1,74 @@
+% Genuine lecture examples: Module 6 slides 35, 39--47.
+\exercisegroup{SC3000-L06-EX}{第 06 讲：Supervised Learning 2 与 Policy Gradient}
+
+\exercisemeta
+  {SC3000-L06-EX}
+  {2026-09-21}
+  {Module 6 pp.~35, 39--47}
+  {依照讲义例子展开；不补造缺失的数值条件}
+  {已讲解}
+
+\exercisequestion{SC3000-L06-E01}{贷款偿还分类：从 Bayes 到 Naive Bayes}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L06-T01}{Bayes 定理}；\relatedtopic{SC3000-L06-T03}{Naive Bayes}。
+
+\subsubsection*{题目}
+
+Module 6 p.~35 给出一名申请人的信息：Assets = Yes、Occupation = Manager、Income = 125K，待预测其是否偿还贷款（Repay）。结合 p.~39 的条件独立假设，写出分类方法。讲义此例没有给出完整类别计数或收入的条件分布，因而不能直接算出数值后验或最终类别。
+
+\begin{workedsolution}
+记资产、职业、收入为 $A,O,I$，类别为 $Y\in\{\mathrm{Yes},\mathrm{No}\}$。先比较两类的后验：
+\[
+  \hat y=\arg\max_cP(Y=c\mid A=\mathrm{Yes},O=\mathrm{Manager},I=125K).
+\]
+Bayes 定理把每个后验写成“类条件联合分布乘以类别先验，再除以相同证据”。证据不影响两类的排序，但完整类条件联合分布仍可能难以估计。
+
+加入 Naive Bayes 假设：给定 $Y$ 后，$A,O,I$ 条件独立。分别计算
+\[
+  S_c=P(Y=c)\,P(A=\mathrm{Yes}\mid Y=c)
+       P(O=\mathrm{Manager}\mid Y=c)\,p_I(125K\mid Y=c).
+\]
+若 $S_{\mathrm{Yes}}>S_{\mathrm{No}}$，预测偿还；反之预测不偿还。若需后验且分母非零，再归一化：
+\[
+  P(Y=\mathrm{Yes}\mid x)
+  =\frac{S_{\mathrm{Yes}}}{S_{\mathrm{Yes}}+S_{\mathrm{No}}}.
+\]
+训练数据中若有 $N$ 人、其中 $n_c$ 人属于类别 $c$，可估计先验为 $n_c/N$；资产、职业的条件概率分别在类别 $c$ 内统计。收入作为连续变量时，$p_I$ 是\emph{条件密度}，不能把恰好收入为 125K 的点概率当作密度；也可事先明确收入分箱，再估计离散条件概率。
+
+本题给定信息只足以确定上述计算流程。缺少计数、密度模型或其参数，不能声称最终答案一定是 Yes 或 No，也不能从特征不同的其他贷款示例挪用数字。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L06-E02}{GPT：把一句话变成下一 Token 预测}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L06-T02}{MLE 与交叉熵}；\relatedtopic{SC3000-L06-T04}{自回归语言模型}。
+
+\subsubsection*{讲义示例}
+
+Module 6 p.~40 用 ``Paris is the capital of ?'' 示意根据前缀预测后续文本，pp.~41--47 展示 log-likelihood 训练与 nanoGPT 的生成效果。以下为解释右移标签，将单词暂视为 tokens，以 ``France'' 作为该前缀的示意续写；实际 tokenizer 不一定按整词切分。
+
+\begin{workedsolution}
+对于示意文本 ``Paris is the capital of France''，构造
+\begin{center}
+\begin{tabular}{@{}lccccc@{}}
+  \toprule
+  输入位置 & 1 & 2 & 3 & 4 & 5 \\
+  \midrule
+  Input & Paris & is & the & capital & of \\
+  Target & is & the & capital & of & France \\
+  \bottomrule
+\end{tabular}
+\end{center}
+因果掩码使第 $i$ 个位置只能利用截至该位置的输入。对应的训练损失为
+\begin{align*}
+  L=-\bigl[&\log P_\theta(\mathrm{is}\mid\mathrm{Paris})
+    +\log P_\theta(\mathrm{the}\mid\mathrm{Paris,is})\\
+    &+\log P_\theta(\mathrm{capital}\mid\mathrm{Paris,is,the})\\
+    &+\log P_\theta(\mathrm{of}\mid\mathrm{Paris,is,the,capital})\\
+    &+\log P_\theta(\mathrm{France}\mid\mathrm{Paris,is,the,capital,of})\bigr].
+\end{align*}
+这是以首词 Paris 为已给定前缀的条件 NLL；若要建模包含首词的完整序列概率，还应加入 $-\log P_\theta(\mathrm{Paris}\mid\mathrm{BOS})$。
+
+训练时五个标签都来自原文，而不是模型上一步生成的结果；生成时则从已有前缀预测、选取下一个 token，再把它接回输入。因此，“训练中同时计算多个位置的损失”并不意味着模型可以偷看未来。
+
+p.~47 中 iteration 0 的输出近似杂乱字符，iteration 5000 的输出出现更多英语单词和剧本样式。这说明模型学到了文本统计结构，但不能仅凭这两个生成样例判断所有输出正确或量化模型的泛化能力。
+\end{workedsolution}

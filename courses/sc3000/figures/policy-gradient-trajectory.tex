@@ -1,0 +1,19 @@
+\begin{tikzpicture}[
+  >=Latex,
+  box/.style={draw=noteBlue,rounded corners,fill=noteBlue!5,
+    minimum height=0.85cm,minimum width=1.1cm},
+  flow/.style={->,thick}
+]
+  \node[box] (s1) at (0,0) {$s_1$};
+  \node[box] (a1) at (3,0) {$a_1$};
+  \node[box] (s2) at (6,0) {$s_2$};
+  \node[box] (a2) at (9,0) {$a_2$};
+  \node (dots) at (11,0) {$\cdots$};
+  \draw[flow] (s1) -- node[above,font=\small]{$\pi_\theta(a_1\mid s_1)$} (a1);
+  \draw[flow] (a1) -- node[above,font=\scriptsize]{$P(s_2\mid s_1,a_1)$} (s2);
+  \draw[flow] (s2) -- node[above,font=\small]{$\pi_\theta(a_2\mid s_2)$} (a2);
+  \draw[flow] (a2) -- (dots);
+  \node[font=\small,text=noteBlue] at (1.5,-0.8) {策略选动作};
+  \node[font=\small,text=noteBlue] at (4.5,-0.8) {环境转移};
+  \node[font=\small,text=noteBlue] at (7.5,-0.8) {策略选动作};
+\end{tikzpicture}
