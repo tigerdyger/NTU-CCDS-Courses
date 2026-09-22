@@ -1,0 +1,166 @@
+% Actual class: 07
+% Source: LEC05 Image Segmentation - 2026, PDF pp. 1--26
+% Video scope: transcripts 60715 (Introduction) and 60722 (Thresholding)
+% This is the agreed study split, not a teacher-labelled video/week mapping.
+
+\section{第 07 节课：Image Segmentation and Thresholding}
+\label{lecture:SC4061-L07}
+
+\lecturemeta
+  {SC4061-L07}
+  {2026-09-22}
+  {LEC05 Image Segmentation -- 2026}
+  {本次学习 pp.~1--26：Introduction 与 Thresholding}
+  {字幕 60715、60722；后两个视频的 Texture / Semantic Segmentation 暂未纳入}
+  {已确认本次学习范围（2026-09-22）}
+
+\subsection{本讲主线}
+
+Edge detection 寻找图像中变化明显的位置；image segmentation（图像分割）把像素划分到不同区域。本讲先用灰度直方图描述区域，再用 Otsu 自动选择全局阈值，最后用 Niblack 的局部阈值处理不均匀照明。本次按前两个视频组织学习，后续内容另记。
+
+\lecturetopic{SC4061-L07-T01}{从边缘到区域：分割的输出与依据}
+
+分割可以表示为 label map（标签图）$L(x,y)$：每个像素获得一个区域标签；二类分割也可表示为 binary mask（二值掩膜）。区域内的像素在所选特征上应具有一定相似性，而不同区域之间应有可区分的差异。
+
+\begin{itemize}
+  \item \textbf{灰度（intensity）：}亮物体与暗背景，或暗文字与亮纸面，可用灰度阈值分离。
+  \item \textbf{纹理（texture）：}区域平均灰度可能相近，但局部重复结构、方向或频率不同。
+  \item \textbf{语义（semantics）：}为像素赋予道路、车辆、人物等有意义的类别；通常需要学习更高层的特征。
+\end{itemize}
+
+边缘图只给出候选边界，边缘可能断裂，也未必围成封闭区域，因此不能直接等同于完整分割。反过来，普通区域编号也不自动具有语义：标签 1、2 可以只是两个灰度组，并不意味着系统已经识别出物体类别。同一灰度组还可能包含多个互不相连的区域。
+
+分割常为后续任务提供输入，例如文档中的文字提取与 OCR、场景理解、医学图像区域测量及自动驾驶场景分析。后续视频会展开纹理与语义方法；本讲只研究用一个标量灰度值进行划分的情形。
+
+\lecturetopic{SC4061-L07-T02}{区域统计与归一化直方图}
+
+令区域 $R$ 含 $N$ 个像素，原始灰度为 $f(x,y)$。区域均值与方差定义为
+\[
+  \mu=\frac{1}{N}\sum_{(x,y)\in R}f(x,y),\qquad
+  \sigma^2=\frac{1}{N}\sum_{(x,y)\in R}\bigl(f(x,y)-\mu\bigr)^2.
+\]
+均值描述整体明暗，方差描述区域内部灰度差异。这里是在描述这个区域的经验分布，分母为 $N$，不是无偏样本方差中的 $N-1$；标准差则为 $\sigma=\sqrt{\sigma^2}$。
+
+对 8-bit 灰度图，令 $h(r)$ 为灰度 $r\in\{0,\ldots,255\}$ 出现的像素数，则归一化直方图为
+\[
+  p(r)=\frac{h(r)}{N},\qquad \sum_{r=0}^{255}p(r)=1.
+\]
+讲义称其为 PDF；对离散灰度，更严格的名称是 probability mass function（PMF，概率质量函数）。直接对像素求和与按灰度统计次数后求和等价：
+\[
+  \boxed{\mu=\sum_{r=0}^{255}r\,p(r)},\qquad
+  \boxed{\sigma^2=\sum_{r=0}^{255}(r-\mu)^2p(r)}.
+\]
+这也说明直方图\textbf{不保留空间排列}：打乱像素位置不会改变 $h(r)$、均值或方差，却可能彻底改变物体形状。统计量应从原始灰度计算，而不是把分割标签 0、1 当作原图灰度。
+
+\textbf{对应例题：}\relatedexercise{SC4061-L07-E01}{六像素区域的直方图、均值与方差}。
+
+\lecturetopic{SC4061-L07-T03}{Global Thresholding 与 Otsu 方法}
+
+\subsubsection*{一个阈值怎样产生两个灰度组}
+
+给定全局阈值 $t$，本讲采用
+\[
+  s(x,y)=
+  \begin{cases}
+    0,& f(x,y)\le t,\\
+    1,& f(x,y)>t.
+  \end{cases}
+\]
+在二值显示中 0 为黑色，1 为白色；但黑色不必是背景，例如暗文字就属于低灰度组。提高阈值会使更多像素被归入黑色，降低阈值则会使更多像素变白。
+
+当目标与背景的灰度较好地分离，直方图通常呈现两个峰（bimodal），在两峰之间切分较合理。两组不必具有相同数量的像素。双峰有助于阈值分割，但并不是算法能够运行的必要条件，也不能保证输出符合真实物体边界。
+
+选动态范围中点或图像均值都很简单，却没有直接衡量分割后的类内一致性。讲义 NTU 标志例图中，$t=127$ 会丢失部分文字，$t=230$ 会引入背景杂点；Otsu 给出的 $t=190$ 效果较好。完整比较见\relatedexercise{SC4061-L07-E02}{NTU 标志的三个阈值}。
+
+\subsubsection*{两类的概率、均值与方差}
+
+令低灰度组 $L=\{0,\ldots,t\}$、高灰度组 $H=\{t+1,\ldots,255\}$。它们在整幅图中的比例为
+\[
+  q_L(t)=\sum_{r=0}^{t}p(r),\qquad
+  q_H(t)=\sum_{r=t+1}^{255}p(r),\qquad q_L+q_H=1.
+\]
+以下只考虑 $q_L,q_H>0$ 的候选阈值。省略对 $t$ 的依赖，可写两类均值为
+\[
+  \mu_L=\frac{1}{q_L}\sum_{r=0}^{t}r\,p(r),\qquad
+  \mu_H=\frac{1}{q_H}\sum_{r=t+1}^{255}r\,p(r).
+\]
+除以 $q_L$ 或 $q_H$ 是对类内概率重新归一化：例如 $p(r)/q_L$ 才是在已知像素属于 $L$ 时，其灰度为 $r$ 的条件概率。因此类内方差为
+\[
+  \sigma_L^2=\frac{1}{q_L}\sum_{r=0}^{t}(r-\mu_L)^2p(r),\qquad
+  \sigma_H^2=\frac{1}{q_H}\sum_{r=t+1}^{255}(r-\mu_H)^2p(r).
+\]
+
+\subsubsection*{为什么最小类内方差等价于最大类间方差}
+
+Otsu 最小化按像素比例加权的 within-class variance（类内方差）：
+\[
+  \boxed{\sigma_w^2(t)=q_L\sigma_L^2+q_H\sigma_H^2},\qquad
+  t^*\in\operatorname*{arg\,min}_t\sigma_w^2(t).
+\]
+权重不能随意去掉，否则极小的一组会与包含大多数像素的一组具有同样影响。整幅图的均值满足 $\mu=q_L\mu_L+q_H\mu_H$；between-class variance（类间方差）定义为
+\begin{align*}
+  \sigma_b^2(t)
+  &=q_L(\mu_L-\mu)^2+q_H(\mu_H-\mu)^2\\
+  &=\boxed{q_Lq_H(\mu_L-\mu_H)^2}.
+\end{align*}
+它既考虑均值分离程度，也考虑两组的比例，不只是寻找最大的 $|\mu_L-\mu_H|$。
+
+\textbf{补充推导：方差分解。}对任一类 $C\in\{L,H\}$，将
+$r-\mu=(r-\mu_C)+(\mu_C-\mu)$ 平方，再在该类内取平均：
+\[
+\begin{aligned}
+  \mathbb E[(r-\mu)^2\mid C]
+  &=\mathbb E[(r-\mu_C)^2\mid C]+(\mu_C-\mu)^2\\
+  &\quad+2(\mu_C-\mu)\underbrace{\mathbb E[r-\mu_C\mid C]}_{0}\\
+  &=\sigma_C^2+(\mu_C-\mu)^2.
+\end{aligned}
+\]
+再按类概率加权相加，得到
+\[
+  \boxed{\sigma^2=\sigma_w^2(t)+\sigma_b^2(t)}.
+\]
+左边由原始图像决定，与如何选择 $t$ 无关。因此
+\[
+  \operatorname*{arg\,min}_t\sigma_w^2(t)
+  =\operatorname*{arg\,max}_t\sigma_b^2(t).
+\]
+这里固定的是\emph{原图灰度分布}的总方差，不是二值输出 $s(x,y)$ 的方差。
+
+\subsubsection*{算法与适用边界}
+
+\begin{enumerate}
+  \item 计算原始灰度图的归一化直方图 $p(r)$。
+  \item 遍历候选阈值，计算 $q_L,q_H$，跳过任何一类为空的情况。
+  \item 计算 $\sigma_w^2(t)$ 或 $\sigma_b^2(t)$，选使目标最优的阈值。
+  \item 用该阈值对每个像素产生二值标签。
+\end{enumerate}
+讲义示意遍历 $t=1,\ldots,254$；完整的 8-bit 切分也可以考虑 $t=0$，有效性仍由两类是否非空决定。多个阈值可能获得同一最优值。所谓 ``optimal'' 是对 Otsu 方差目标最优，不保证对每张图的真实前景都最优；照明不均导致前景与背景灰度重叠时，一个全局阈值可能根本不足。
+
+\textbf{对应例题：}\relatedexercise{SC4061-L07-E03}{双峰条件与 Otsu 方差比较}。
+
+\lecturetopic{SC4061-L07-T04}{Niblack Local Thresholding 与不均匀照明}
+
+阴影纸面可能与亮处文字灰度相近，全局阈值会误判阴影或漏掉文字。Local thresholding（局部阈值）利用小邻域内照明通常变化较缓慢的特点，让阈值随位置改变。
+
+对每个中心像素 $(x,y)$，从\textbf{原始灰度图}选取周围 $N\times N$ 窗口，计算局部均值 $\mu_N(x,y)$ 和局部标准差 $\sigma_N(x,y)$。Niblack 定义
+\[
+  \boxed{t(x,y)=\mu_N(x,y)+k\,\sigma_N(x,y)}.
+\]
+讲义常用 $k=-0.2$；$\sigma_N$ 是\textbf{标准差}（p.~25 首句的定义），后文 variance 是误写。每次只用此阈值判断中心像素，再移动窗口，并非给整个窗口赋同一标签。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/global-local-thresholding}}
+  \caption{不均匀照明下的阈值比较。黑线是灰度，凹陷是暗文字；低于阈值时判黑。本图为原创示意，右图不是指定窗口的 Niblack 数值结果。}
+  \label{fig:sc4061-l07-global-local}
+\end{figure}
+
+按 $f\le t$ 判黑的约定，$k<0$ 将阈值放在局部均值以下，可使部分偏暗纸面变白，同时保留更暗的文字。但不保证消除所有背景：严格恒定窗口中 $\sigma_N=0$、$t=\mu_N$，像素恰好等于阈值，仍会输出黑色。
+
+窗口过大可能跨越不同照明区域，过小则难以提供稳定、具有代表性的统计量；计算也比单一阈值复杂。讲义文档例图显示了改善，但未给出实际窗口大小与 $k$，不能将常用值当作例图的确切参数。
+
+\textbf{对应例题：}\relatedexercise{SC4061-L07-E04}{阴影文档为什么需要局部阈值}。
+
+\subsection{一分钟回顾}
+
+分割产生区域标签，边缘检测给出边界线索。直方图保留灰度分布，不保留位置。Otsu 最小化加权类内方差；由 $\sigma^2=\sigma_w^2+\sigma_b^2$，这等价于最大化类间方差。Niblack 用局部均值和\emph{标准差}适应不均匀照明；按 $f\le t$ 判黑时，降低阈值会使更多像素变白。

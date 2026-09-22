@@ -1,0 +1,26 @@
+% Original conceptual cross-section, not measured slide data or a Niblack run.
+\begin{tikzpicture}[font=\small,>=Latex]
+  \foreach \offset/\heading in {0/Global threshold,7.5/Local threshold} {
+    \begin{scope}[xshift=\offset cm]
+      \node[font=\bfseries] at (3,3.7) {\heading};
+      \draw[->] (0,0) -- (6.3,0) node[right] {$x$};
+      \draw[->] (0,0) -- (0,3.35) node[above] {$f$};
+      \draw[very thick,black!75]
+        plot coordinates {(0.3,1.105) (0.7,1.245) (0.7,0.445)
+        (1.1,0.585) (1.1,1.385) (2,1.7) (2,0.9)
+        (2.4,1.04) (2.4,1.84) (3.5,2.225) (3.5,1.425)
+        (3.9,1.565) (3.9,2.365) (5,2.75) (5,1.95)
+        (5.4,2.09) (5.4,2.89) (5.9,3.065)};
+      \node[anchor=north,align=center] at (3,-0.28)
+        {暗处 $\longrightarrow$ 亮处；凹陷为暗文字};
+    \end{scope}
+  }
+  \draw[very thick,dashed,ntuRed] (0.25,1.55) -- (6,1.55)
+    node[right] {$t$};
+  \node[anchor=north,align=center,text=ntuRed] at (3,-0.95)
+    {部分暗纸面低于阈值；\\部分亮处文字高于阈值};
+  \draw[very thick,dashed,noteBlue] (7.75,0.6875) -- (13.5,2.7)
+    node[above left] {$t(x)$};
+  \node[anchor=north,align=center,text=noteBlue] at (10.5,-0.95)
+    {阈值随背景调整，\\可改善两种误判};
+\end{tikzpicture}

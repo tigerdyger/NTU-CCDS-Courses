@@ -1,0 +1,132 @@
+% Related lecture: SC4061-L07
+% Sources: LEC05 Image Segmentation - 2026, PDF pp. 15, 18--26;
+% video transcripts 60715 and 60722. Dialogue checks are not included.
+
+\exercisegroup{SC4061-L07-EX}{第 07 讲：Image Segmentation and Thresholding}
+
+\exercisemeta
+  {SC4061-L07-EX}
+  {2026-09-22}
+  {LEC05 pp.~15、18--26；Thresholding 视频}
+  {讲义例题与讲义自带选择题已核对；补充计算单独注明}
+  {已确认本次学习范围（2026-09-22）}
+
+\noindent\begin{minipage}{\linewidth}
+\exercisequestion{SC4061-L07-E01}{六像素区域的直方图、均值与方差}
+
+\textbf{来源：}讲义 p.~15 的均值例题；方差为基于同一数据的补充计算。
+
+\textbf{对应知识点：}\relatedtopic{SC4061-L07-T02}{区域统计与归一化直方图}。
+
+\subsubsection*{题目}
+
+一个区域的六个灰度值为 $1,2,3,3,3,6$。分别通过像素求和及归一化直方图求均值，并说明两种计算为什么相同。
+\end{minipage}\par
+
+\begin{checkedsolution}
+只有四个灰度的计数非零：
+\begin{center}
+\begin{tabular}{ccccc}
+  \toprule
+  灰度 $r$ & 1 & 2 & 3 & 6 \\
+  \midrule
+  计数 $h(r)$ & 1 & 1 & 3 & 1 \\
+  概率 $p(r)$ & $1/6$ & $1/6$ & $3/6$ & $1/6$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+直接对像素求和得到
+\[
+  \mu=\frac{1+2+3+3+3+6}{6}=3.
+\]
+按直方图加权得到
+\[
+  \mu=1\cdot\frac16+2\cdot\frac16+3\cdot\frac36+6\cdot\frac16=3.
+\]
+后者只是把具有相同灰度的像素合并计数，并未改变总和。若误把四个不同灰度直接平均，得到 $(1+2+3+6)/4=3$ 只是本例的数值巧合，不能据此省略频率权重。
+
+\textbf{补充计算。}对同一个经验分布，方差与标准差分别为
+\[
+  \sigma^2=\frac{(1-3)^2+(2-3)^2+3(3-3)^2+(6-3)^2}{6}
+  =\frac{7}{3},\qquad \sigma=\sqrt{\frac{7}{3}}.
+\]
+灰度 $3$ 出现三次，但其偏离均值为零，因此这三项对方差的贡献为零。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L07-E02}{NTU 标志的三个阈值}
+
+\textbf{来源：}讲义 pp.~18--22 的图像与直方图对比。
+
+\textbf{对应知识点：}\relatedtopic{SC4061-L07-T03}{Global Thresholding 与 Otsu 方法}。
+
+\subsubsection*{题目}
+
+讲义用暗色 NTU 标志与较亮纸面展示全局阈值分割。比较动态范围中点 $t=127$、全图均值 $t=230$ 与 Otsu 阈值 $t=190$，解释为什么前两种简单规则不一定合适。
+
+\begin{checkedsolution}
+在 $f\le t$ 判为黑色、$f>t$ 判为白色的约定下，讲义例图的表现为：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{3.0cm}p{1.35cm}X@{}}
+  \toprule
+  规则 & 阈值 & 讲义展示的结果与原因 \\
+  \midrule
+  动态范围中点 & 127 & 阈值过低，部分文字灰度高于阈值而变白，笔画不完整。\\
+  全图平均灰度 & 230 & 大面积亮背景使均值偏高；阈值过高使部分背景也变黑，出现杂点。\\
+  Otsu & 190 & 按两类的加权方差选择切分，例图中文字与背景的分离较好。\\
+  \bottomrule
+\end{tabularx}
+\end{center}
+直方图中的两组不必一样大：文字像素较少，背景像素较多。Otsu 使用各类所占比例，而不是要求两峰高度相等。$190$ 是讲义报告的该图结果；没有原始像素数据时，不能仅凭示意直方图重新精确算出该阈值。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L07-E03}{双峰条件与 Otsu 方差比较}
+
+\textbf{来源：}讲义 p.~26 第 1、2 题，合并为同一主题的讲义例题。
+
+\textbf{对应知识点：}\relatedtopic{SC4061-L07-T03}{Global Thresholding 与 Otsu 方法}。
+
+\subsubsection*{题目}
+
+\begin{enumerate}[label=(\alph*)]
+  \item 灰度图中两个区域的均值分别为 60 和 190，二者的区域内方差都很小。全局阈值有效的直接依据是什么：像素数相似、直方图近似双峰、方差完全相等，还是像素空间分布均匀？
+  \item 另一幅图的总方差为 $\sigma^2=50$。三个候选阈值给出
+  $\sigma_w^2(t_1)=22$、$\sigma_w^2(t_2)=14$、$\sigma_w^2(t_3)=31$。
+  哪个阈值最大化类间方差？总方差固定是否意味着类间方差也固定？
+\end{enumerate}
+
+\begin{checkedsolution}
+\textbf{(a)} 均值相距较远、各组内部波动又很小，因此灰度分布形成两个分离的集中区，直接有利的性质是\textbf{近似双峰的直方图}（原题 B）。像素数量无需相等；两个小方差无需完全相同；空间重排本身不改变阈值所用的灰度分布。
+
+\textbf{(b)} 用 $\sigma_b^2(t)=\sigma^2-\sigma_w^2(t)$：
+\begin{center}
+\begin{tabular}{cccc}
+  \toprule
+  候选阈值 & $t_1$ & $t_2$ & $t_3$ \\
+  \midrule
+  类内方差 $\sigma_w^2$ & 22 & 14 & 31 \\
+  类间方差 $\sigma_b^2$ & 28 & 36 & 19 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+因此选 $t_2$（原题 B）。总方差固定，只意味着两部分的\emph{和}固定；改变阈值会改变分组，从而改变类内与类间方差的分配。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L07-E04}{阴影文档为什么需要局部阈值}
+
+\textbf{来源：}讲义 pp.~24--25 的文档例图与 p.~26 第 3 题。
+
+\textbf{对应知识点：}\relatedtopic{SC4061-L07-T04}{Niblack Local Thresholding 与不均匀照明}。
+
+\subsubsection*{题目}
+
+文档包含亮纸面上的暗文字，但照明从左到右变化明显。一个全局阈值在一侧能保留文字，却在另一侧漏掉文字或把阴影纸面变成黑色。Otsu、仅对原始灰度做 K-means、Niblack 局部阈值，以及 Gabor 卷积后取最大响应，哪一种最直接处理这个问题？
+
+\begin{checkedsolution}
+选 \textbf{Niblack local thresholding}（原题 C）。关键障碍是阈值应随照明背景改变，而不是只为全图寻找另一个统一数值。Niblack 在每个位置计算
+\[
+  t(x,y)=\mu_N(x,y)+k\sigma_N(x,y),
+\]
+其中两个统计量都来自该位置的原始灰度邻域。随后仅将中心像素与它自己的阈值比较。
+
+Otsu 仍只产生一个全局阈值；仅在原始灰度上聚类也不能区分灰度相近、位置却不同的阴影纸面与文字；Gabor 主要提取纹理特征，不是本题针对照明变化的直接方法。讲义的局部分割例图显示阴影背景明显减少，但这不是对任意图像、窗口或参数都有效的保证。
+\end{checkedsolution}
