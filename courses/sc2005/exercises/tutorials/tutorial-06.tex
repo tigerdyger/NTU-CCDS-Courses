@@ -1,0 +1,173 @@
+% Tutorial set: 06
+% Source: tut6.pdf, Tutorial Six (Deadlocks), p. 6-1 (PDF p. 1), Questions 1--3.
+% No official solutions supplied; checked using Lectures 11--12 and direct calculation.
+% Session date: 2026-09-22
+
+\exercisegroup{SC2005-TUT06}{Tutorial 06：Deadlocks}
+\label{tutorial:SC2005-TUT06}
+
+\exercisemeta
+  {SC2005-TUT06}
+  {2026-09-22}
+  {tut6.pdf，p.~6-1（PDF p.~1），Questions 1--3；原文件无参考答案}
+  {解答依据 Lecture 11--12 的资源模型与银行家算法核对}
+  {已确认（2026-09-22）}
+
+\exercisequestion{SC2005-TUT06-Q01}{Deadlock 判断：就餐限制、自死锁与资源分配图}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L11-T01}{资源分配图}；
+\relatedtopic{SC2005-L11-T02}{死锁条件与预防}。
+
+\subsubsection*{题目}
+
+判断下列说法的正误，并说明理由：
+\begin{enumerate}[label=(\alph*)]
+  \item 五位哲学家的 dining-philosopher problem 中，若最多允许四人同时饥饿，仍可能发生死锁。
+  \item 只涉及单个进程的死锁不可能发生。
+  \item resource-allocation graph（资源分配图，RAG）中出现环，就说明已经发生死锁。
+\end{enumerate}
+
+\begin{checkedsolution}
+\nopagebreak[4]
+\textbf{(a) False。}按标准就餐模型，将限制理解为最多四人进入竞争筷子的区域；每人需要左右两支筷子，吃完会释放。餐桌上的完整等待环需要五人都参与，限制一人不进入即可打断该环。即使四人各持一支筷子，仍有一支空闲，至少一人可以取得所需的另一支并完成，之后释放筷子。因此该限制可以预防此模型中的死锁；它本身不保证无 starvation（饥饿）。
+
+\textbf{(b) False。}单个进程也可能发生 self-deadlock（自死锁）。例如只有进程 $P$ 使用一个初值为 $1$ 的 blocking semaphore（阻塞式信号量），并顺序执行：
+\begin{verbatim}
+wait(S);      // value: 1 -> 0; P obtains the only permit
+wait(S);      // value: 0 -> -1; P blocks here
+signal(S);    // unreachable while the second wait is blocked
+\end{verbatim}
+第二次 \texttt{wait} 等待的许可已由同一进程持有，而释放许可的 \texttt{signal} 又位于其后；没有其他执行者释放许可时，$P$ 无法继续。这里是同一进程的两次调用，不是两个独立进程，也不是忙等循环。
+
+\textbf{(c) False。}无环可排除死锁；有环时必须区分资源实例数。若每种资源仅有一个实例，环足以说明死锁；若某类资源有多个实例，环外进程仍可能释放可替代的实例，使环内进程继续执行。因此在多实例模型中，环是死锁的必要条件，但不是充分条件。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT06-Q02}{单类资源：请求后的 Safe 与 Unsafe State}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L12-T01}{Safe State 与资源模型}；
+\relatedtopic{SC2005-L12-T02}{Safety Algorithm}；
+\relatedtopic{SC2005-L12-T03}{Resource-Request Algorithm}。
+
+\subsubsection*{题目}
+
+系统只有一类资源，初始 $Available=2$，当前分配如下：
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+  \toprule
+  Process & Allocation & Max & Need \\
+  \midrule
+  $P_1$ & 1 & 6 & 5 \\
+  $P_2$ & 1 & 5 & 4 \\
+  $P_3$ & 2 & 4 & 2 \\
+  $P_4$ & 4 & 7 & 3 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+分别判断以下请求若获准，会产生 safe state 还是 unsafe state：
+\begin{enumerate}[label=(\alph*)]
+  \item $P_4$ 接下来申请 $1$ 单位资源。
+  \item $P_3$ 接下来申请 $1$ 单位资源。
+\end{enumerate}
+两问独立，均从上表的初始状态出发，不将 (a) 的试分配带入 (b)。
+
+\begin{checkedsolution}
+\nopagebreak[4]
+两项请求各自均满足 $Request_i\le Need_i$ 及 $Request_i\le Available$，但还须试分配后运行 safety algorithm。试分配同时修改
+\[
+  Available'=Available-Request_i,\quad
+  Allocation_i'=Allocation_i+Request_i,\quad
+  Need_i'=Need_i-Request_i.
+\]
+
+\textbf{(a) Unsafe。}分配给 $P_4$ 后，$Allocation_4'=5$、$Need_4'=2$。以 $Work=Available'=1$ 开始检查，此时
+\[
+  Need'=(5,4,2,2).
+\]
+没有任何进程满足 $Need_i'\le Work$，无法找到安全序列。因此银行家算法应回滚试分配，让 $P_4$ 等待；unsafe 不等于当前已经 deadlocked。
+
+\textbf{(b) Safe。}分配给 $P_3$ 后，$Allocation_3'=3$、$Need_3'=1$，且 $Work=1$。可按下表模拟完成：
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+  \toprule
+  完成的进程 & Need & 完成前 Work & 释放 Allocation & 完成后 Work \\
+  \midrule
+  $P_3$ & 1 & 1 & 3 & 4 \\
+  $P_4$ & 3 & 4 & 4 & 8 \\
+  $P_1$ & 5 & 8 & 1 & 9 \\
+  $P_2$ & 4 & 9 & 1 & 10 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+每一步的 $Need\le Work$ 均成立，所以
+\[
+  \boxed{\langle P_3,P_4,P_1,P_2\rangle}
+\]
+是一个安全序列，可以批准请求。安全性模拟完成一个进程后使用 $Work\leftarrow Work+Allocation_i'$，而不是仅加上 $Need_i'$。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT06-Q03}{多类资源：最小可用量与安全序列}
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L12-T02}{Safety Algorithm}；
+\relatedtopic{SC2005-L12-T03}{Resource-Request Algorithm}。
+
+\subsubsection*{题目}
+
+系统有五个进程 $P_0,\ldots,P_4$ 和四类资源 $A,B,C,D$。下列向量按 $(A,B,C,D)$ 排列，当前 $Available=(0,x,y,1)$：
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+  \toprule
+  Process & Allocation & Need \\
+  \midrule
+  $P_0$ & $(2,2,0,0)$ & $(1,4,0,0)$ \\
+  $P_1$ & $(3,1,0,0)$ & $(0,1,0,0)$ \\
+  $P_2$ & $(1,1,0,0)$ & $(1,0,0,0)$ \\
+  $P_3$ & $(0,0,1,1)$ & $(0,0,1,1)$ \\
+  $P_4$ & $(0,0,1,1)$ & $(0,0,3,2)$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+$P_3$ 接下来请求 $Request_3=(0,0,0,1)$。求可批准此请求且保持系统安全的最小非负整数 $x,y$，说明理由并展示生成安全序列的算法步骤。
+
+\begin{checkedsolution}
+\nopagebreak[4]
+\textbf{先试分配。}请求逐分量不超过 $Need_3$ 和 $Available$。分配后，其他进程数据不变，而
+\[
+  Work=Available'=(0,x,y,0),\qquad
+  Allocation_3'=(0,0,1,2),\qquad Need_3'=(0,0,1,0).
+\]
+
+\textbf{求必要下界。}在银行家算法的完成模拟中，进程取得所需资源并完成后才释放其持有资源。
+\begin{itemize}
+  \item $P_0$ 仍需 $4$ 个 $B$。在它完成前，其他进程最多释放 $P_1$、$P_2$ 各持有的 $1$ 个 $B$，所以 $x+2\ge4$，即 $x\ge2$。不能提前计入 $P_0$ 自己持有的 $2$ 个 $B$。
+  \item $P_4$ 仍需 $3$ 个 $C$。在它完成前，其他进程只有 $P_3$ 能释放 $1$ 个 $C$，所以 $y+1\ge3$，即 $y\ge2$。不能提前计入 $P_4$ 自己持有的 $1$ 个 $C$。
+\end{itemize}
+
+\textbf{证明下界可达到。}取 $x=y=2$，初始 $Work=(0,2,2,0)$，所有 $Finish_i=false$。依次选择满足 $Need_i'\le Work$ 的未完成进程，再令 $Work\leftarrow Work+Allocation_i'$、$Finish_i\leftarrow true$：
+\begin{center}
+\small
+\begin{tabular}{@{}lcccc@{}}
+  \toprule
+  进程 & Need & 完成前 Work & 释放 Allocation & 完成后 Work \\
+  \midrule
+  $P_3$ & $(0,0,1,0)$ & $(0,2,2,0)$ & $(0,0,1,2)$ & $(0,2,3,2)$ \\
+  $P_1$ & $(0,1,0,0)$ & $(0,2,3,2)$ & $(3,1,0,0)$ & $(3,3,3,2)$ \\
+  $P_2$ & $(1,0,0,0)$ & $(3,3,3,2)$ & $(1,1,0,0)$ & $(4,4,3,2)$ \\
+  $P_4$ & $(0,0,3,2)$ & $(4,4,3,2)$ & $(0,0,1,1)$ & $(4,4,4,3)$ \\
+  $P_0$ & $(1,4,0,0)$ & $(4,4,4,3)$ & $(2,2,0,0)$ & $(6,6,4,3)$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+所有比较均逐分量成立，全部进程都可完成。因此
+\[
+  \boxed{x_{\min}=2,\quad y_{\min}=2},\qquad
+  \boxed{\langle P_3,P_1,P_2,P_4,P_0\rangle}.
+\]
+必要下界与可行序列共同证明了最小性。最终 $Work=(6,6,4,3)$ 等于原始 $Available+\sum_iAllocation_i$，也验证了资源记账守恒。
+\end{checkedsolution}
+
+\subsubsection*{一分钟回顾}
+
+单个进程可以等待自己持有的资源而自死锁；多实例 RAG 中的环不保证死锁。银行家算法先检查请求上限和库存，再试分配并寻找安全序列；每个进程完成后加回 Allocation，向量条件必须逐分量满足。求最小资源量时，既要证明任何安全状态都必须满足的下界，也要给出达到下界的安全序列。
