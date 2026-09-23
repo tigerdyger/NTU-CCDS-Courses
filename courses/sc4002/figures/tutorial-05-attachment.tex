@@ -1,0 +1,40 @@
+% Original diagrams for Tutorial 5 Q4; noun-headed adposition convention.
+\begin{tikzpicture}[
+  word/.style={font=\small,draw=noteBlue!40,fill=noteBlue!4,rounded corners,inner sep=3pt},
+  edge/.style={-{Stealth[length=1.8mm]},draw=noteBlue,thick},
+  changed/.style={edge,draw=ntuRed,very thick}]
+\node[font=\small\bfseries] at (0,0.65) {修饰 hid：藏的地点};
+\node[word] (r1) at (0,0) {ROOT};
+\node[word] (h1) at (0,-0.9) {hid};
+\node[word] (s1) at (-1.7,-2) {They};
+\node[word] (l1) at (0,-2) {letter};
+\node[word] (w1) at (1.7,-2) {wall};
+\node[word] (t1) at (0,-3.1) {the$_1$};
+\node[word] (o1) at (1.1,-3.1) {on};
+\node[word] (u1) at (2.3,-3.1) {the$_2$};
+\draw[edge] (r1)--(h1);
+\draw[edge] (h1)--(s1);
+\draw[edge] (h1)--(l1);
+\draw[changed] (h1)--(w1);
+\draw[edge] (l1)--(t1);
+\draw[edge] (w1)--(o1);
+\draw[edge] (w1)--(u1);
+\begin{scope}[xshift=7cm]
+\node[font=\small\bfseries] at (0,0.65) {修饰 letter：哪封信};
+\node[word] (r2) at (0,0) {ROOT};
+\node[word] (h2) at (0,-0.9) {hid};
+\node[word] (s2) at (-1.4,-2) {They};
+\node[word] (l2) at (0.8,-2) {letter};
+\node[word] (t2) at (-0.1,-3.1) {the$_1$};
+\node[word] (w2) at (1.7,-3.1) {wall};
+\node[word] (o2) at (1.1,-4.2) {on};
+\node[word] (u2) at (2.3,-4.2) {the$_2$};
+\draw[edge] (r2)--(h2);
+\draw[edge] (h2)--(s2);
+\draw[edge] (h2)--(l2);
+\draw[edge] (l2)--(t2);
+\draw[changed] (l2)--(w2);
+\draw[edge] (w2)--(o2);
+\draw[edge] (w2)--(u2);
+\end{scope}
+\end{tikzpicture}

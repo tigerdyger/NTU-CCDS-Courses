@@ -1,0 +1,259 @@
+% Tutorial set: 05
+% Source: Tutorial 5-Question.pdf, Grammar and Parsing, pp. 1--2, Q1--Q5
+% Session date: 2026-09-23
+% Checked against source diagrams; Q1 CNF chart and three S parses verified by DP.
+% Q3: explanatory analyses, not captured model outputs. Q5: expected rule behavior.
+
+\exercisegroup{SC4002-TUT05}{Tutorial 05：Grammar and Parsing}
+\label{tutorial:SC4002-TUT05}
+
+\exercisemeta
+  {SC4002-TUT05}
+  {2026-09-23}
+  {Tutorial 5-Question.pdf，pp.~1--2，Q1--Q5}
+  {题目与原图已核对；Q1 表格经递推复核；未提供教师参考答案}
+  {五题已讨论并请求整理；工具题保留分析与运行证据的边界}
+
+\exercisequestion{SC4002-TUT05-Q01}{CKY：Reserve a room at MBS}
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L06-T03}{CNF 与 CKY}；\relatedtopic{SC4002-L06-T02}{Attachment Ambiguity}。
+
+\subsubsection*{题目与文法（原题 p.~1）}
+
+使用给定的 L1 grammar，为 \texttt{Reserve a room at MBS} 绘制 parse table（句法分析表）。原题结构规则重列如下；词汇类别按本句用法补全。
+\[
+\begin{aligned}
+S&\rightarrow NP\ VP\mid Aux\ NP\ VP\mid VP,\\
+NP&\rightarrow Pronoun\mid Proper\text{-}Noun\mid Det\ Nominal,\\
+Nominal&\rightarrow Noun\mid Nominal\ Noun\mid Nominal\ PP,\\
+VP&\rightarrow Verb\mid Verb\ NP\mid Verb\ NP\ PP\mid VP\ PP,\\
+PP&\rightarrow Preposition\ NP.
+\end{aligned}
+\]
+原题右上角另写 $NP\rightarrow Verb\ PP$，而第六讲 p.~7 的对应规则为 $VP\rightarrow Verb\ PP$，疑为笔误。\textbf{以下采用 lecture 版本 $VP\rightarrow Verb\ PP$；此差异不改变本句的有效组合或三种整句推导}，因为本句没有可由 $Verb\ PP$ 直接组成的区间。
+
+\begin{checkedsolution}
+\textbf{1. 边界与 CNF 转换。}令边界为
+\[
+0\ \texttt{Reserve}\ 1\ \texttt{a}\ 2\ \texttt{room}\ 3\
+\texttt{at}\ 4\ \texttt{MBS}\ 5.
+\]
+词汇类别依次为 Verb、Det、Noun、Preposition、Proper-Noun。本题未提供完整词典，按上述语境类别解析，不额外加入 \texttt{Reserve} 的名词用法。
+
+消去 $S\rightarrow VP$、$VP\rightarrow Verb$、$Nominal\rightarrow Noun$、$NP\rightarrow Proper\text{-}Noun/Pronoun$ 等单链规则，并引入
+\[
+X_1\rightarrow Aux\ NP,\qquad X_2\rightarrow Verb\ NP.
+\]
+所得二元结构规则为
+\[
+\begin{aligned}
+S&\rightarrow NP\ VP\mid X_1\ VP\mid Verb\ NP
+   \mid X_2\ PP\mid Verb\ PP\mid VP\ PP,\\
+VP&\rightarrow Verb\ NP\mid X_2\ PP\mid Verb\ PP\mid VP\ PP,\\
+NP&\rightarrow Det\ Nominal,\\
+Nominal&\rightarrow Nominal\ Noun\mid Nominal\ PP,\\
+PP&\rightarrow Preposition\ NP.
+\end{aligned}
+\]
+词汇规则同步传播：\texttt{Reserve} 可由 Verb、VP、S 直接产生；\texttt{room} 可由 Noun、Nominal 产生；\texttt{MBS} 可由 Proper-Noun、NP 产生。$X_1,X_2$ 是辅助类别，不是原文法短语；$X_1$ 在本句中不会出现。
+
+\textbf{2. 完整 chart。}设 $C[i,j]$ 保存边界 $i,j$ 间可取的类别。递推检查所有 $i<k<j$ 及 $A\rightarrow B\ D$，若 $B\in C[i,k]$、$D\in C[k,j]$，则加入 $A$ 并保存回溯来源。
+\begin{center}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}c c c c c c@{}}
+\toprule
+$i\backslash j$ & 1 & 2 & 3 & 4 & 5 \\
+\midrule
+0 & Verb, VP, S & $\varnothing$ & VP, S, $X_2$ & $\varnothing$ & VP, S, $X_2$ \\
+1 & --- & Det & NP & $\varnothing$ & NP \\
+2 & --- & --- & Noun, Nominal & $\varnothing$ & Nominal \\
+3 & --- & --- & --- & Preposition & PP \\
+4 & --- & --- & --- & --- & Proper-Noun, NP \\
+\bottomrule
+\end{tabular}
+\end{center}
+其中 --- 为不适用，$\varnothing$ 为不存在合法类别。关键组合是
+\[
+\begin{aligned}
+C[1,3]&=\{NP\} &&\text{：a room},\\
+C[3,5]&=\{PP\} &&\text{：at MBS},\\
+C[2,5]&=\{Nominal\} &&\text{：room at MBS},\\
+C[1,5]&=\{NP\} &&\text{：a room at MBS}.
+\end{aligned}
+\]
+
+\textbf{3. 保留三条 S 回溯来源。}在 $C[0,5]$ 中：
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}c l X@{}}
+\toprule
+切分 $k$ & 组合 & 恢复后的结构与解释 \\
+\midrule
+1 & $S\rightarrow Verb\ NP$ & PP 在宾语 NP 内，说明是哪一个 room。\\
+3 & $S\rightarrow VP\ PP$ & 已组成的 VP 再接 PP，说明预订动作的地点。\\
+3 & $S\rightarrow X_2\ PP$ & 恢复为 $VP\rightarrow Verb\ NP\ PP$，三个直接子节点。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+省略词汇层并恢复 $S\rightarrow VP$ 后，三种树形为
+\begin{enumerate}
+  \item $[S\ [VP\ Verb\ [NP\ Det\ [Nominal\ Nominal\ PP]]]]$；
+  \item $[S\ [VP\ [VP\ Verb\ NP]\ PP]]$；
+  \item $[S\ [VP\ Verb\ NP\ PP]]$。
+\end{enumerate}
+后两棵树都将 PP 接在 VP 层，只是嵌套方式不同。因此是\textbf{三种句法树、两种主要附着解释}。最后一个格子中的 S 只写一次，但三条 backpointers 必须分别保存；类别集合本身不足以恢复全部树。本表与上述 CNF 的动态规划复核一致，整句 S 恰有三种推导。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT05-Q02}{从给定短语树补充 L1 grammar}
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L06-T01}{CFG 与短语结构}。
+
+\subsubsection*{题目与给定结构（原题 pp.~1--2）}
+
+修改 Q1 的 L1 grammar，使其能够生成原图给定的四棵短语树：
+\begin{enumerate}[label=\alph*)]
+  \item \texttt{I need to fly between Philadelphia and Atlanta.}
+  \item \texttt{I would like to fly on American airlines.}
+  \item \texttt{Please repeat that.}
+  \item \texttt{What is the fare from Atlanta to Denver?}
+\end{enumerate}
+原图的关键直接子节点关系如下；Pro、Nom、Prep 分别统一为 Pronoun、Nominal、Preposition。
+\begin{itemize}
+  \item a：主句为 $S\rightarrow NP\ VP$；need 所在 VP 的子节点是 Verb、VP；\texttt{to fly between ...} 所在 VP 的子节点是 Inf、Verb、PP；两个城市组成的 NP 的子节点为 NP、\texttt{and}、NP。
+  \item b：would 和 like 各自占一个 Verb 节点，并逐层接 VP；最内层 \texttt{to fly on ...} 仍为 Inf、Verb、PP。原图把 \texttt{American airlines} 整体置于一个 Proper-Noun 节点下。
+  \item c：$S\rightarrow VP$；VP 的三个子节点依次为 Adv、Verb、NP；that 由代词组成 NP。
+  \item d：What 作为代词组成主语位置的 NP，is 作为 Verb，后接 \texttt{the fare from Atlanta to Denver} 组成的 NP。两个 PP 依次经 $Nominal\rightarrow Nominal\ PP$ 加到 fare 的名词性结构上。
+\end{itemize}
+
+\begin{checkedsolution}
+从每个父节点读取\emph{直接}子节点，并保留左右顺序，即可提取产生式。原文法之外需要的四条主要结构规则为
+\[
+\boxed{\begin{aligned}
+VP&\rightarrow Verb\ VP,\\
+VP&\rightarrow Inf\ Verb\ PP,\\
+NP&\rightarrow NP\ \texttt{and}\ NP,\\
+VP&\rightarrow Adv\ Verb\ NP.
+\end{aligned}}
+\]
+若将连词也置于词类节点，可把第三条写成 $NP\rightarrow NP\ Conj\ NP$，另加 $Conj\rightarrow\texttt{and}$；它比原图多一个 Conj 节点，需说明表示约定。
+
+a 使用前三条；b 重复使用第一条，再使用第二条；c 使用第四条；d 的结构规则原本已有，不需要额外新增。\textbf{$VP\rightarrow Inf\ VP$ 虽可描述另一种合理结构，但会多出一层 VP，不能代替给定图中的三分支 $VP\rightarrow Inf\ Verb\ PP$。}
+
+词汇覆盖可补为（只列这四句所需项）：
+\[
+\begin{aligned}
+Pronoun&\rightarrow\texttt{I}\mid\texttt{that}\mid\texttt{What},\\
+Verb&\rightarrow\texttt{need}\mid\texttt{would}\mid\texttt{like}\mid
+       \texttt{fly}\mid\texttt{repeat}\mid\texttt{is},\\
+Inf&\rightarrow\texttt{to},\qquad Adv\rightarrow\texttt{Please},\\
+Det&\rightarrow\texttt{the},\qquad Noun\rightarrow\texttt{fare},\\
+Preposition&\rightarrow\texttt{between}\mid\texttt{on}\mid\texttt{from}\mid\texttt{to},\\
+Proper\text{-}Noun&\rightarrow\texttt{Philadelphia}\mid\texttt{Atlanta}\mid\texttt{Denver}
+                   \mid\texttt{American airlines}.
+\end{aligned}
+\]
+大小写按句首约定处理。\texttt{to} 可在不同位置由 Inf 或 Preposition 生成；would 的 Verb 类别沿用题图，不等于推翻 POS tagging 中情态动词的 MD 标签。\texttt{American airlines} 在此是题图的多词专名简写；逐 token 实现时需展开词汇结构或明确先合并为词汇单元。本题要求覆盖给定树，并未要求新增规则立即满足 CNF，也未要求生成所有可能树形。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT05-Q03}{观察五个句子的依存结构}
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L07-T01}{Head 与关系标签}、\relatedtopic{SC4002-L07-T02}{依存树约束}。
+
+\subsubsection*{题目（原题 p.~2）}
+
+使用 \href{https://demos.explosion.ai/displacy}{displaCy Dependency Visualizer} 观察以下五句的 dependency structures；原题也允许使用 GenAI 工具。
+\begin{enumerate}[label=\alph*)]
+  \item \texttt{Do American airlines have a flight between five a.m. and six a.m.?}
+  \item \texttt{I would like to fly on American airlines.}
+  \item \texttt{Please repeat that.}
+  \item \texttt{I need to fly between Philadelphia and Atlanta.}
+  \item \texttt{What is the fare from Atlanta to Denver?}
+\end{enumerate}
+
+\begin{checkedsolution}
+\textbf{分析边界。}以下是解释性结构分析，不是在线模型运行记录或教师标准答案。为聚焦 head 与附着关系，仅列主要边，省略部分功能词、标点和时间表达内部结构；不将这些局部边集合冒称为完整 token-level parse。实际工具输出受模型、分词和标注体系影响。
+
+本题展示一种\emph{以介词为中间节点}的分析形式，与正课名词中心的约定对比如下：
+\[
+\begin{aligned}
+\text{介词中心：}\quad&\texttt{flight}\rightarrow\texttt{through}\rightarrow\texttt{Denver},\\
+\text{正课约定：}\quad&\texttt{flight}\rightarrow\texttt{Denver}\xrightarrow{\mathrm{case}}\texttt{through}.
+\end{aligned}
+\]
+同一分析中应保持约定一致，不能仅因箭头与讲义不同就断言工具错误。关系标签应以具体模型说明为准，参见 \href{https://spacy.io/usage/linguistic-features\#dependency-parse}{spaCy dependency parsing 文档}。
+
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{主句谓词为 have。}主要边为 have$\rightarrow$Do、have$\rightarrow$airlines、have$\rightarrow$flight、airlines$\rightarrow$American、flight$\rightarrow$a。Do 是助动词，倒装到句首不使它成为主要谓词。\texttt{between five a.m. and six a.m.} 是并列端点构成的时间范围；一种自然分析是附着到 flight，限定所询问的航班，另一种可能附着到 have。这里不固定预测器对时间内部 token 的处理。
+  \item \textbf{like 接不定式补语 fly。}主句有 like$\rightarrow$I、like$\rightarrow$would、like$\rightarrow$fly；补语部分有 fly$\rightarrow$to、fly$\rightarrow$on、on$\rightarrow$airlines，以及 airlines$\rightarrow$American。would 修饰主句谓词 like，\texttt{on American airlines} 描述飞行所用航空公司；不定式标记 to 与介词 on 功能不同。
+  \item \textbf{repeat 为祈使句谓词。}主要边为 repeat$\rightarrow$Please、repeat$\rightarrow$that。that 是重复的内容，Please 为礼貌性修饰。隐含的受话者不要求在基本词级依存树中添加一个原句不存在的 you 节点。
+  \item \textbf{need 接补语 fly，地点之间构成并列。}主要边为 need$\rightarrow$I、need$\rightarrow$fly、fly$\rightarrow$to、fly$\rightarrow$between、between$\rightarrow$Philadelphia、Philadelphia$\rightarrow$Atlanta（并列）。and 标记两个地点的并列关系，具体挂接需遵循所选体系。need 与 fly 表示“需要做什么”，不是并列动作。
+  \item \textbf{系词句需要区分标注体系。}一种以 is 为中心的分析有 is$\rightarrow$What、is$\rightarrow$fare、fare$\rightarrow$the，以及 fare$\rightarrow$from$\rightarrow$Atlanta、fare$\rightarrow$to$\rightarrow$Denver。两个 PP 限定 fare 对应的路线；其他体系可能让名词性谓语成为中心，再把 is 作为 copula（系词）依存项，不能把 is 为根当作普遍规则。
+\end{enumerate}
+观察重点是主谓关系、动词补语、介词附着及并列，而不是机械记住某次模型输出。若后续记录实际实验，应同时保存输入、模型／版本、分词与预测图，以便解释差异。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT05-Q04}{两种依存树：They hid the letter on the wall}
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L06-T02}{附着歧义}、\relatedtopic{SC4002-L07-T01}{依存关系}。
+
+\subsubsection*{题目（原题 p.~2）}
+
+为 \texttt{They hid the letter on the wall.} 画出两种 dependency structures，并解释两种附着的含义。
+
+\begin{checkedsolution}
+采用正课的名词中心约定：wall$\rightarrow$on，on 作为 case 标记。两次出现的 the 是不同 token，记为 the$_1$（限定 letter）和 the$_2$（限定 wall）。下图省略句号；箭头均为 head$\rightarrow$dependent，红边突出变化，不另标所有关系类型。
+
+\begin{center}
+\input{figures/tutorial-05-attachment}
+
+{\small 根据原题句子原创绘制；两棵树统一采用正课的介词附着约定。}
+\end{center}
+
+\begin{enumerate}
+  \item \textbf{修饰 hid：}hid$\rightarrow$wall。意思是“他们把信藏在墙上”，PP 说明藏的地点。
+  \item \textbf{修饰 letter：}letter$\rightarrow$wall。意思是“他们藏起了那封在墙上的信”，PP 限定是哪封信，不说明最终藏在哪里。
+\end{enumerate}
+两棵树共同包含 ROOT$\rightarrow$hid、hid$\rightarrow$They、hid$\rightarrow$letter、letter$\rightarrow$the$_1$、wall$\rightarrow$on、wall$\rightarrow$the$_2$；只改变 wall 的 head。每个实际词恰好有一个 head，整体连通且无环。若改用 Q3 的介词中心约定，应整体改成 hid$\rightarrow$on$\rightarrow$wall 或 letter$\rightarrow$on$\rightarrow$wall，不能把两套约定混接。
+\end{checkedsolution}
+
+\exercisequestion{SC4002-TUT05-Q05}{Rule-based Matcher：提取产品描述短语}
+
+\textbf{对应知识：}POS tagging 与基于 token 属性的模式匹配；本题为开放应用题。
+
+\subsubsection*{题目（原题 p.~2）}
+
+探索 \href{https://demos.explosion.ai/matcher}{Rule-based Matcher Explorer}，设计一个 pattern（匹配模式），并说明它对新闻、财报、医疗报告或产品评论等实际文本有何用途。
+
+\begin{checkedsolution}
+\textbf{方案。}选择产品评论，提取“可选副词＋形容词＋名词”的连续短语，作为对产品部件或属性的候选描述：
+\[
+\boxed{ADV?\quad ADJ\quad NOUN}.
+\]
+在 spaCy Matcher 中，一个字典描述一个 token 的约束，\texttt{OP: "?"} 允许该项出现零次或一次：
+\begin{verbatim}
+pattern = [
+    {"POS": "ADV", "OP": "?"},
+    {"POS": "ADJ"},
+    {"POS": "NOUN"}
+]
+\end{verbatim}
+语法依据 \href{https://spacy.io/usage/rule-based-matching\#quantifiers}{spaCy Matcher 官方文档}；匹配对象须已有 POS 标注。设计规则本身不需要重新训练模型，但所用词性标签通常来自现成的标注模型。
+
+\textbf{预期行为（规则推导，非在线运行输出）。}在词性标注符合预期时：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+文本 & 匹配解释 \\
+\midrule
+\texttt{excellent camera} & ADJ NOUN，省略可选 ADV。\\
+\texttt{poor battery} & ADJ NOUN，可提取对 battery 的描述。\\
+\texttt{very good camera} & ADV ADJ NOUN；内部 \texttt{good camera} 也符合模式。\\
+\texttt{the camera is excellent} & 不含相应的连续词性序列，不能提取整段评价。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+对于重叠结果，可按需求保留最长匹配；不能假定可选项自动使短匹配消失。
+
+\textbf{用途与边界。}候选短语可用于归纳用户在 camera、battery、keyboard 等方面的反馈，但此规则既没有限定“名词必须为产品部件”，也没有判断正负情感。\texttt{not good camera} 即使匹配，也不能仅凭 good 判为正面；\texttt{red camera} 等中性描述也可能匹配。词性错误、否定、复合名词、多形容词及不相邻表达都可能引起误提取或漏检。因此准确定位是\emph{候选描述短语提取}，不是完整的 sentiment analysis（情感分析）或依存分析。
+\end{checkedsolution}
