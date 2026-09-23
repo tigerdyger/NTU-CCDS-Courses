@@ -2,9 +2,7 @@
 
 ## 当前状态
 
-截至 2026-09-17，本作业仍在进行中：学生已实现核心训练函数与两阶段主流程，局部训练、模型保存与重载检查通过。数据、批处理和验证接口的单 notebook 整合及完整运行仍待完成，尚未达到提交状态。
-
-本目录只公开项目说明、环境依赖和集群启动脚本，不公开正在评估的作业实现、实验数据或结果。公开仓库不是完整可运行或可提交的作业副本。
+实验与提交包整理已完成，最终材料保留在本地；是否已正式提交不在公开仓库记录。本目录只公开项目说明、环境依赖和集群启动脚本，不公开正在评估的作业实现、实验数据或结果。公开仓库不是完整可运行或可提交的作业副本。
 
 ## 公开与本地内容
 
@@ -47,7 +45,12 @@ cd work/dpo
 
 `cluster/` 中的脚本需要提前准备被忽略的工作文件、数据、独立诊断代码和已验证的 GPU Python 环境，仅克隆公开仓库无法运行。
 
-脚本通过 Slurm 申请计算资源，保留调度器设置的 `CUDA_VISIBLE_DEVICES`。可使用 `SC3000_PYTHON` 指定 Python；默认复用已准备的 `~/sc4001-venv/bin/python`，不会修改该环境或 SC4001 的作业文件。提交前需确认当前账号的 partition、QoS 和资源配额仍适用，并创建 `outputs/slurm/` 日志目录。
+脚本通过 Slurm 申请计算资源，保留调度器设置的 `CUDA_VISIBLE_DEVICES`。可使用 `SC3000_PYTHON` 指定 Python；默认环境按脚本区分：
+
+- `tc1_baseline_smoke.sbatch`、`tc1_baseline_pilot.sbatch` 与 `tc1_sft_dpo.sbatch` 默认复用 `~/sc4001-venv/bin/python`。
+- [`tc1_notebook_full.sbatch`](cluster/tc1_notebook_full.sbatch) 与 [`tc1_notebook_canonical.sbatch`](cluster/tc1_notebook_canonical.sbatch) 默认使用独立的 `~/sc3000-notebook-venv/bin/python`。前者顺序执行 smoke 与 full 验证，后者执行不插入诊断单元、不改写源单元的 canonical 验证；二者依赖本地 `tests-local/run_student_notebook.py`，结果写入按 job ID 区分的新目录。
+
+这些启动脚本不安装依赖或修改 SC4001 的作业文件。提交前需确认当前账号的 partition、QoS 和资源配额仍适用，并创建 `outputs/slurm/` 日志目录。保留脚本用于复现，不表示需要重新训练当前已完成的提交包。
 
 ## 教师 starter 来源
 
