@@ -1,0 +1,6 @@
+# Publish only reviewed, de-identified learning notes from this lab.
+# Keep captures, screenshots, completed answers and classroom code local.
+*
+!.gitignore
+!README.md
+!packet-analysis-notes.md

@@ -6,3 +6,4 @@
 | --- | --- | --- | --- |
 | [`SC2008-LAB01`](lab-01/) | Understanding Networking with Internet Technologies | 网络配置与诊断实验 | 已完成并核对 |
 | [`SC2008-LAB02`](lab-02/) | Programming Network Applications using Sockets | Java socket 编程实验 | 已完成并核对 |
+| [`SC2008-LAB03`](lab-03/) | Sniffing and Analysing Network Packets | Wireshark 抓包与分层封装分析 | 已完成并核对 |
