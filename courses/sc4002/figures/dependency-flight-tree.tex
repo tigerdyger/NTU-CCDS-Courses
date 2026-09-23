@@ -1,0 +1,21 @@
+% Original layout, relations from Week 7-Dependency Parsing p. 3.
+\begin{tikzpicture}[
+  word/.style={font=\small\ttfamily,draw=noteBlue!45,rounded corners,fill=noteBlue!4,inner sep=4pt},
+  rel/.style={font=\scriptsize,fill=white,inner sep=1.5pt},
+  edge/.style={-{Stealth[length=2mm]},thick,draw=noteBlue}]
+\node[word] (root) at (0,0) {ROOT};
+\node[word] (prefer) at (0,-1.05) {prefer};
+\node[word] (i) at (-2,-2.2) {I};
+\node[word] (flight) at (1.1,-2.2) {flight};
+\node[word] (the) at (-1.2,-3.5) {the};
+\node[word] (morning) at (1.1,-3.5) {morning};
+\node[word] (denver) at (3.4,-3.5) {Denver};
+\node[word] (through) at (3.4,-4.65) {through};
+\draw[edge] (root)--(prefer);
+\draw[edge] (prefer)--node[rel,above left]{nsubj}(i);
+\draw[edge] (prefer)--node[rel,above right]{dobj}(flight);
+\draw[edge] (flight)--node[rel,above left]{det}(the);
+\draw[edge] (flight)--node[rel,right]{nmod}(morning);
+\draw[edge] (flight)--node[rel,above right]{nmod}(denver);
+\draw[edge] (denver)--node[rel,right]{case}(through);
+\end{tikzpicture}

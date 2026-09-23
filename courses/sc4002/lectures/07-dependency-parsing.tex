@@ -1,0 +1,127 @@
+% Actual class: 07
+% Source: Week 7-Dependency Parsing.pdf, PDF/slide pp. 1--19 (complete)
+% Video supplement: transcript 69612, complete topic; no timestamps supplied
+% Notes requested on 2026-09-23 after explanation and discussion.
+
+\section{第 07 节课：Dependency Parsing}
+\label{lecture:SC4002-L07}
+
+\lecturemeta
+  {SC4002-L07}
+  {2026-09-23}
+  {Week 7-Dependency Parsing}
+  {PDF / slide pp.~1--19；整份讲义}
+  {本地字幕 69612 覆盖至总结；无时间戳，原稿不收入仓库}
+  {讲解后请求整理（2026-09-23）；讲义例图与算法步骤已核对}
+
+\subsection{本讲主线与范围}
+
+Constituency parsing（成分句法分析）描述词怎样组成 NP、VP 等嵌套短语；dependency parsing（依存句法分析）直接描述词与词之间的语法支配关系。本讲依次介绍 head--dependent 表示与关系标签（pp.~2--10）、树的形式约束（p.~11）、treebank 与短语树转换（pp.~12--14）、transition-based shift-reduce parsing（基于转移的移进规约分析，pp.~15--17），以及歧义、错误决策和带标签动作（pp.~18--19）。Graph-based parsing 和 neural models 仅被提及，不展开其算法。
+
+\lecturetopic{SC4002-L07-T01}{Head、Dependent 与关系标签}
+
+每条 dependency（依存关系）连接两个词：head（中心词）是语法核心，dependent（依存词）相对于它承担主语、宾语或修饰语等功能。箭头统一为
+\[
+  \boxed{\text{head}\xrightarrow{\text{relation}}\text{dependent}}.
+\]
+例如 \texttt{morning flight} 中，\texttt{flight} 是中心词，\texttt{morning} 修饰它，因此是 \texttt{flight}$\rightarrow$\texttt{morning}。中心词不由线性位置或现实重要性决定；一个词也可同时是上层词的 dependent、下层词的 head。
+
+Typed / labeled dependency structure（带类型／带标签的依存结构）同时保留方向与关系类型；untyped / unlabeled structure 省略标签，但仍保留有向边。依存关系直接呈现 predicate（谓词）与 arguments（论元）的部分联系，有助于 question answering、information extraction 和 coreference resolution；它是语义关系的近似，不等于完整语义理解。表示突出关系而非短语嵌套，不意味着词序对解析无用。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+标签 & 含义 & 讲义中的 head $\rightarrow$ dependent \\
+\midrule
+\texttt{nsubj} & 名词性主语 & \texttt{canceled}$\rightarrow$\texttt{United} \\
+\texttt{obj / dobj} & 直接宾语 & \texttt{gives}$\rightarrow$\texttt{apple} \\
+\texttt{iobj} & 间接宾语 & \texttt{gives}$\rightarrow$\texttt{Marry} \\
+\texttt{ccomp} & 从句补语 & 讲义列出类型，未重点展开例子 \\
+\texttt{nmod} & 名词性修饰语 & \texttt{flight}$\rightarrow$\texttt{morning} \\
+\texttt{amod} & 形容词修饰语 & \texttt{flight}$\rightarrow$\texttt{cheapest} \\
+\texttt{nummod} & 数量修饰语 & \texttt{flights}$\rightarrow$\texttt{1000} \\
+\texttt{appos} & 同位语 & \texttt{United}$\rightarrow$\texttt{unit} \\
+\texttt{det} & 限定词 & \texttt{flight}$\rightarrow$\texttt{the} \\
+\texttt{case} & 介词等格标记 & \texttt{Houston}$\rightarrow$\texttt{through} \\
+\texttt{conj} & 并列成分关系 & \texttt{flew}$\rightarrow$\texttt{drove} \\
+\texttt{cc} & 并列连词 & \texttt{drove}$\rightarrow$\texttt{and} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+以上沿用讲义例子的标签；讲义不同页以 \texttt{obj} 或 \texttt{dobj} 表示直接宾语。Universal Dependencies（通用依存）旨在提供跨语言可用的关系规范。POS tag（词性标签）描述词类，dependency label 描述相对于另一个词的语法功能，二者不可混同。
+
+\texttt{United, a unit of UAL, matched the fares} 中，\texttt{unit} 是补充说明 United 的同位语中心词。\texttt{We flew to Denver and drove to Steamboat} 中，\texttt{conj} 连接两个并列动作，\texttt{cc} 则连接到连词 \texttt{and}。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L07-E01}{航班例句与双宾语例句的依存分析}。
+
+\lecturetopic{SC4002-L07-T02}{Dependency Tree 的形式约束}
+
+将结构表示为有向图 $G=(V,A)$，其中 $V$ 是词节点，$A$ 是有序的 head--dependent 边。节点对应 token（具体词位置），而非不同词形的集合：同一个词出现两次仍是两个节点。本讲的基本依存树满足：
+\begin{enumerate}
+  \item 唯一 root（根）没有入边；
+  \item 其余每个节点恰好有一条入边，即恰好一个 head；
+  \item 从根到每个节点都有唯一的有向路径。
+\end{enumerate}
+所以结构必须连通且无环。每个非根节点只有一个 head，\emph{不限制}一个 head 的 dependent 数量；例如动词可以同时指向主语、直接宾语和间接宾语。
+
+需区分 lexical root（句子中的根词）与 artificial ROOT（人工根节点）。在 \texttt{I prefer ...} 中，实际词的根是 \texttt{prefer}；加入人工节点后建立 \texttt{ROOT}$\rightarrow$\texttt{prefer}，此时人工 ROOT 才是无入边节点。ROOT 不是句子中的实际单词。讲义例句通常以主要动词为中心，不应把这一现象当成所有句型的无条件规则。
+
+\lecturetopic{SC4002-L07-T03}{Treebanks 与短语树到依存树的转换}
+
+Dependency treebank（依存树库）可通过人工标注、自动解析后人工修订，或转换已有 constituency treebank 获得。转换依赖 head rules（中心词规则），不是简单删除 NP、VP 节点：
+\begin{enumerate}
+  \item 在每个短语节点中确定 head child（中心子节点），逐层确定该短语的 lexical head（词级中心词）。
+  \item 将每个 non-head child（非中心子节点）的词级中心词，连接为当前短语中心词的 dependent。
+  \item 利用原树的 grammatical relations 和 function tags（功能标签）为边赋予关系标签。
+\end{enumerate}
+例如 $NP\rightarrow DT\ NN$ 中选择 NN 为 head child，\texttt{the board} 产生 \texttt{board}$\rightarrow$\texttt{the}；它作为 \texttt{join} 的宾语时，再产生 \texttt{join}$\rightarrow$\texttt{board}。同一个中心词沿短语层级向上传递，并不产生指向自身的边。选择 head 的规则与标注体系有关，不能脱离规则任意转换。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L07-E02}{Vinken 例句的中心词传递与转换}。
+
+\lecturetopic{SC4002-L07-T04}{Shift-reduce：状态、动作与完成条件}
+
+解析器从左到右读取句子，维护 stack（栈）、input buffer（输入缓冲区）与已建立的边。以下用 $(\sigma,\beta,A)$ 对讲义机制作形式化补充：$\sigma$ 为栈，\textbf{最右端为栈顶}；$\beta$ 为 buffer，最左端为待读词；$A$ 为已建立的边。
+
+设栈顶两个词为 $[\ldots,a,b]$，其中 $b$ 位于栈顶。三种操作为：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l X l@{}}
+\toprule
+操作 & 新增关系与处理 & 结果栈 \\
+\midrule
+Shift & 将 buffer 首词 $w$ 移到栈顶 & $[\ldots,a,b,w]$ \\
+LeftArc & 新增 $b\rightarrow a$，移除次栈顶 $a$ & $[\ldots,b]$ \\
+RightArc & 新增 $a\rightarrow b$，移除栈顶 $b$ & $[\ldots,a]$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+两种 Arc 都是 reduce（规约）操作：\textbf{保留 head，移除 dependent}。移除仅针对工作栈，已经建立的节点和边仍保存在输出树中。Shift 需要 buffer 非空，Arc 需要两个栈元素；人工 ROOT 不能作为 dependent 被移除。
+
+初始化与本讲算法的完成状态分别为
+\[
+  ([\mathrm{ROOT}],[w_1,\ldots,w_n],\varnothing)
+  \quad\longrightarrow\quad
+  ([\mathrm{ROOT}],[],A).
+\]
+Buffer 为空只表示所有词已读入，不保证树已完成。讲义 p.~17 页底对 ``栈为空'' 的简写，应按该页表格及视频补充理解为\textbf{除 ROOT 外为空}。
+
+\subsubsection{为何有关联也不能过早规约}
+
+本讲操作只连接栈顶两个词，并在建立关系后移除 dependent。为了得到目标树，被移除的词应已接收其全部 dependents，否则后续无法再通过这些操作把新的子节点连给它。例如 \texttt{book} 刚入栈时虽最终应依存于 ROOT，却仍需接收后面的 \texttt{me} 和 \texttt{flight}，不能马上将其弹出。Shift 不仅用于 ``当前两词无关系'' 的情况，也用于推迟尚未到时机的规约。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L07-E03}{\texttt{book me the morning flight} 的全部十次操作}。
+
+\lecturetopic{SC4002-L07-T05}{动作决策、歧义与带标签解析}
+
+讲义以 oracle／分类决策模块说明如何根据状态选择操作；例题假定每次选择正确，实际解析器则可能出错。一个句子可能存在多种合理的依存解释；本讲演示的 greedy（贪心）流程不会自动回退尝试其他选择，过早或错误规约会导致后续错误传播。这是该简化流程的限制，不是所有依存解析方法的共同限制。
+
+Unlabeled parsing 只判断连接方向；生成 labeled tree 时，Arc 动作还需预测关系。例如：
+\begin{center}
+\texttt{LeftArc(nsubj)}\qquad\texttt{RightArc(dobj)}
+\end{center}
+因此决策集合扩展为 Shift 以及带具体关系标签的 LeftArc、RightArc。更复杂的搜索、graph-based 和 neural 方法只作为拓展方向提及。
+
+\subsection{一分钟回顾}
+
+Dependency parsing 用词间有向关系替代显式短语节点，箭头从 head 指向 dependent，标签说明后者相对于前者的语法功能。基本依存树中每个非根节点恰有一个 head，但一个 head 可以支配多个词。短语树转换依赖中心词规则与中心词逐层传递。Shift 从 buffer 读词，LeftArc 和 RightArc 都建立关系后移除 dependent；必须避免过早移除仍需接收子节点的词。完成时 buffer 为空、栈仅剩 ROOT；实际贪心动作决策可能出错，带标签解析还要预测关系类型。

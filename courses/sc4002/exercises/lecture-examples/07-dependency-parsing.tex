@@ -1,0 +1,115 @@
+% Related lecture: SC4002-L07
+% Source: Week 7-Dependency Parsing, pp. 3, 6, 13--14, 17
+% Lecture figures and worked example restated with source-checked explanations.
+
+\exercisegroup{SC4002-L07-EX}{第 07 讲：Dependency Parsing}
+
+\exercisemeta
+  {SC4002-L07-EX}
+  {2026-09-23}
+  {Week 7-Dependency Parsing pp.~3, 6, 13--14, 17；本地字幕 69612}
+  {E01--E03 为讲义例图与算法例题的重述及解析，非 Tutorial}
+  {讲解后请求整理；图中关系与操作顺序已核对}
+
+\exercisequestion{SC4002-L07-E01}{读依存树：航班修饰与双宾语}
+
+\textbf{来源与题意：}讲义 pp.~3, 6 的例图。分析 \texttt{I prefer the morning flight through Denver} 与 \texttt{John gives Marry an apple}，区分 head、dependent 及关系类型；人名沿用讲义拼写。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L07-T01}{Head、Dependent 与关系标签}、\relatedtopic{SC4002-L07-T02}{树的约束}。
+
+\begin{workedsolution}
+第一句的主要谓词为 \texttt{prefer}，主语是 \texttt{I}，直接宾语是 \texttt{flight}。\texttt{the}、\texttt{morning}、\texttt{Denver} 直接修饰 \texttt{flight}；\texttt{through} 按讲义的 case 关系依存于 \texttt{Denver}。下图是按该页关系重新布局的有向树，不以节点横向位置表示词序。
+
+\begin{center}
+\input{figures/dependency-flight-tree}
+
+{\small 原创重绘；依据 SC4002 Week 7 p.~3，标签沿用讲义。}
+\end{center}
+
+\texttt{flight} 对 \texttt{prefer} 而言是 dependent，对三个修饰词而言则是 head。\texttt{the} 修饰的是 \texttt{flight}，而不是相邻的 \texttt{morning}；\texttt{through Denver} 的箭头为 \texttt{Denver}$\rightarrow$\texttt{through}，不能按词的前后位置猜方向。
+
+第二句以 \texttt{gives} 为中心：谁给？John；给什么？apple；给谁？Marry。因此
+\[
+\begin{aligned}
+\texttt{gives}&\xrightarrow{\mathrm{nsubj}}\texttt{John}, &
+\texttt{gives}&\xrightarrow{\mathrm{obj}}\texttt{apple},\\
+\texttt{gives}&\xrightarrow{\mathrm{iobj}}\texttt{Marry}, &
+\texttt{apple}&\xrightarrow{\mathrm{det}}\texttt{an}.
+\end{aligned}
+\]
+\texttt{an} 限定 apple，不直接依存于 gives。加入人工节点时另有 ROOT$\rightarrow$gives。主语、直接宾语、间接宾语是相对于动词的不同语法功能，不是三个不同的词性标签。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L07-E02}{短语树转换：Vinken will join ...}
+
+\textbf{来源与题意：}讲义 pp.~13--14。根据给定短语树的 head 标记，将 \texttt{Vinken will join the board as a nonexecutive director Nov 29} 转换成词级依存结构。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L07-T03}{Treebanks 与中心词转换}。
+
+\begin{workedsolution}
+先确定局部短语的 lexical heads，再让非中心子短语的 head 依存于当前短语的 head：
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+短语或结构 & 给定 head & 对应依存边 \\
+\midrule
+\texttt{the board} & \texttt{board} & board$\rightarrow$the \\
+\texttt{a nonexecutive director} & \texttt{director} & director$\rightarrow$a；director$\rightarrow$nonexecutive \\
+\texttt{as a nonexecutive director} & \texttt{director} & director$\rightarrow$as \\
+\texttt{Nov 29} & \texttt{29} & 29$\rightarrow$Nov \\
+整句及动词短语 & \texttt{join} & join$\rightarrow$Vinken、will、board、director、29 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+例如在 $NP\rightarrow DT\ NN$ 中选择 NN：board 代表整个 \texttt{the board}，然后在更高层连接 join$\rightarrow$board。join 作为同一个词级 head 沿 VP、S 向上传递，不生成 join$\rightarrow$join。日期与介词短语的 head 选择按本页原图，不另行改用其他体系；转换需要这些规则，不能只删除短语节点。原树的 NP-SBJ 等功能标记还可帮助赋予依存标签。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L07-E03}{Shift-reduce：book me the morning flight}
+
+\textbf{来源与题意：}讲义 p.~17 的完整算法例题。从 $[\mathrm{ROOT}]$ 与全句 buffer 出发，用 Shift、LeftArc、RightArc 构造给定依存树，并说明规约时机和结束条件。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L07-T04}{Shift-reduce 状态与动作}、\relatedtopic{SC4002-L07-T05}{动作决策}。
+
+\begin{workedsolution}
+目标边为
+\[
+\begin{gathered}
+\mathrm{ROOT}\rightarrow\texttt{book},\qquad
+\texttt{book}\xrightarrow{\mathrm{iobj}}\texttt{me},\qquad
+\texttt{book}\xrightarrow{\mathrm{dobj}}\texttt{flight},\\
+\texttt{flight}\xrightarrow{\mathrm{det}}\texttt{the},\qquad
+\texttt{flight}\xrightarrow{\mathrm{nmod}}\texttt{morning}.
+\end{gathered}
+\]
+为紧凑展示全部状态，令 $R=\mathrm{ROOT}$、$b=\texttt{book}$、$m=\texttt{me}$、$t=\texttt{the}$、$M=\texttt{morning}$、$f=\texttt{flight}$。\textbf{栈顶在右；每行状态为执行该行动作之后}，不同于讲义原表的操作前状态写法。操作演示暂不预测边标签。
+
+\begin{center}
+\small
+\begin{tabular}{@{}r l l l l@{}}
+\toprule
+步骤 & 操作 & Stack & Buffer & 新增关系 \\
+\midrule
+0 & 初始化 & $[R]$ & $[b,m,t,M,f]$ & --- \\
+1 & Shift & $[R,b]$ & $[m,t,M,f]$ & --- \\
+2 & Shift & $[R,b,m]$ & $[t,M,f]$ & --- \\
+3 & RightArc & $[R,b]$ & $[t,M,f]$ & $b\rightarrow m$ \\
+4 & Shift & $[R,b,t]$ & $[M,f]$ & --- \\
+5 & Shift & $[R,b,t,M]$ & $[f]$ & --- \\
+6 & Shift & $[R,b,t,M,f]$ & $[]$ & --- \\
+7 & LeftArc & $[R,b,t,f]$ & $[]$ & $f\rightarrow M$ \\
+8 & LeftArc & $[R,b,f]$ & $[]$ & $f\rightarrow t$ \\
+9 & RightArc & $[R,b]$ & $[]$ & $b\rightarrow f$ \\
+10 & RightArc & $[R]$ & $[]$ & $R\rightarrow b$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{enumerate}
+  \item 第 1 步后不能立即 ROOT$\rightarrow$book 并弹出 book：它尚需接收 me 和 flight。先读入 me，建立 book$\rightarrow$me 后可移除 me，因为本例中它没有待接收的子节点。
+  \item the 与 morning 都修饰尚未读入的 flight，不能仅因相邻而把两者互连；连续 Shift，直到 flight 入栈。
+  \item 栈顶为 morning、flight 时，LeftArc 建立 flight$\rightarrow$morning 并移除 morning；下一次 LeftArc 建立 flight$\rightarrow$the 并移除 the。两次都保留中心词 flight。
+  \item flight 的修饰词处理完毕后，RightArc 建立 book$\rightarrow$flight；最后再建立 ROOT$\rightarrow$book。第 6 步 buffer 虽已空，但还需要四次规约。
+\end{enumerate}
+最终栈只剩 ROOT，buffer 为空，五条目标边全部建立。五个实际词各 Shift 一次、各作为 dependent 移出栈一次，共十次操作；人工 ROOT 不弹出。
+\end{workedsolution}
