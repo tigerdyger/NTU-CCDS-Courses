@@ -1,0 +1,116 @@
+% Based on templates/lecture-example.tex.
+% Source: Part6a (RTOS).pdf, PDF pp. 9, 11, 13--18.
+% Given examples; intermediate calculations reconstructed from the task model.
+
+\exercisegroup{SC2005-L13-EX}{第 13 讲：实时任务模型与 RM/EDF 调度}
+
+\exercisemeta
+  {SC2005-L13-EX}
+  {2026-09-24}
+  {Part6a (RTOS)，PDF pp.~9、11、13--18}
+  {讲义参数与时间线已核对；中间决策补全推导}
+  {已完成讲解}
+
+\exercisequestion{SC2005-L13-E01}{单次任务与周期任务的 deadline}
+
+\textbf{来源：}6a PDF pp.~9、11 的模型示例。\quad
+\textbf{对应：}\relatedtopic{SC2005-L13-T01}{实时任务模型}。
+
+单次任务为 $P_1=\langle0,5,10\rangle$、$P_2=\langle5,10,35\rangle$、$P_3=\langle20,10,30\rangle$，参数次序是 $\langle R,C,D\rangle$。另有周期任务 $\langle T,C,D\rangle=\langle10,5,7\rangle$，首次释放在 $0$。解释执行需求与各实例 deadline。
+
+\begin{checkedsolution}
+单次任务的截止时刻分别为 $0+10=10$、$5+35=40$、$20+30=50$，执行需求依次为 $5,10,10$。例如 $P_2$ 从时刻 $5$ 起可执行，在 $40$ 前累计获得 $10$ 单位 CPU 时间即可，等待不计入执行需求。
+
+周期任务每隔 $10$ 单位释放一次，每次需执行 $5$，释放后 $7$ 单位内完成：
+\[
+\begin{array}{c|rrrr}
+  k&0&1&2&3\\\hline
+  r_k&0&10&20&30\\
+  d_k&7&17&27&37
+\end{array}
+\]
+此处 $T=10\ne D=7$；两个三元组的第一个参数不能混淆。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L13-E02}{为什么 FCFS、SJF 与 RR 会错过 deadline}
+
+\textbf{来源：}6a PDF p.~13，Why Classic Algorithms Fail?\quad
+\textbf{对应：}\relatedtopic{SC2005-L13-T01}{普通调度的局限}。
+
+五个非周期任务如下，$d=R+D$ 一列为补全计算。按讲义的到达平局顺序、非抢占式 SJF 以及 $q=5$ 的 RR，判断超时任务。
+\begin{center}
+\begin{tabular}{@{}crrrr@{}}
+\toprule
+任务 & $R$ & $C$ & $D$ & $d$ \\
+\midrule
+$P_1$ & 0 & 20 & 30 & 30 \\
+$P_2$ & 0 & 5 & 10 & 10 \\
+$P_3$ & 5 & 10 & 35 & 40 \\
+$P_4$ & 20 & 10 & 30 & 50 \\
+$P_5$ & 25 & 5 & 10 & 35 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{checkedsolution}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXl@{}}
+\toprule
+算法 & 讲义给出的 CPU 时间线 & 超时任务 \\
+\midrule
+FCFS & $0$--$20:P_1$；$20$--$25:P_2$；$25$--$35:P_3$；$35$--$45:P_4$；$45$--$50:P_5$ & $P_2,P_5$ \\
+SJF & $0$--$5:P_2$；$5$--$15:P_3$；$15$--$35:P_1$；$35$--$40:P_5$；$40$--$50:P_4$ & $P_1,P_5$ \\
+RR & 每段 $5$：$P_1,P_2,P_1,P_3,P_1,P_3,P_4,P_1,P_5,P_4$；从 $0$ 到 $50$ & $P_1,P_5$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+FCFS 中 $P_2$ 完成于 $25>10$，$P_5$ 完成于 $50>35$。SJF 在时刻 $5$ 选择比 $P_1$ 更短的 $P_3$，之后 $P_1$ 非抢占地运行至 $35>30$；$P_5$ 完成于 $40>35$。RR 中 $P_1$ 与 $P_5$ 分别完成于 $40>30$、$45>35$。到达顺序、执行长度与时间片公平性均不直接等价于 deadline 紧迫程度。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L13-E03}{RM：固定优先级与收紧 deadline 的后果}
+
+\textbf{来源：}6a PDF pp.~14--17。\quad
+\textbf{对应：}\relatedtopic{SC2005-L13-T02}{RM}。
+
+三个周期任务首次均在 $0$ 释放：$P_1=\langle10,6,10\rangle$、$P_2=\langle19,4,19\rangle$、$P_3=\langle20,2,20\rangle$，次序为 $\langle T,C,D\rangle$。单 CPU、可抢占、忽略开销，按 RM 调度；再将 $P_3$ 的 $D$ 改为 $14$，分析影响。
+
+\begin{checkedsolution}
+由 $10<19<20$，固定优先级为 $P_1>P_2>P_3$。下图按讲义重绘前 $20$ 单位，编号下标表示任务，不区分同任务的不同实例：
+\begin{center}
+  \input{figures/rtos-rm-edf-gantt}
+\end{center}
+RM 行对应：$P_1$ 在 $0$--$6$ 完成第一实例，$P_2$ 在 $6$--$10$ 完成第一实例；时刻 $10$ 新来的 $P_1$ 第二实例优先于等待中的 $P_3$，运行至 $16$；$P_3$ 在 $16$--$18$ 执行。$18$--$19$ 无就绪任务，$19$--$20$ 执行 $P_2$ 第二实例。时刻 $20$ 新来的 $P_1$ 抢占它，运行至 $26$，随后 $P_2$ 完成剩余 $3$ 单位，结束于 $29$。
+
+原参数下 $P_3$ 第一实例完成于 $18\le20$。改为 $D_3=14$ 后，$T_3$ 不变，RM 顺序不变，因此 $18>14$，错过 deadline。上图 RM 行按收紧后的 deadline 标出失败位置；EDF 行的 $P_2$ 参数另见下一例，不能误当两行全部参数相同。
+\end{checkedsolution}
+
+\par\noindent\begin{minipage}{\textwidth}
+\exercisequestion{SC2005-L13-E04}{EDF：绝对截止时刻决定是否抢占}
+
+\textbf{来源：}6a PDF p.~18。\quad
+\textbf{对应：}\relatedtopic{SC2005-L13-T03}{EDF}。
+
+任务为 $P_1=\langle10,6,10\rangle$、$P_2=\langle19,4,17\rangle$、$P_3=\langle20,2,14\rangle$，首次释放均为 $0$，模型假设同前。注意此页 $D_2=17$，不是上一页的 $19$。推导前 $31$ 单位的 EDF 调度。
+\end{minipage}\par
+
+\begin{checkedsolution}
+每次比较已释放未完成实例的 $d=r+D$，不是直接比较 $D$。时间线及关键决策为：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\toprule
+时段 & 执行 & 决策与截止时刻 \\
+\midrule
+$0$--$6$ & $P_1$ 第一次 & 初始 deadline 为 $10,17,14$，先选 $10$。 \\
+$6$--$8$ & $P_3$ 第一次 & $14<17$，先执行 $P_3$。 \\
+$8$--$12$ & $P_2$ 第一次 & 时刻 $10$ 新 $P_1$ 的 deadline 是 $20$；当前 $P_2$ 的 $17$ 更早，不抢占。 \\
+$12$--$18$ & $P_1$ 第二次 & 需执行 $6$，完成于 $18\le20$。 \\
+$18$--$19$ & 空闲 & 所有已释放实例均完成。 \\
+$19$--$20$ & $P_2$ 第二次 & deadline 为 $19+17=36$，先执行 $1$ 单位。 \\
+$20$--$26$ & $P_1$ 第三次 & 新实例 deadline 为 $30$，早于 $P_3$ 的 $34$ 与 $P_2$ 的 $36$，抢占 $P_2$。 \\
+$26$--$28$ & $P_3$ 第二次 & $34<36$，执行 $2$ 单位。 \\
+$28$--$31$ & $P_2$ 第二次 & 完成剩余 $3$ 单位；时刻 $30$ 新 $P_1$ 的 deadline 为 $40$，不抢占。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+已在表中完成的实例都满足各自 deadline。时刻 $30$ 释放的 $P_1$ 随后在 $31$--$37$ 执行，早于其 deadline $40$；这段为按相同规则补全。$P_2$ 可以在时刻 $10$ 优先于新 $P_1$，又在时刻 $20$ 被新 $P_1$ 抢占，体现按\textbf{实例} deadline 动态排序，而非给任务永久排序。
+\end{checkedsolution}

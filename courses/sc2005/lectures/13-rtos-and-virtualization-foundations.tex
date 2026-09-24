@@ -1,0 +1,105 @@
+% Based on templates/lecture.tex.
+% Lecture 13, 2026-09-24. Learning split, not a confirmed official daily boundary.
+% Sources: Part6a (RTOS).pdf, PDF pp. 1--19; Part6b (Virtualization).pdf, PDF pp. 1--7.
+% Both decks use 1.x footers. Local videos 6.1--6.2 sampled visually, not transcribed.
+% Online 6.3--6.6 unavailable; title-based correspondence only.
+
+\section{第 13 节课：RTOS、RM/EDF 与虚拟化导论}
+\label{lecture:SC2005-L13}
+
+\lecturemeta
+  {SC2005-L13}
+  {2026-09-24}
+  {Part6a (RTOS)；Part6b (Virtualization)}
+  {6a：PDF pp.~1--19；6b：PDF pp.~1--7；两份讲义页脚均沿用 1.x}
+  {Part 6.1--6.2 抽样画面与讲义吻合，未完整转写；6.3 仅按标题对应基础概念，线上内容未读取}
+  {用户已完成本次学习；讲义已核对；两讲分界为学习安排，非教师逐日范围确认}
+
+\keyidea{实时调度关注结果能否按 deadline 完成；虚拟化关注如何通过中间层向上层提供兼容、受管理的资源视图。下一讲从 6b PDF p.~8 的三种虚拟化机制继续。}
+
+\lecturetopic{SC2005-L13-T01}{Real-Time 要求与任务模型}
+
+\textbf{Cyber-Physical Systems（信息物理系统，CPS）}通过传感器、计算与执行器监控和控制物理过程：
+\[
+  \text{环境}\longrightarrow\text{传感器}\longrightarrow
+  \text{控制计算}\longrightarrow\text{执行器}\longrightarrow\text{环境}.
+\]
+汽车制动、航空控制和医疗设备的计算结果必须及时作用于环境。Deadline（截止时间）由应用及物理过程决定，还需考虑感知、通信、计算和故障恢复等时间开销。
+
+\textbf{Real-time（实时）不等于 fast（快速）。}正确性同时包括 functional correctness（功能正确性）与 temporal correctness（时间正确性）。平均响应快不能保证不超时；实时性强调在规定假设与负载下，\textbf{即使最坏情况也具有可预测的时间行为}。讲义 p.~6 的“平均深度很浅却有深坑的河”说明平均值不能替代最坏情况保证。RTOS 提供相应调度与响应机制，但不会自动使任意程序满足 deadline。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+  \toprule
+  模型 & 参数 & 释放与截止时刻 \\
+  \midrule
+  单次实例 $\langle R,C,D\rangle$ & $R$：release time；$C$：CPU 执行需求；$D$：relative deadline & 从 $R$ 起可运行，absolute deadline 为 $d=R+D$。 \\
+  周期任务 $\langle T,C,D\rangle$ & $T$：period；每次需执行 $C$，释放后允许 $D$ & 若初始释放为 $0$，则 $r_k=kT$，$d_k=kT+D$，$k=0,1,\ldots$。 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Task（任务）可以反复产生 job / instance（作业实例）；每个实例有自己的释放和绝对截止时刻。$C$ 不包含等待 CPU 的时间；若允许抢占，可分段累计执行。不晚于 $d$ 完成即满足 deadline。$T$ 与 $D$ 不一定相等；sporadic task（偶发任务）的 $T$ 则表示相邻释放的\textbf{最小间隔}。实际保证需要可靠的执行时间上界；本讲例题使用给定的执行需求、单 CPU、可抢占的理想模型，忽略切换开销（SJF 例题另指定非抢占）。
+
+\textbf{普通调度的局限。}FCFS 看到达顺序，SJF 看执行长度，RR 看时间片轮转；这些规则本身不以 deadline 为依据，平均性能好或公平不等于实时保证。讲义 p.~13 的失败例见\relatedexercise{SC2005-L13-E02}{FCFS、SJF 与 RR}；参数辨析见\relatedexercise{SC2005-L13-E01}{单次与周期任务}。
+
+\lecturetopic{SC2005-L13-T02}{Rate Monotonic：按周期分配固定优先级}
+
+RM（速率单调调度）按任务的周期或最小释放间隔 $T$ 分配 fixed priority（固定优先级）：
+\[
+  \boxed{T_i<T_j\ \Longrightarrow\ P_i\text{ 的优先级高于 }P_j.}
+\]
+同一任务各实例的优先级不变；周期相同时另行打破平局。就绪的高优先级实例可抢占低优先级实例，即使后者更早释放。名称中的 rate 指 $1/T$，不是 CPU 运行速度。
+
+\textbf{关键边界。}RM 不直接比较 $D$ 或 $r_k+D$：只缩短某任务的 deadline、保持 $T$ 不变，不会提升其优先级。讲义 pp.~16--17 中 $P_3$ 的 $D$ 从 $20$ 缩短为 $14$ 后，仍在 $16$--$18$ 执行，因而超时；完整时间线见\relatedexercise{SC2005-L13-E03}{RM 与 deadline miss}。
+
+\lecturetopic{SC2005-L13-T03}{Earliest Deadline First：按实例截止时刻动态排序}
+
+EDF（最早截止时间优先）在\textbf{已释放、尚未完成的就绪实例}中，选择 absolute deadline 最早者：
+\[
+  \boxed{\text{选择最小的 }d_{i,k}=r_{i,k}+D_i,\quad\text{不是最小的 }D_i.}
+\]
+新实例到来时重新比较；只有它的 deadline 更早时，才需要抢占当前实例。同一任务与其他任务之间的优先关系可随实例改变，故为 dynamic-priority scheduling（动态优先级调度）。同一时刻比较剩余至 deadline 的时间与比较绝对 deadline 等价，但不能把相对参数 $D_i$ 当作剩余时间。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+  \toprule
+  对比 & RM & EDF \\
+  \midrule
+  排序依据 & 任务周期 $T$ 越短越优先 & 实例绝对 deadline 越早越优先 \\
+  优先级性质 & 固定；同一任务各实例相同 & 动态；按就绪实例比较 \\
+  实现 & 相对简单，可按固定优先级组织队列 & 需维护按实例 deadline 排列的就绪队列 \\
+  高负载下 & 固定高优先级任务较容易得到保护 & 超载影响可能波及更多任务，不能保证全部按时完成 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+EDF 更灵活不等于能解决任意超载；RM 的可预测性也不是无条件的 deadline 保证。有限时间线中的实例均按时完成，不足以证明无限运行期间始终可调度。
+
+讲义 p.~18 中 $P_2=\langle19,4,17\rangle$，其相对 $D$ 与 p.~17 的 $19$ 不同。应逐页采用实际参数；具体决策见\relatedexercise{SC2005-L13-E04}{EDF 的绝对 deadline 与抢占}。
+
+\lecturetopic{SC2005-L13-T04}{Virtualization：间接层、兼容抽象与隔离}
+
+Virtualization（虚拟化）利用 indirection（间接层）向上层提供 compatible abstraction（兼容抽象）。上层通过虚拟资源的身份与接口使用资源，映射层负责实际分配，隐藏底层物理名称与位置，支持 isolation（隔离）和 modularity（模块化）。
+
+\begin{center}
+\begin{tikzpicture}[>=Latex,font=\small,node distance=0.35cm,
+  layer/.style={draw=noteBlue,rounded corners,align=center,text width=9cm,minimum height=0.65cm}]
+  \node[layer,fill=blue!6] (v) {Virtual resource（虚拟资源）：上层看到的接口与身份};
+  \node[layer,fill=orange!10,below=of v] (m) {Mapping / management layer（映射与管理层）};
+  \node[layer,fill=green!8,below=of m] (p) {Physical resource（物理资源）：CPU、磁盘、内存等};
+  \draw[->] (v)--(m); \draw[->] (m)--(p);
+\end{tikzpicture}
+\par\small 依据 6b PDF pp.~5--7 的分层思想自行绘制。
+\end{center}
+
+\textbf{Compatible 不等于 identical。}例如虚拟 CPU 应提供上层预期的处理器行为，但不要求它永久独占一个物理核心，也不保证与独占硬件性能完全相同。兼容描述接口与行为，具体实现和映射可以不同。
+
+已有的进程调度让多个进程分时共享核心；进一步的 CPU virtualization 可让多个 VM（虚拟机）共享硬件，每个 VM 内再运行自己的 OS 与进程。讲义列出的动机为：
+\begin{itemize}
+  \item \textbf{提高资源利用率：}多个工作负载共享物理 CPU，减少闲置；虚拟 CPU 数量不等于物理核心数量。
+  \item \textbf{隔离工作负载：}提供分开的资源视图与控制边界，支持安全和性能管理；不意味着共享硬件后绝无干扰。
+  \item \textbf{支持多个 OS：}同一物理机器承载多个操作系统环境，而非仅由一个 OS 管理多个进程。
+\end{itemize}
+本讲止于基本思想；multiplexing、aggregation、emulation 以及 VM/VMM 的具体结构留待下一讲。
+
+\textbf{一分钟回顾。}实时系统同时要求功能与时间正确，不能以平均速度替代最坏情况保证。单次任务的绝对 deadline 是 $R+D$，周期任务的第 $k$ 次 deadline 是 $kT+D$；执行需求 $C$ 不包含等待。RM 按周期分配固定优先级，EDF 按就绪实例的绝对 deadline 动态排序。虚拟化通过中间层提供兼容资源视图，目的包括共享、隔离与在同一硬件上承载多个 OS。

@@ -1,0 +1,18 @@
+% Original redraw from Part6a PDF pp. 17--18, restricted to [0,20].
+\begin{tikzpicture}[x=0.62cm,y=1cm,>=Latex,font=\small]
+  \node[anchor=east] at (-0.4,1.65) {RM};
+  \node[anchor=east] at (-0.4,0.05) {EDF};
+  \foreach \a/\b/\p/\col in {0/6/1/blue,6/10/2/green,10/16/1/blue,16/18/3/orange,19/20/2/green}{
+    \draw[fill=\col!16] (\a,1.35) rectangle (\b,1.95) node[midway] {$P_{\p}$};
+  }
+  \draw[fill=gray!8] (18,1.35) rectangle (19,1.95);
+  \foreach \a/\b/\p/\col in {0/6/1/blue,6/8/3/orange,8/12/2/green,12/18/1/blue,19/20/2/green}{
+    \draw[fill=\col!16] (\a,-0.25) rectangle (\b,0.35) node[midway] {$P_{\p}$};
+  }
+  \draw[fill=gray!8] (18,-0.25) rectangle (19,0.35);
+  \foreach \t in {0,6,10,16,18,19,20}{\draw (\t,1.35)--(\t,1.23) node[below,font=\scriptsize]{\t};}
+  \foreach \t in {0,6,8,12,18,19,20}{\draw (\t,-0.25)--(\t,-0.37) node[below,font=\scriptsize]{\t};}
+  \draw[->,red,thick] (14,2.55)--(14,2.0);
+  \node[anchor=south,font=\scriptsize,text=red] at (14,2.55) {$P_3$: deadline $14$，尚未执行};
+  \node[anchor=north,font=\scriptsize] at (10,-0.9) {灰色段为空闲；RM：$D_2=19$；EDF：$D_2=17$；两行均取 $D_3=14$。};
+\end{tikzpicture}
