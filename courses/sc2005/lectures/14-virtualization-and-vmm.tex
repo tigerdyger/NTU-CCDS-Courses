@@ -1,0 +1,145 @@
+% Based on templates/lecture.tex.
+% Lecture 14, 2026-09-25. Agreed learning split, not an official daily boundary.
+% Source: Part6b (Virtualization).pdf, PDF pp. 8--31 (footers 1.8--1.31).
+% pp. 30--31 explicitly marked non-examinable. Online videos not accessed.
+
+\section{第 14 节课：虚拟化机制、Virtual Machines 与 VMM}
+\label{lecture:SC2005-L14}
+
+\lecturemeta
+  {SC2005-L14}
+  {2026-09-25}
+  {Part6b (Virtualization)}
+  {PDF pp.~8--29；pp.~30--31 为非考试范围拓展；页脚沿用 1.x}
+  {Part 6.4--6.6 按视频标题对应；线上视频未读取，不视为逐句核对}
+  {已完成本次学习；讲义已核对；延续上一讲约定的学习分界}
+
+\keyidea{虚拟化不等于把所有指令都交给软件模拟。中间层可以共享、合并或模拟资源；VMM 在保持控制与隔离的前提下，尽量让 guest 的代码直接在硬件上执行。}
+
+\lecturetopic{SC2005-L14-T01}{三种机制：Multiplexing、Aggregation 与 Emulation}
+
+\textbf{来源：PDF pp.~8--16。}先辨认上层看到什么，再判断它与底层资源如何对应。这三种机制可组合使用，并非三种互斥的产品。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+机制 & 核心映射 & 讲义中的典型例子 \\
+\midrule
+Multiplexing（复用） & 多个虚拟使用者共享物理资源；可分时或分配不同物理部分 & 多个 vCPU 共享物理核心 \\
+Aggregation（聚合） & 多个物理资源呈现为统一的逻辑资源 & 多条 DIMM 的统一内存空间、RAID、链路聚合 \\
+Emulation（模拟） & 提供与底层实现不同的资源接口或行为 & RAM disk、JVM、Rosetta、网络 loopback \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{CPU 的两层调度。}Guest OS 决定 VM 内哪个进程使用 vCPU；host/VMM 决定 vCPU 何时在哪个物理核心上执行。以 KVM 为例，vCPU 通常对应由 Linux 调度的宿主线程，不能把“VM 有多个 vCPU”理解为“VM 永久独占同样多的物理核心”。讲义 p.~9 的四核配置见\relatedexercise{SC2005-L14-E01}{4 个物理核心与 16 个 vCPU}。
+
+\textbf{聚合不自动等于冗余。}RAID 0 以 striping（条带化）组合磁盘，RAID 1 使用 mirroring（镜像），RAID 5 使用 distributed parity（分布式校验）。是否能容忍故障取决于具体布局，而不是只看“多块盘合成一块盘”。布局与容量见\relatedexercise{SC2005-L14-E02}{RAID 0、1、5 的图示解析}。
+
+\textbf{模拟关注接口，而非资源数量。}讲义 p.~16 的对应关系如下：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+例子 & 底层实际资源 & 上层看到的资源或接口 \\
+\midrule
+RAM disk & DRAM & 磁盘式存储接口；易失性并未因此消失 \\
+JVM & x86、Arm 等实际 CPU & Java bytecode 执行环境，不是完整 guest OS \\
+Rosetta（2006） & x86 Mac & PowerPC 应用所需的执行行为 \\
+Rosetta 2（2020） & Arm Mac & x86 应用所需的执行行为 \\
+Loopback & 本机网络协议栈，无须物理网卡传输 & 经 \texttt{127.0.0.1} 等回环地址进行的本机通信 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+RAM disk 只是例子，不能据此认定所有系统的 \texttt{/tmp} 都在内存中；loopback 也不表示数据真的离开本机绕网线返回。
+
+\lecturetopic{SC2005-L14-T02}{系统虚拟机、Guest OS 与 Host/VMM}
+
+\textbf{来源：PDF pp.~17--21。}System virtual machine（系统虚拟机）向 guest 提供一套计算机系统资源，包括虚拟 CPU、内存、磁盘和网卡，使其能够运行自己的操作系统及应用。它比仅提供程序执行环境的 JVM 范围更大。
+
+\begin{center}
+\begin{tikzpicture}[>=Latex,font=\small,
+  box/.style={draw=noteBlue,rounded corners,align=center,minimum height=0.9cm},
+  vm/.style={box,text width=4.2cm,fill=blue!6}]
+  \node[vm] (a) at (-2.6,0) {VM A：应用 + Guest OS\\虚拟 CPU、内存与设备};
+  \node[vm] (b) at (2.6,0) {VM B：应用 + Guest OS\\虚拟 CPU、内存与设备};
+  \node[box,text width=10cm,fill=orange!10] (v) at (0,-1.5) {VMM / Hypervisor 与宿主侧资源管理};
+  \node[box,text width=10cm,fill=green!8] (h) at (0,-2.9) {物理 CPU、内存、磁盘与网络设备};
+  \draw[->] (a)--(a.south |- v.north);
+  \draw[->] (b)--(b.south |- v.north);
+  \draw[->] (v)--(h);
+\end{tikzpicture}
+\par\small 依据讲义结构自行绘制；此图不预设 Type 1 / Type 2 的具体实现。
+\end{center}
+
+\begin{itemize}
+  \item \textbf{Guest OS：}运行在 VM 内、管理该 VM 应用与虚拟资源的操作系统。
+  \item \textbf{Host OS / 宿主系统：}宿主侧管理实际机器的系统；与 VMM 的关系随架构而变，不能一概画成两套完全独立的软件。
+  \item \textbf{VMM（Virtual Machine Monitor），又称 hypervisor：}建立虚拟资源映射，调度并隔离 VM，掌握物理资源的最终控制权。
+\end{itemize}
+
+讲义引用 Popek 与 Goldberg 对 VM 的经典描述：真实机器的高效、隔离副本。理解时抓住三个目标：\textbf{兼容的执行环境、资源控制与隔离、高效执行}。高效不是零开销；隔离也不是宣称实现绝无漏洞或共享硬件上没有性能竞争。
+
+历史上虚拟化有助于共享昂贵硬件；现代常用于 server consolidation（服务器整合）、多租户隔离、运行不同 OS、快速部署与云资源管理。内存也有不同层次的视图：
+\[
+\text{guest virtual address}
+\longrightarrow\text{guest physical address}
+\longrightarrow\text{host physical address}.
+\]
+这是概念上的两阶段映射；guest 所称“物理地址”仍不一定是机器最终的物理地址，具体实现留待内存管理内容。
+
+\lecturetopic{SC2005-L14-T03}{两套分类：VMM 的位置与 Guest 的合作程度}
+
+\textbf{来源：PDF pp.~22--23。}Type 1 / Type 2 与 full / para 回答不同问题，不要将两套分类配成一一对应关系。
+
+\par\noindent\begin{minipage}{\textwidth}
+\textbf{第一套：VMM 与宿主系统的结构关系。}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+类别 & 核心含义 & 讲义举例与注意点 \\
+\midrule
+Type 1（bare-metal） & Hypervisor 直接承担宿主侧的底层资源管理 & Xen、VMware vSphere 平台的 hypervisor；并非“完全没有任何 OS 功能” \\
+Type 2（hosted） & 在已有通用 host OS 支持下提供虚拟化，依赖宿主的服务 & 讲义将 KVM + Linux 放在此类；此例的分类口径有争议 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\end{minipage}\par
+
+\textbf{KVM 的口径说明。}KVM 集成于 Linux 内核，让 Linux 具备 hypervisor 功能，厂商资料常将其归为 Type 1，例如\href{https://people.redhat.com/mlessard/blog/GTEC09PRESENTATION.pdf}{Red Hat 的 KVM 技术材料}。因此本课程指定按讲义回答时，应保留 p.~22 的分类口径；一般讨论则先说明其内核集成结构，不能断言“KVM 公认属于 Type 2”。
+
+\textbf{第二套：Guest 是否需要适配虚拟化合作接口。}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+类别 & Guest 一侧的要求 & 工作方式 \\
+\midrule
+Full virtualization & Guest OS 无须为该虚拟化接口专门修改 & 提供兼容的硬件环境，可结合直接执行、硬件辅助与必要的模拟 \\
+Paravirtualization & Guest 侧针对合作接口作适配 & 通过 hypercall 等接口主动请求 VMM 服务，减少某些难以虚拟化或低效的操作 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+“无需修改”不等于 guest 绝对无法检测自己位于 VM 中；“主动合作”也不意味着任何负载下都更快。现代系统可将完整虚拟化与半虚拟化设备驱动结合使用。
+
+\lecturetopic{SC2005-L14-T04}{构建 VMM：Limited Direct Execution 与控制边界}
+
+\textbf{来源：PDF pp.~24--29。}基本资源方案为：CPU 与内存通过复用和硬件支持来共享，I/O 可以通过模拟提供设备接口。实际实现也可采用半虚拟化设备或设备直通；不能将讲义的入门方案理解为所有 I/O 必须逐项软件模拟。
+
+\textbf{先回顾普通 OS 的 LDE。}Limited Direct Execution（受限直接执行）让应用的普通指令直接在 CPU 上运行，同时用特权级、系统调用、异常和中断保留 OS 的控制权。直接执行带来效率，“受限”保证程序不能任意操纵资源。
+
+\textbf{系统虚拟化将同样的思想再扩展一层。}Guest 的应用与内核代码可以有大量指令直接执行；当发生需要 VMM 介入的受控事件时，硬件将控制转回 VMM，由其处理后再恢复 guest：
+\[
+\underbrace{\text{Guest 应用与内核直接执行}}_{\text{兼容且允许的操作}}
+\xrightarrow{\text{需要拦截的事件 / VM exit}}
+\text{VMM 处理}
+\xrightarrow{\text{VM entry}}
+\text{恢复 Guest}.
+\]
+具体哪些操作触发退出取决于硬件及 VMM 配置。\textbf{Guest 应用调用 guest OS 的系统调用，不必每次都退出到 VMM；也不是所有指令、所有特权操作都必须由软件解释。}
+
+\textbf{不要混淆两条权限轴。}以 Intel VMX 为例，guest 通常在 VMX non-root operation 中运行，而 VMM 在 VMX root operation 中运行。Guest kernel 仍可处于其自身的 ring 0；VMX non-root 不等于“guest 内所有代码都变成 user mode”，也不等于 Linux 的非 \texttt{root} 用户。硬件依据 VMM 设置限制 guest 对真实资源的控制。
+
+\textbf{CPU 在空间与时间上复用。}多个物理核心允许不同 vCPU 同时执行；当就绪 vCPU 多于可用核心时，同一核心可在不同 vCPU 间分时切换。VM 自认为有若干 CPU，不意味着每个 vCPU 都随时占有物理核心。资源过量分配可提高平均利用率，但当各 VM 同时繁忙时，会带来等待与性能竞争。
+
+\textbf{非考试范围拓展（PDF pp.~30--31）。}讲义明确将最后两页标为 non-examinable：VM 通常包含独立 guest OS，container 通常共享宿主内核；serverless 将部署、扩缩容等管理进一步交由平台，不是“没有服务器”。三者可以叠加使用。GenAI 页将 GPU 共享、多 GPU 组合和虚拟 GPU 与三种机制联系起来，用于理解资源视图即可；并非所有 vGPU 都靠逐指令模拟，也不是任何多 GPU 程序都自动获得透明聚合。
+
+\textbf{一分钟回顾。}Multiplexing 是共享资源，aggregation 是合并资源，emulation 是提供不同接口或行为。VM 给 guest OS 一套虚拟计算机，VMM 保持最终资源控制。Type 1 / Type 2 看宿主结构，full / para 看 guest 是否适配合作接口；KVM 的讲义口径需要单独注明。LDE 的核心是“尽量直接执行，必要时受控介入”，而不是模拟每条指令；vCPU 数也不等于物理核心数。

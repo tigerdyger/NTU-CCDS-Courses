@@ -1,0 +1,86 @@
+% Based on templates/lecture-example.tex.
+% Source illustrations, not formal questions or conversational concept checks.
+
+\exercisegroup{SC2005-L14-EX}{第 14 讲：vCPU 与 RAID 讲义示例解析}
+
+\exercisemeta
+  {SC2005-L14-EX}
+  {2026-09-25}
+  {Part6b (Virtualization)，PDF pp.~9、12--13}
+  {讲义示例与图示已核对；非正式习题；容量与校验关系为补全解释}
+  {已完成讲解}
+
+\exercisequestion{SC2005-L14-E01}{4 个物理核心如何承载 16 个 vCPU}
+
+\textbf{来源：}PDF p.~9 的两种配置。
+
+\textbf{对应：}\relatedtopic{SC2005-L14-T01}{资源复用}、\relatedtopic{SC2005-L14-T04}{CPU 调度}。
+
+讲义在同一台 4 核机器上比较：4 个 VM，每个分配 1 个 vCPU；以及 8 个 VM，每个分配 2 个 vCPU。这是资源配置示例，不是额外计算题。
+
+\begin{checkedsolution}
+第一种配置共有 $4\times1=4$ 个 vCPU；第二种共有 $8\times2=16$ 个 vCPU，仍只有 4 个物理核心。为便于分析忽略 SMT，且暂不计宿主自身的运行需求，最多同时执行 4 个 vCPU，其他就绪 vCPU 需要等待调度；休眠或空闲的 vCPU 则不持续占用核心。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+调度层 & 管理对象 & 决策 \\
+\midrule
+Guest OS & 该 VM 内的进程 / 线程 & 哪个任务在本 VM 的哪个 vCPU 上运行 \\
+Host / VMM & 各 VM 的 vCPU 与物理核心 & 哪个 vCPU 何时获得哪个物理核心 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+第二种配置属于 overcommitment（过量分配），收益来自各 VM 的繁忙时段不完全重叠；若全部同时繁忙，仍可分时运行，但不能同时获得 16 个真实核心的算力。既没有凭空创造核心，也不是将 4 个核心聚合成 16 个核心。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L14-E02}{RAID 0、1、5：布局决定容量与容错}
+
+\textbf{来源：}PDF pp.~12--13 的 RAID 布局图。\quad
+\textbf{对应：}\relatedtopic{SC2005-L14-T01}{Aggregation}。
+
+以下按讲义数据块布局重绘。容量公式用于解释图示：设每块磁盘容量均为 $N$，共 $n$ 块，忽略元数据等开销；RAID 1 采用讲义中的双盘镜像。
+
+\begin{checkedsolution}
+\textbf{RAID 0：条带化，不复制数据。}两块盘分别存放交错的数据块：
+\[
+\begin{array}{c|cc}
+ & \text{Disk 0} & \text{Disk 1} \\\hline
+ & A_1 & A_2\\
+ & A_3 & A_4\\
+ & A_5 & A_6\\
+ & A_7 & A_8
+\end{array}
+\]
+两盘容量为 $2N$；推广到 $n$ 盘是 $nN$。条带化可以利用多盘并行，但没有冗余，任一盘失效都会丢失阵列的一部分数据，无法保证完整恢复。
+
+\textbf{RAID 1：镜像，两个位置保存同一份内容。}
+\[
+\begin{array}{c|cc}
+ & \text{Disk 0} & \text{Disk 1} \\\hline
+ & A_1 & A_1\\
+ & A_2 & A_2\\
+ & A_3 & A_3\\
+ & A_4 & A_4
+\end{array}
+\]
+两块容量为 $N$ 的盘只提供 $N$ 的可用容量；其中一块失效，另一块仍保存完整副本。它牺牲容量来获得冗余，不是 $2N$ 的可用空间。
+
+\textbf{RAID 5：数据条带化，校验块分散在不同磁盘。}讲义四盘图如下，$A_p$ 表示 $A$ 条带的 parity，其他同理：
+\[
+\begin{array}{c|cccc}
+ & \text{Disk 0} & \text{Disk 1} & \text{Disk 2} & \text{Disk 3} \\\hline
+ A & A_1 & A_2 & A_3 & \mathbf{A_p}\\
+ B & B_1 & B_2 & \mathbf{B_p} & B_3\\
+ C & C_1 & \mathbf{C_p} & C_2 & C_3\\
+ D & \mathbf{D_p} & D_1 & D_2 & D_3
+\end{array}
+\]
+每行有 3 份数据与 1 份校验，但\textbf{不是固定一块盘专门存校验}。四盘可用容量为 $3N$；一般 $n\ge3$ 时为 $(n-1)N$，可容忍一块盘失效。例如用 XOR 说明校验的恢复作用（补充推导）：
+\[
+ A_p=A_1\oplus A_2\oplus A_3
+ \quad\Longrightarrow\quad
+ A_2=A_p\oplus A_1\oplus A_3.
+\]
+丢失一个块仍可由其余块恢复；若同一条带缺少两份数据，则单份 parity 一般不足以恢复。RAID 的容错也不能替代独立备份：误删除、软件错误等仍可能同步影响整个阵列。
+\end{checkedsolution}
