@@ -1,0 +1,32 @@
+% Original schematic; structure based on Lecture 7, pp. 10--14 and 31--32.
+\begin{tikzpicture}[
+  font=\small, >=Stealth,
+  box/.style={draw=noteBlue,rounded corners,fill=noteBlue!5,
+              minimum height=7mm,align=center},
+  flow/.style={->,thick,noteBlue}
+]
+\node at (2.65,1.5) {Inception：通道拼接};
+\node[box] (in) at (0,0) {$x$};
+\node[box] (a) at (2.5,0.65) {$1\times1$};
+\node[box] (b) at (2.5,-0.25) {$1\times1\to3\times3$};
+\node[box] (c) at (2.5,-1.15) {$1\times1\to5\times5$};
+\node[box] (d) at (2.5,-2.05) {pool $\to1\times1$};
+\node[box] (cat) at (5.15,-0.7) {concat};
+\foreach \n/\y in {a/0.65,b/-0.25,c/-1.15,d/-2.05} {
+  \draw[flow] (in.east) -- (0.65,0) |- (\n.west);
+  \draw[flow] (\n.east) -- (4.4,\y);
+}
+% Shared collector; each branch preserves the same spatial dimensions.
+\draw[noteBlue,thick] (4.4,0.65) -- (4.4,-2.05);
+\draw[flow] (4.4,-0.7) -- (cat.west);
+\node at (8.8,1.5) {ResNet：逐元素相加};
+\node[box] (rx) at (6.8,-0.7) {$x$};
+\node[box] (f) at (8.45,-0.7) {$F(x)$};
+\node[draw=noteBlue,circle,inner sep=2pt] (sum) at (10.05,-0.7) {$+$};
+\node (out) at (11.4,-0.7) {$x+F(x)$};
+\draw[flow] (rx) -- (f);
+\draw[flow] (f) -- (sum);
+\draw[flow] (rx.north) -- (6.8,0.65) -| (sum.north);
+\draw[flow] (sum) -- (out);
+\node[align=center] at (8.8,-1.9) {两路形状须一致\\不同形状需先投影};
+\end{tikzpicture}

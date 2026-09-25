@@ -1,0 +1,108 @@
+% Related lecture: SC4001-L07
+% Sources: main pp. 3--9, 26--27, 51; summary pp. 3, 22--23
+% Prepared from templates/lecture-example.tex. Source examples paraphrased;
+% no exam scan, full paper, conversational check, or experiment output included.
+
+\exercisegroup{SC4001-L07-EX}{第 07 讲：CNN Architectures}
+
+\exercisemeta
+  {SC4001-L07-EX}
+  {2026-09-25}
+  {7\_cnn\_architectures pp.~3--9、26--27、51；L7\_summary pp.~3、22--23}
+  {参数、维度、FLOPs 与 BN 数值已独立核算；题意以独立可读的文字重述}
+  {课堂讲解与订正已完成；2026-09-25 整理}
+
+\exercisequestion{SC4001-L07-E01}{AlexNet：各层参数与 FC 占比}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L07-T01}{经典架构}。
+
+\textbf{题目（主讲义 pp.~3--9；Summary p.~3）。}按讲义的跨全部输入通道连接版本计算 AlexNet 参数。五个卷积层的输入／输出通道分别为 $3\to96$、$96\to256$、$256\to384$、$384\to384$、$384\to256$，核边长依次为 $11,5,3,3,3$。最后池化得到 $256\times6\times6$，后接 $4096\to4096\to1000$ 的 FC 输出。每个卷积核、每个 FC 输出神经元均有一个 bias。求各层参数、总参数及 FC 所占比例。
+
+\begin{workedsolution}
+卷积使用 $D_2(D_1F^2+1)$，FC 使用 $n_{\rm out}(n_{\rm in}+1)$。Pooling 没有可学习参数，flatten 后的长度为 $256\cdot6\cdot6=9216$。
+\begin{center}
+\small
+\begin{tabular}{@{}llr@{}}
+\toprule
+层 & 计算式 & 参数量 \\
+\midrule
+L1 & $96(3\cdot11^2+1)$ & 34,944 \\
+L2 & $256(96\cdot5^2+1)$ & 614,656 \\
+L3 & $384(256\cdot3^2+1)$ & 885,120 \\
+L4 & $384(384\cdot3^2+1)$ & 1,327,488 \\
+L5 & $256(384\cdot3^2+1)$ & 884,992 \\
+L6 & $4096(9216+1)$ & 37,752,832 \\
+L7 & $4096(4096+1)$ & 16,781,312 \\
+L8 & $1000(4096+1)$ & 4,097,000 \\
+\midrule
+Conv 合计 & & 3,747,200 \\
+FC 合计 & & 58,631,144 \\
+总计 & & 62,378,344 \\
+\bottomrule
+\end{tabular}
+\end{center}
+FC 比例为 $58{,}631{,}144/62{,}378{,}344\approx94.0\%$：卷积层提取特征并不意味着参数主要集中在卷积层。
+\end{workedsolution}
+
+\textbf{简短勘误：}Summary p.~3 的 L4 通道数应为 384，末层输出应为 1000；L6 公式应包含 4096 个 bias。上表已采用订正值。
+
+\exercisequestion{SC4001-L07-E02}{标准卷积：76 个参数与 117,600 FLOPs}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L07-T02}{卷积效率}。
+
+\textbf{题目（主讲义 pp.~26--27，Try this）。}输入为 $3\times32\times32$，一个空间尺寸 $5\times5$ 的卷积核，stride $1$、无 padding，输出 $1\times28\times28$。计算参数量与单张图的前向 FLOPs；包含一个 bias，不计 activation。
+
+\begin{workedsolution}
+完整核为 $3\times5\times5$，故参数为 $3\cdot25+1=76$。每个输出元素需要 75 次乘法、74 次求和及一次 bias 加法，即 150 FLOPs。输出有 $28^2=784$ 个元素，因此
+\[
+ C=2\cdot3\cdot5^2\cdot1\cdot28^2=\boxed{117{,}600}.
+\]
+76 个参数在 784 个位置重复使用；参数存储量与运行计算量是不同概念。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L07-E03}{用 Depthwise + Pointwise 替换 Conv1}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L07-T02}{卷积效率}。
+
+\textbf{题目（Summary pp.~22--23 的讲解例题）。}网络中的 Conv1 将 $12\times55\times55$ 输入映射为 $6\times49\times49$，stride 为 $1$，padding 为 $0$。仅将 Conv1 替换为 depthwise convolution（每个输入通道一个核）加 pointwise convolution，保持输入、输出尺寸。确定两层核的个数、完整尺寸，并比较替换前后的 FLOPs。后续 Conv2 与 FC 不属于本次比较范围。
+
+\begin{workedsolution}
+首先由 $49=55-F+1$ 得到 $F=7$。Depthwise 分别处理 12 个通道，需要 \textbf{12 个 $1\times7\times7$ 核}，输出 $12\times49\times49$；pointwise 再生成 6 个通道，需要 \textbf{6 个 $12\times1\times1$ 核}。两步维度为
+\[
+ 12\times55\times55\ \longrightarrow\ 12\times49\times49
+ \ \longrightarrow\ 6\times49\times49.
+\]
+按讲义每次乘法、加法各计一次的口径，
+\[
+\begin{aligned}
+ C_{\rm std}&=2\cdot12\cdot7^2\cdot6\cdot49^2=16{,}941{,}456,\\
+ C_{\rm dw}&=2\cdot7^2\cdot12\cdot49^2=2{,}823{,}576,\\
+ C_{\rm pw}&=2\cdot12\cdot6\cdot49^2=345{,}744.
+\end{aligned}
+\]
+替换后合计 $3{,}169{,}320$，占原来的
+\[
+ \frac{3{,}169{,}320}{16{,}941{,}456}
+ =\frac16+\frac1{49}\approx\boxed{18.7\%}.
+\]
+故\emph{节省约 $81.3\%$}。Summary 的 ``Reduction'' 数值 $0.187$ 表示剩余成本比例，不是节省比例；保持尺寸也不保证能够表达原标准卷积的任意权重变换。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L07-E04}{一个通道的 Batch Normalization}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L07-T03}{Batch Normalization}。
+
+\textbf{题目（主讲义 p.~51）。}某个特征在六个 batch 样本上的值为 $(0.6,0.6,0.5,0.5,1.0,0.4)$。取 $\epsilon=0.001$，按 BN 训练时分母为 $N$ 的方差定义，求均值、方差及标准化结果；暂不施加可学习的 $\gamma,\beta$。
+
+\begin{workedsolution}
+均值 $\mu=3.6/6=0.6$，相对均值的偏差为 $(0,0,-0.1,-0.1,0.4,-0.2)$，所以
+\[
+ \sigma^2=\frac{0+0+0.01+0.01+0.16+0.04}{6}
+ =\frac{0.22}{6}\approx0.0366667.
+\]
+标准化的共同分母为 $\sqrt{0.22/6+0.001}\approx0.194079$，故
+\[
+ \boxed{\hat x\approx(0,0,-0.5153,-0.5153,2.0610,-1.0305)}.
+\]
+施加 affine transform 后为 $y_i=\gamma\hat x_i+\beta$。六个样本共享\emph{该特征}的一组统计量及 $\gamma,\beta$；其他特征分别统计。加入 $\epsilon$ 后，这组 $\hat x$ 的方差约为 $0.97345$，不是严格的 $1$。
+\end{workedsolution}

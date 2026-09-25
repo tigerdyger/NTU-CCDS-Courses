@@ -1,0 +1,191 @@
+% Actual class: 07, 2026-09-25
+% Sources: 7_cnn_architectures pp. 1--78; L7_summary pp. 1--30
+% Video: sampled slide progression only; no spoken transcript available
+% Prepared from templates/lecture.tex; conceptual checks excluded
+
+\section{第 07 节课：CNN Architectures}
+\label{lecture:SC4001-L07}
+
+\lecturemeta
+  {SC4001-L07}
+  {2026-09-25}
+  {7\_cnn\_architectures；L7\_summary}
+  {主讲义 pp.~1--78；Summary pp.~1--30}
+  {Lecture7\_Part1（50:17）与 Part2（32:14）；已抽查画面中的讲义进度，无字幕转录，未逐句核验口头内容}
+  {课堂学习与订正已完成；已核对讲义公式、维度及例题数值，配套 notebook 未提供、未重跑}
+
+\subsection{本讲主线}
+
+第六讲介绍卷积层如何计算，本讲进一步讨论网络如何组织这些层：经典 architectures（架构）改变连接方式；pointwise/depthwise convolution 降低计算量；Batch Normalization 改善训练；transfer learning 与 data augmentation 利用已有知识和数据。以下尺寸默认按 $C\times H\times W$ 书写，涉及 batch 时增加最前面的 $N$。
+
+\lecturetopic{SC4001-L07-T01}{经典架构：从顺序堆叠到分支与残差}
+
+\textbf{来源：}主讲义 pp.~2--14、31--32；Summary pp.~2--6。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+架构 & 需要掌握的结构特征 \\
+\midrule
+AlexNet & 5 个 convolution layers + 3 个 fully connected layers；8 层指有可学习参数的层，不把 pooling/ReLU 单独计入。大量参数集中在 FC 层。 \\
+VGG & 通过反复堆叠小的 $3\times3$ 卷积构造更深网络；讲义介绍 VGG-19。 \\
+GoogLeNet & Inception module（多分支模块）并行处理不同空间尺度，再沿通道拼接；$1\times1$ 卷积先压缩通道，降低后续大核的成本。 \\
+ResNet & Shortcut/skip connection（跳跃连接）把输入与残差分支相加，学习 $F(x)$ 而不是直接学习全部目标映射。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{小核与多尺度。}连续两个 stride $1$ 的 $3\times3$ 卷积具有 $5\times5$ 的有效感受野，但若中间有非线性，它们并不等于一个 $5\times5$ 线性卷积。Inception 的各分支须具有相同输出 $H,W$ 才能 concatenate（拼接）；输出通道数是各分支通道数之和，不能与 ResNet 的逐元素相加混淆。
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/cnn-architecture-connections}
+  \caption{原创连接方式示意：左为 Inception 的多分支拼接，右为 residual block 的相加；省略具体激活层及通道投影。依据主讲义 pp.~10--14、31--32 整理。}
+  \label{fig:sc4001-l07-connections}
+\end{figure}
+
+\textbf{Residual learning（残差学习）。}设希望实现的映射为 $H(x)$，残差分支学习
+\[
+  F(x)=H(x)-x,\qquad z=x+F(x).
+\]
+若只需保持输入不变，令 $F(x)=0$ 即可；残差并不要求与输入正交。对相加后的值、最终 activation 之前，有
+\[
+  \frac{\partial z}{\partial x}=I+\frac{\partial F}{\partial x},
+\]
+因此 shortcut 提供直接的梯度路径，但不保证所有梯度问题都消失。相加要求尺寸一致；改变通道数或分辨率时需投影或下采样，例如用合适 stride 的 $1\times1$ 卷积调整 shortcut。
+
+AlexNet 参数计算见\relatedexercise{SC4001-L07-E01}{各层参数与 FC 占比}。讲义采用的具体连接方式决定参数总数，不应把它无条件推广到其他 grouped-convolution 实现。
+
+\lecturetopic{SC4001-L07-T02}{卷积效率：FLOPs、Pointwise 与 Depthwise}
+
+\textbf{来源：}主讲义 pp.~16--43；Summary pp.~7--16、22--23。
+
+\subsubsection{标准卷积：参数量不等于计算量}
+
+设输入 $D_1\times H_1\times W_1$，输出 $D_2\times H_2\times W_2$，核的空间尺寸为 $F\times F$。每个输出通道的核为 $D_1\times F\times F$，若每个核有一个 bias，参数量是
+\[
+  P_{\rm std}=D_2(D_1F^2+1).
+\]
+每个输出元素需要 $D_1F^2$ 次乘法、$D_1F^2-1$ 次求和及一次 bias 加法。因此按讲义将一次乘法、一次加法各算一次 floating-point operation（浮点运算），单张图前向计算为
+\[
+  \boxed{C_{\rm std}=2D_1F^2D_2H_2W_2}.
+\]
+相同权重在不同空间位置反复使用，所以参数量不乘 $H_2W_2$，计算量却要乘。该式不计 activation、内存访问等成本；有些工具以一次 multiply-accumulate（乘加，MAC）为一个单位，比较结果前应统一口径。
+
+Average pooling 每个 $F\times F$ 窗口有 $F^2-1$ 次加法和一次除法，对应 $F^2D_2H_2W_2$ 次算术操作。Max pooling 则需 $F^2-1$ 次比较；讲义把它记作 $0$ FLOPs，是因为该口径不计比较，\emph{并非没有运算或时间成本}。
+
+\subsubsection{Pointwise convolution（逐点卷积）}
+
+普通 $1\times1$ 卷积在每个空间位置对\emph{全部输入通道}加权组合：
+\[
+  y_k(h,w)=\sum_{c=1}^{D_1}w_{k,c}x_c(h,w)+b_k.
+\]
+核的完整尺寸是 $D_1\times1\times1$，不是仅有一个权重。不同输入通道对应不同的 $w_{k,c}$；\textbf{权重共享指不同空间位置重复使用同一组权重，不指所有通道共用一个标量。}有 $D_2$ 个核，就得到 $D_2$ 个输出通道。Stride $1$、无 padding 时保持 $H,W$，只混合通道，不直接读取相邻空间位置。
+
+Inception 的 bottleneck（瓶颈层）可先将 256 通道压缩至 16 通道，再做 $5\times5$ 卷积；后者的计算量变为原来的 $1/16$，但整体成本还要加上瓶颈层自身。
+
+\subsubsection{Depthwise separable convolution（深度可分离卷积）}
+
+讲义采用 depth multiplier $1$：先对每个输入通道独立使用一个 $1\times F\times F$ 核，再用 pointwise 卷积混合通道：
+\[
+  D_1\times H_1\times W_1
+  \xrightarrow{\text{depthwise}} D_1\times H_2\times W_2
+  \xrightarrow{1\times1} D_2\times H_2\times W_2.
+\]
+前一步有 $D_1$ 个空间核、不混合通道；后一步有 $D_2$ 个 $D_1\times1\times1$ 核。在同一 FLOPs 口径下：
+\[
+\begin{aligned}
+ C_{\rm dw}&=2F^2D_1H_2W_2,\\
+ C_{\rm pw}&=2D_1D_2H_2W_2,\\
+ \frac{C_{\rm dw}+C_{\rm pw}}{C_{\rm std}}
+ &=\boxed{\frac{1}{D_2}+\frac{1}{F^2}}.
+\end{aligned}
+\]
+这是\emph{新成本占原成本的比例}；节省比例还需用 $1$ 减去它。当 $F=3$ 且 $D_2$ 很大时，剩余成本约 $1/9$，不是所有设置都固定节省这个比例。
+
+\textbf{表达能力边界。}相同输入、输出尺寸不代表任意标准卷积都能被精确替代。辅助解释：若忽略中间非线性，组合后的权重形如 $W_{k,c,u,v}=P_{k,c}D_{c,u,v}$，是一种受限的分解。减少计算可能影响精度；理论 FLOPs 降低也不等于实际运行时间按同比例降低。
+
+\textbf{对应例题：}
+\begin{itemize}
+ \item \relatedexercise{SC4001-L07-E02}{标准卷积 FLOPs}
+ \item \relatedexercise{SC4001-L07-E03}{替换 Conv1 的核配置与节省比例}
+\end{itemize}
+
+\lecturetopic{SC4001-L07-T03}{Batch Normalization：统计维度与训练／推理}
+
+\textbf{来源：}主讲义 pp.~44--62；Summary pp.~17--21。
+
+\subsubsection{按特征标准化，再学习尺度与平移}
+
+Batch Normalization（批归一化，BN）在网络内部对 activation 做标准化。讲义以训练中上游权重变化导致特征分布变化为动机，规范术语是 internal \emph{covariate} shift（内部协变量偏移）。这是原论文的解释动机，不应当作 BN 有效的唯一已确立原因。
+
+对全连接层的 $X\in\mathbb R^{N\times D}$，固定特征 $j$，在 batch 的 $N$ 个样本上计算
+\[
+ \mu_j=\frac1N\sum_{i=1}^N x_{ij},\qquad
+ \sigma_j^2=\frac1N\sum_{i=1}^N(x_{ij}-\mu_j)^2,
+\]
+\[
+ \hat x_{ij}=\frac{x_{ij}-\mu_j}{\sqrt{\sigma_j^2+\epsilon}},
+ \qquad y_{ij}=\gamma_j\hat x_{ij}+\beta_j.
+\]
+$\epsilon>0$ 防止除零并提高数值稳定性；$\gamma_j,\beta_j$ 是可学习的 scale/shift（缩放／平移），防止标准化过度限制表示能力。每个特征有两个可学习参数，共 $2D$；batch 的均值、方差不是靠梯度学习的参数。加入 $\epsilon$ 后，$\hat x$ 的 batch 方差为 $\sigma_j^2/(\sigma_j^2+\epsilon)$，并非严格等于 $1$。
+
+\subsubsection{卷积 BN：每个通道跨整个 batch 统计}
+
+对 $N\times C\times H\times W$ 的输入，固定通道 $c$，将全部 $N$ 张图、全部 $H\times W$ 位置上的值一起统计：
+\[
+ \mu_c=\frac{1}{NHW}\sum_{n,h,w}x_{n,c,h,w},\qquad
+ \sigma_c^2=\frac{1}{NHW}\sum_{n,h,w}(x_{n,c,h,w}-\mu_c)^2.
+\]
+每个通道只有一组 $\mu_c,\sigma_c^2,\gamma_c,\beta_c$，广播到该通道全部位置；共有 $2C$ 个可学习参数。不是每张图各算一组，也不是把所有通道混起来计算。BN 不改变输出 tensor shape。
+
+\subsubsection{Training 与 inference 的统计量不同}
+
+Training（训练）用当前 mini-batch 的统计量，并维护 running estimates（运行估计）。以均值为例，若 $\alpha$ 表示本批统计量的权重，则
+\[
+ \bar\mu\leftarrow(1-\alpha)\bar\mu+\alpha\mu_{\rm batch}.
+\]
+方差也维护运行估计。Inference（推理）通常使用固定的 running mean/variance，而不是根据当前测试样本重新拟合统计量，以免预测随测试 batch 的组合改变。不同库的 momentum 记号、方差估计细节需按实现核对。
+
+固定统计量后，BN 对每个通道是仿射变换 $y=ax+b$，可与相邻且无中间非线性的前置卷积／FC 合并；这不意味着训练阶段也没有额外成本。PyTorch 默认 BN 在 \texttt{train()} 下更新统计量，在 \texttt{eval()} 下使用 running statistics；若显式关闭 \texttt{track\_running\_stats}，则行为不同。
+
+\textbf{讲义代码示例（p.~55）。}示例 MLP 将 $3\times32\times32$ 展平为 3072，结构为
+\[
+ \begin{aligned}
+ 3072&\xrightarrow{\rm Linear}512\xrightarrow{\rm BN+ReLU}512\\
+ &\xrightarrow{\rm Linear}256\xrightarrow{\rm BN+ReLU}256
+ \xrightarrow{\rm Linear}10.
+ \end{aligned}
+\]
+分别使用 \texttt{BatchNorm1d(512)} 与 \texttt{BatchNorm1d(256)}，分类头输出 logits。讲义要求对比移除 BN 的效果，但配套 \texttt{eg7.1.ipynb} 未提供，故这里仅分析可见结构，不补造实验结果。数值标准化见\relatedexercise{SC4001-L07-E04}{一个通道的 BN 计算}。
+
+\textbf{补充依据：}\href{https://arxiv.org/abs/1502.03167}{Ioffe 与 Szegedy（2015）}提出 BN；\href{https://arxiv.org/abs/1805.11604}{Santurkar 等（2018）}研究其优化平滑性解释。上述统计维度与默认运行模式可参照\href{https://docs.pytorch.org/docs/2.14/generated/torch.nn.modules.batchnorm.BatchNorm2d.html}{PyTorch BatchNorm2d 文档}；这里的公式是讲义口径，不宣称完全覆盖库内部估计细节。
+
+\lecturetopic{SC4001-L07-T04}{Transfer Learning 与 Data Augmentation}
+
+\textbf{来源：}主讲义 pp.~63--77；Summary pp.~24--29。
+
+\subsubsection{迁移已有特征，而非从零学习所有参数}
+
+Transfer learning（迁移学习）将大数据集上预训练的表示用于新任务。早期层常提取边缘、颜色等较通用特征，深层特征通常更依赖原任务；适用程度仍取决于领域差异，不能保证迁移一定改善结果。
+
+将 ImageNet 的 1000 类模型用于 10 类新任务时，替换最后分类头，并区分两种训练设置：
+\begin{itemize}
+ \item Frozen feature extractor（冻结特征提取器）：固定预训练 backbone，只训练新分类头。讲义冻结旧权重的图对应这一设置。
+ \item Fine-tuning（微调）：解冻部分或全部预训练层，与新分类头一起更新；通常需谨慎选择学习率以免破坏已有特征。
+\end{itemize}
+
+\textbf{从分类到检测。}Object detection（目标检测）同时回答物体\emph{是什么、在哪里}。R-CNN 用 selective search 生成约 2000 个 region proposals（候选区域），分别 resize 后经过 CNN 提取特征，再分类；重复卷积成本较高。Fast R-CNN 先对整张图计算共享 feature map，再用 RoI pooling 将各候选区域变为固定尺寸特征，联合预测类别和边界框。共享计算是核心；其外部 selective search 并不因此变成可端到端学习的模块。讲义还展示 CNN 图像特征结合 RNN 生成 caption（图像描述），说明预训练表示可跨任务复用。
+
+\subsubsection{增加训练变化，但必须保持标签语义}
+
+Data augmentation（数据增强）用变换后的 $(T(x),y)$ 扩充训练输入，其前提是变换不改变标签含义。常见操作包括翻转、裁剪、缩放、平移、旋转以及亮度／对比度／颜色扰动。
+
+讲义的 random crop 示例先保持宽高比，把短边随机缩放至 $[256,480]$，再取 $224\times224$ patch。Color augmentation 还包括沿训练集 RGB 的 PCA 主方向随机扰动颜色；同一图像可使用同一颜色偏移，而不是独立打乱每个像素。
+
+\textbf{使用边界：}旋转可能使数字 6 变成 9，裁剪可能去掉目标，颜色变化也可能破坏以颜色定义的类别。Detection 的几何增强必须同步变换 bounding boxes（边界框）。应先划分 train/validation/test，再对训练集增强；增强样本不是新增的独立观测，不应把同一原图的变体分散到训练集与测试集。
+
+\subsection{一分钟回顾}
+
+AlexNet、VGG、Inception、ResNet 分别体现顺序堆叠、小核深层、多尺度拼接与残差相加。普通卷积跨全部输入通道，权重在空间位置间共享；pointwise 混合通道，depthwise 独立处理通道，组合后的成本比例为 $1/D_2+1/F^2$，但表达能力受限。BN 逐通道跨 batch 与空间位置统计，训练与推理的统计量不同。迁移学习复用预训练表示，数据增强则增加训练变化；二者都依赖任务匹配与正确的评估边界。
