@@ -1,0 +1,240 @@
+% Supplement, not the seventh regular lecture. Independent stable ID: SUP01.
+% Source: CZ3005_Module 7_Diffusion.pptx, slides 1--49.
+% Study date: Recess Week, 2026-10-03; no video supplied.
+% Template: templates/lecture.tex; supplementary explanations are identified below.
+\section{补课：Diffusion Model 与 Flow Matching}
+\label{lecture:SC3000-SUP01}
+
+\lecturemeta
+  {SC3000-SUP01}
+  {Recess Week，2026-10-03}
+  {CZ3005 Module 7: Diffusion}
+  {pp.~1--49；生成分布、Normalizing Flow、Flow Matching、CFG 与模型案例}
+  {无视频或字幕；按已下载讲义学习，不推定现场授课范围}
+  {已完成讲解与疑问讨论；笔记待审阅}
+
+\subsection{本讲主线与记号}
+
+生成模型要把容易采样的分布变成数据分布。本讲先解释变换怎样改变概率密度，再说明怎样构造带标签的训练样本，学习实际执行变换的网络。统一采用讲义的生成方向：$t=0$ 为噪声，$t=1$ 为数据。经典 DDPM 常按相反的加噪方向编号，不能直接混用端点。
+
+\lecturetopic{SC3000-SUP01-T01}{噪声、图像空间与生成目标}
+
+一张 $H\times W$ 的灰度图可展平为 $x\in\mathbb R^{HW}$；RGB 图对应 $\mathbb R^{3HW}$。一整张图是这个高维空间中的\emph{一个点}，每个坐标表示固定像素位置的亮度或颜色通道值。路径 $x_t$ 描述这些数值怎样变化，不是把像素在二维画面上重新排列。因此，$p_t(x)$ 是\textbf{各种可能图片的概率密度}，不是图片平面上各位置的概率。
+
+Gaussian noise（高斯噪声）$x_0\sim\mathcal N(0,I)$ 表示各坐标独立采样标准正态随机数。它有明确的统计规律，却没有真实图片的语义与空间结构；映射成可显示的颜色后，外观近似雪花图。计算中的随机数可为负，不必处于图像文件的 $0$--$255$ 范围。以下以像素空间解释；若在 latent space（潜在空间）中生成，则更新的是编码特征，最后再解码成图片。
+
+给定样本集 $\mathcal D$，目标是学习变换 $F_\theta$，使
+\[
+  x_0\sim p_0=\mathcal N(0,I),\qquad
+  F_\theta(x_0)\sim p_\theta\approx p_{\mathrm{data}}.
+\]
+噪声是分布已知、容易生成且可提供多样性的随机起点。\textbf{纯噪声里并没有一张等待被找回的原图}；图片结构来自训练数据中学到的规律。生成新样本不要求预先知道某张目标图片，也不以逐张复制训练集为目标。
+
+\lecturetopic{SC3000-SUP01-T02}{概率质量守恒：从 Normalizing Flow 到连续流}
+
+\subsubsection*{离散变量替换与最大似然}
+
+Normalizing Flow（归一化流）用可逆变换连接简单分布与复杂分布。对一维可微可逆变换 $y=F(z)$，对应小区间的概率质量相等：
+\[
+  p_Y(y)|dy|=p_Z(z)|dz|,
+  \qquad
+  p_Y(y)=p_Z(F^{-1}(y))\left|\frac{dF^{-1}(y)}{dy}\right|.
+\]
+守恒的是概率质量，不是密度。若区间长度扩大两倍，其对应密度应减半。多维时，Jacobian determinant（雅可比行列式）的绝对值给出局部体积缩放率：
+\[
+  \boxed{p_Y(y)=p_Z(F^{-1}(y))\left|\det J_{F^{-1}}(y)\right|}.
+\]
+一般可逆映射必须保留绝对值；这里假定同维、可微，且相关 Jacobian 非奇异。通过这一公式可计算观测数据的密度，进行 Maximum Likelihood Estimation（最大似然估计）：
+\[
+  \max_\theta\sum_{y\in\mathcal D}\log p_\theta(y).
+\]
+将多个简单可逆变换串联，$F=F_K\circ\cdots\circ F_1$，整体仍可逆；若 $h_k=F_k(h_{k-1})$，则
+\[
+  \log p_K(h_K)=\log p_0(h_0)
+    -\sum_{k=1}^{K}\log|\det J_{F_k}(h_{k-1})|.
+\]
+困难是网络必须兼顾表达能力、可逆性及行列式计算成本。
+
+\textbf{对应例题：}\relatedexercise{SC3000-SUP01-E01}{从均匀分布到标准正态分布的逆 CDF 采样}。
+
+\subsubsection*{连续速度场与密度演化}
+
+改为描述每一小步的变化，令 $v_t(x)$ 为 time-dependent velocity field（含时间的速度场）：
+\[
+  x_{t+\Delta t}\approx x_t+\Delta t\,v_t(x_t),
+  \qquad \boxed{\frac{dx_t}{dt}=v_t(x_t)}.
+\]
+速度向量的第 $i$ 个分量是第 $i$ 个像素值的变化率，可依赖整张图片与时间。适当的正则性、解存在唯一性条件下，ODE（常微分方程）的流可正向或反向积分；有限步长下简单减回速度不保证精确求逆。
+
+概率质量守恒给出 continuity equation（连续性方程）。在固定位置 $x$ 写为
+\[
+  \frac{\partial p_t(x)}{\partial t}
+  =-\nabla\!\cdot(p_t(x)v_t(x))
+  =-\nabla p_t(x)\cdot v_t(x)-p_t(x)\nabla\!\cdot v_t(x).
+\]
+沿移动轨迹 $x_t$ 使用链式法则，位置变化项恰好抵消：
+\begin{align*}
+  \frac{d}{dt}p_t(x_t)
+  &=\frac{\partial p_t}{\partial t}
+    +\nabla p_t\cdot\frac{dx_t}{dt}
+    =-p_t(x_t)\nabla\!\cdot v_t(x_t),\\
+  \boxed{\frac{d}{dt}\log p_t(x_t)}
+  &=\boxed{-\nabla\!\cdot v_t(x_t)}.
+\end{align*}
+后式要求沿轨迹密度为正。散度为正表示局部净扩张，密度随之下降。积分得到
+\[
+  x_1=x_0+\int_0^1v_t(x_t)\,dt,\qquad
+  \log p_1(x_1)=\log p_0(x_0)-\int_0^1\nabla\!\cdot v_t(x_t)\,dt.
+\]
+这就是 Continuous Normalizing Flow（连续归一化流，CNF）。它避免直接计算离散变换的完整行列式，但散度仍是速度场 Jacobian 的迹。基于 ODE 的最大似然训练\emph{可以实现}，只是可能昂贵；不能把讲义的效率批评理解成数学上不可行。
+
+\lecturetopic{SC3000-SUP01-T03}{Flow Matching：构造路径，把生成训练变成回归}
+
+\keyidea{真实数据只提供最终图片，没有“中间状态应该怎样变化”的标签。先人为规定噪声到图片的路径，再对时间求导，就能自动制造回归训练样本。}
+
+\subsubsection*{条件高斯路径及其设计目的}
+
+独立采样 $x_0\sim\mathcal N(0,I)$ 与 $x_1\sim p_{\mathrm{data}}$，规定
+\[
+  \boxed{x_t=\mu_t(x_1)+\sigma_t x_0},\qquad
+  \dot x_t=\dot\mu_t(x_1)+\dot\sigma_t x_0.
+\]
+固定 $x_1$ 与 $t$ 后，$\mu_t(x_1)$ 是确定的中心；对噪声做缩放和平移，保留简单的 Gaussian conditional distribution（条件高斯分布）：
+\[
+  x_t\mid x_1\sim\mathcal N\!\left(\mu_t(x_1),\sigma_t^2 I\right)
+  \quad(\sigma_t>0).
+\]
+均值和方差都已知，可直接采样任意中间时刻，而不必先模拟此前所有步骤。讲义也允许 $\sigma_t$ 依赖 $x_1$；固定 $x_1$ 后上述结论不变。对全部图片混合后的\emph{边缘分布}一般不再是单个高斯分布。
+
+对通常的噪声到指定图片路径，设置
+\[
+  \mu_0(x_1)=0,\quad\sigma_0=1;\qquad
+  \mu_1(x_1)=x_1,\quad\sigma_1=0.
+\]
+终点条件分布退化到指定图片；实际训练通常在内部时刻构造样本。路径还需具有可用的时间导数，并考虑数值稳定性。
+
+\textbf{建模解释：}对 $x_0$ 采用一次项是保留条件高斯结构的设计选择，不是数学强制。非线性噪声路径也可能使用，但分布及分析往往更复杂。$\mu_t(x_1)$ 的函数记号不意味着任意无约束函数，更不意味着一定非线性；最简单的选择就是 $\mu_t(x_1)=t x_1$。固定条件后，非线性的 $\mu_t$ 也只是改变确定的中心，不会破坏噪声的条件高斯结构。
+
+\subsubsection*{训练标签、网络输入与生成过程}
+
+令 $t\sim U(0,1)$，网络 $u_\theta(x_t,t)$ 输出速度向量，用已知路径导数作标签：
+\[
+  \boxed{L_{\mathrm{CFM}}(\theta)
+    =\mathbb E_{t,x_0,x_1}
+      \left[\|u_\theta(x_t,t)-\dot x_t\|_2^2\right]}.
+\]
+$x_1$ 用来构造训练样本与标签，\textbf{不是这个无条件网络的额外输入}。路径系数是预先规定的；学习的是网络参数 $\theta$。
+
+对讲义的直线案例，
+\[
+  x_t=(1-t)x_0+t x_1,\qquad \dot x_t=x_1-x_0.
+\]
+这只是相同像素位置数值的加权混合，并非搬动像素。训练时知道 $x_1$，因而标签可计算；生成时不知道目标图片，改用学到的速度：
+\[
+  \boxed{x^{(k+1)}=x^{(k)}+\Delta t\,
+    u_\theta(x^{(k)},t_k)},\qquad t_k=k\Delta t.
+\]
+这是 Euler method（欧拉法），从新采样的噪声积分到终点。训练通常可独立采样时间，不需每次求解完整 ODE；生成则需要数值积分，存在步长误差。
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/diffusion-training-and-generation}
+  \caption{依据 Module 7 pp.~29--32、38--39 重绘。真实图片用于制作训练题；生成阶段只使用新噪声和已训练的网络。}
+  \label{fig:sc3000-sup01-train-generate}
+\end{figure}
+
+\subsubsection*{条件路径不等于网络生成轨迹}
+
+不同噪声与图片配对可在相近状态给出不同速度标签。平方误差回归的总体最优预测为
+\[
+  u^*(x,t)=\mathbb E[\dot x_t\mid x_t=x,t].
+\]
+这是当前状态下的条件平均速度，而不是背下每个配对的路线。在线性路径下，标签虽为 $x_1-x_0$，学到的整体速度场仍会随位置与时间变化；\textbf{训练路径为直线，不保证生成轨迹也为直线}。在适当条件下，边缘速度场可产生相同的边缘概率演化；有限数据、模型误差和采样误差使实际结果只是近似。
+
+\textbf{对应例题：}\relatedexercise{SC3000-SUP01-E02}{直线路径的条件分布、速度标签与生成更新}。
+
+\lecturetopic{SC3000-SUP01-T04}{Diffusion 案例：预测速度、噪声与干净样本}
+
+\subsubsection*{预测噪声的目的与标签来源}
+
+设 $x_t=a_t x_1+b_t\epsilon$，其中 $\epsilon\sim\mathcal N(0,I)$，$a_t,b_t$ 已知。预测速度是直接回答“怎样更新”；预测噪声则估计混入的扰动，再由采样公式计算更新。\textbf{二者是不同的输出参数化，不是必须依次训练的两道工序。}
+
+训练时噪声由程序生成，因此可直接作为标签：
+\[
+  L_\epsilon(\theta)=\mathbb E
+  \left[\|\epsilon_\theta(x_t,t)-\epsilon\|_2^2\right],\qquad
+  \widehat x_1=\frac{x_t-b_t\epsilon_\theta(x_t,t)}{a_t}
+  \quad(a_t\ne0).
+\]
+网络看见的是\emph{包含该噪声的混合状态}，不是凭空预测一份独立随机数；数据结构为区分信号与扰动提供统计依据。但原图与噪声的分解通常不唯一，最优 MSE 预测是条件均值，不保证找回某次加入的全部噪声。纯噪声生成更没有一张预先隐藏的原图。
+
+为了连接两种输出，在 $a_t\ne0$ 时消去 $x_1$，可得条件路径速度
+\[
+  \dot x_t=\dot a_t x_1+\dot b_t\epsilon
+  =\frac{\dot a_t}{a_t}x_t+
+    \left(\dot b_t-\frac{\dot a_t b_t}{a_t}\right)\epsilon.
+\]
+由此可将噪声估计转换为相应的速度估计。转换系数依赖时间；不同参数化下未经相应加权的 MSE 目标并不自动等价，端点附近还可能存在除零或误差放大问题。
+
+\subsubsection*{DDPM：Variance Preserving 路径}
+
+为避免时间方向混淆，用 $s$ 表示经典 DDPM 的加噪步数，$x_{\mathrm{data}}$ 表示干净图片：
+\[
+  z_s=\sqrt{\bar\alpha_s}\,x_{\mathrm{data}}
+    +\sqrt{1-\bar\alpha_s}\,\epsilon,\qquad
+  \bar\alpha_s=\prod_{j=1}^{s}(1-\beta_j),\quad 0<\beta_j<1.
+\]
+随 $s$ 增大，$\bar\alpha_s$ 下降，图片逐渐被噪声淹没；有限步下通常只是\emph{接近}纯噪声。若数据具有单位协方差且与噪声独立，则两系数平方和为 $1$，混合后的协方差保持为 $I$，这是 Variance Preserving（方差保持）的含义，不是每张图片的像素方差都不变。
+
+DDPM 常用上面的噪声预测 MSE 作为简化训练目标，生成时沿学习到的反向过程逐步更新。讲义 pp.~40--43 将其概率路径改按噪声到图片的方向解释；这种统一视角不意味着经典 DDPM 的随机反向采样链就是确定性 Flow Matching 的欧拉轨迹。
+
+\subsubsection*{EDM：以噪声尺度组织加噪状态}
+
+讲义 pp.~44--47 使用 $x_t=x_1+b_t\epsilon$，保持信号系数为 $1$。于是
+\[
+  \dot x_t=\dot b_t\epsilon
+  =\frac{\dot b_t}{b_t}(x_t-x_1)\qquad(b_t>0).
+\]
+讲义借助正态分位数函数 $Q$ 写出 $b_t=\exp(Q(1-t))$，联系对数正态噪声尺度采样。若 $Q$ 对应密度 $f$，则在内部时刻
+\[
+  Q'(q)=\frac{1}{f(Q(q))},\qquad
+  \frac{\dot b_t}{b_t}=-\frac{1}{f(Q(1-t))}.
+\]
+这里的负号来自 $1-t$ 的链式求导。$b_t\to\infty$ 表示噪声占主导，不能写成未归一化的 $x_t=\epsilon$；实际采样采用有限噪声尺度。该分位数写法也不要求实际采样器必须均匀步进 $t$。EDM 还包括预条件化、损失权重与采样器设计，不能归结为只换一个系数。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+  \toprule
+  路径形式 & 中间状态 & 理解重点 \\
+  \midrule
+  直线 Flow Matching & $(1-t)x_0+t x_1$ & 训练配对的直线插值，标签为 $x_1-x_0$ \\
+  VP 概率路径 & $\sqrt{a_t}x_1+\sqrt{1-a_t}x_0$ & 信号与噪声系数平方和为 $1$；时间方向须明确 \\
+  EDM 案例 & $x_1+b_t x_0$ & 信号系数固定，改变噪声尺度 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+这些案例可放入条件路径框架比较，但实际模型还可在网络、训练权重、条件机制及随机或确定性采样方式上不同。
+
+\lecturetopic{SC3000-SUP01-T05}{Classifier-Free Guidance 与生成机制的边界}
+
+给定文本条件 $c$，希望从 $p(x\mid c)$ 生成图片。训练时以一定概率丢弃条件，使同一网络同时支持 $u_\theta(x_t,t,c)$ 和 $u_\theta(x_t,t,\varnothing)$；讲义用 $90\%$ 保留、$10\%$ 丢弃作示意，并非固定要求。生成时，Classifier-Free Guidance（无分类器引导，CFG）组合两种预测：
+\[
+  \boxed{u_{\mathrm{guided}}=u_{\mathrm{uncond}}+
+    \lambda(u_{\mathrm{cond}}-u_{\mathrm{uncond}})}.
+\]
+按此参数定义，$\lambda=0$ 为无条件预测，$\lambda=1$ 为普通条件预测，$\lambda>1$ 进一步强化条件方向。Classifier-free 指不额外依赖独立分类器，不是没有条件。过强引导可能降低多样性或产生伪影，不保证总是改善质量。讲义的密度比解释是启发式说明，不能据此断言任意引导强度都精确采样原条件分布。
+
+Autoregressive generation（自回归生成）按条件概率逐个产生 token；本讲的 Flow／Diffusion 则迭代更新完整样本状态。二者的生成机制不同，但模型是否具备某类推理能力不能只由这一差异决定。讲义最后关于“不能推理”或组合路线前景的判断属于研究观点，不是前述推导证明的定理。
+
+\subsection{来源边界与补充依据}
+
+本讲主体依据 Module 7 pp.~3--47。图像高维坐标的解释、条件均值的统计含义、参数化转换及数值边界为辅助说明。p.~4 的正态逆 CDF 采用正确公式 $\Phi^{-1}$；不沿用其中混入的指数分布表达式。连续流训练的可行性与条件流匹配可参见
+\href{https://arxiv.org/abs/2210.02747}{Lipman et al., Flow Matching for Generative Modeling}；模型案例分别对照
+\href{https://arxiv.org/abs/2006.11239}{Ho et al., DDPM}、
+\href{https://arxiv.org/abs/2206.00364}{Karras et al., EDM} 与
+\href{https://arxiv.org/abs/2207.12598}{Ho and Salimans, Classifier-Free Diffusion Guidance}。
+
+\subsection{一分钟回顾}
+
+生成模型改变的是整张图的像素值或潜在表示，将随机起点的分布变成数据分布；噪声里没有预藏的原图。概率质量守恒连接离散变量替换与连续流的密度演化。Flow Matching 人为构造路径并对时间求导，把缺少中间标签的生成任务转成回归；条件高斯路径是方便的设计选择。预测速度直接提供变化方向，预测噪声则通过已知系数提供同类更新信息，二者不是必须依次训练的步骤。CFG 组合有条件与无条件预测来调节引导，不能把更强引导等同于更好结果。

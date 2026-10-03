@@ -1,0 +1,97 @@
+% Supplement: SC3000-SUP01, Recess Week, 2026-10-03.
+% Genuine source cases: Module 7 slide 4 and slides 29--32, 38--39.
+% Template: templates/lecture-example.tex; no conversational concept checks.
+\exercisegroup{SC3000-SUP01-EX}{补课：Diffusion Model 与 Flow Matching}
+
+\exercisemeta
+  {SC3000-SUP01-EX}
+  {Recess Week，2026-10-03}
+  {Module 7 p.~4；pp.~29--32、38--39}
+  {依据讲义案例展开，纠正公式简写}
+  {已讲解；笔记待审阅}
+
+\exercisequestion{SC3000-SUP01-E01}{逆 CDF 采样：均匀分布怎样生成正态分布}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-SUP01-T02}{概率质量守恒与变量替换}。
+
+\subsubsection*{讲义示例}
+
+Module 7 p.~4 要求从 $U\sim U(0,1)$ 生成 $Y\sim\mathcal N(0,1)$。设标准正态分布的 CDF 为 $\Phi$，确定变换并验证生成分布。
+
+\begin{workedsolution}
+标准正态分布的 CDF 为
+\[
+  \Phi(y)=\int_{-\infty}^{y}\frac{1}{\sqrt{2\pi}}e^{-s^2/2}\,ds.
+\]
+它连续严格递增，因此可在 $(0,1)$ 上取逆函数，令
+\[
+  \boxed{Y=\Phi^{-1}(U)}.
+\]
+对任意 $y$，利用单调性与均匀分布的 CDF：
+\[
+  P(Y\le y)=P(\Phi^{-1}(U)\le y)
+    =P(U\le\Phi(y))=\Phi(y).
+\]
+因此 $Y$ 具有所需的标准正态分布。以中位数自检，$U=0.5$ 对应 $Y=0$；一般正态分布则使用 $\mu+\sigma\Phi^{-1}(U)$，其中 $\sigma>0$。
+
+也可由变量替换验证：$u=\Phi(y)$，故 $du/dy=\phi(y)$。均匀密度 $p_U(u)=1$，于是
+\[
+  p_Y(y)=p_U(\Phi(y))\left|\frac{d\Phi(y)}{dy}\right|=\phi(y).
+\]
+这说明同一个概率质量可通过非均匀的空间伸缩重新分布。正态分布的逆 CDF 通常通过数值方法计算；不能将讲义中混入的 $1-e^{-y}$ 或对数平方当作此例的正确公式。
+\end{workedsolution}
+
+\exercisequestion{SC3000-SUP01-E02}{直线路径：条件分布、速度标签与生成更新}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-SUP01-T03}{Flow Matching 的训练与生成}。
+
+\subsubsection*{讲义案例}
+
+Module 7 pp.~38--39 采用 $x_0\sim\mathcal N(0,I)$、真实图片 $x_1$，设置
+\[
+  \mu_t(x_1)=t x_1,\qquad\sigma_t=1-t.
+\]
+结合 pp.~29--32，确定中间样本的条件分布、速度标签及回归目标，并说明生成时为何不再需要目标图片。
+
+\begin{workedsolution}
+路径为 $x_t=(1-t)x_0+t x_1$。在 $t=0$ 得到原始噪声，在 $t=1$ 到达指定图片。固定 $x_1$，对 $0\le t<1$ 有
+\[
+  \mathbb E[x_t\mid x_1]=t x_1,\qquad
+  \operatorname{Cov}(x_t\mid x_1)=(1-t)^2I,
+\]
+因而
+\[
+  x_t\mid x_1\sim\mathcal N(t x_1,(1-t)^2I).
+\]
+这里是对固定图片加随机扰动，不是声称整个数据分布为高斯。
+
+固定这一对端点后，对时间求导直接得到标签
+\[
+  \boxed{\dot x_t=x_1-x_0}.
+\]
+讲义将其改写成当前状态与目标的函数：
+\[
+  x_0=\frac{x_t-tx_1}{1-t},\qquad
+  \dot x_t=-\frac{x_t-tx_1}{1-t}+x_1
+    =\frac{x_1-x_t}{1-t}\quad(t<1).
+\]
+由于 $x_1-x_t=(1-t)(x_1-x_0)$，两种表达等价。训练时两端已知，直接使用 $x_1-x_0$ 可避免在 $t$ 接近 $1$ 时除以很小的数。
+
+随机采样 $t\sim U(0,1)$，将 $x_t,t$ 输入网络，最小化
+\[
+  L(\theta)=\mathbb E_{t,x_0,x_1}
+    \left[\|u_\theta(x_t,t)-(x_1-x_0)\|_2^2\right].
+\]
+真实图片用于\emph{制作标签}，不作为该无条件网络的额外输入。平方误差的总体最优预测是
+\[
+  u^*(x,t)=\mathbb E[x_1-x_0\mid x_t=x,t],
+\]
+即各训练路径在当前状态下的条件平均速度，而非记住某一对端点。
+
+生成时只采样新的 $x^{(0)}\sim\mathcal N(0,I)$，取 $\Delta t=1/K$，执行
+\[
+  x^{(k+1)}=x^{(k)}+\Delta t\,u_\theta(x^{(k)},k\Delta t),
+  \qquad k=0,\ldots,K-1.
+\]
+最后的 $x^{(K)}$ 是生成结果。此时用的是学习到的速度场，不再计算需要真实目标的插值公式。训练配对的直线并不意味着上述数值生成轨迹必然为直线，也不能省掉步长 $\Delta t$。
+\end{workedsolution}

@@ -1,0 +1,31 @@
+% Original schematic of Module 7's training versus generation distinction.
+\begin{tikzpicture}[
+  >=Latex,
+  font=\small,
+  stage/.style={draw=noteBlue,rounded corners,align=center,
+    text width=3.5cm,minimum height=1.1cm,fill=noteBlue!4},
+  result/.style={stage,draw=ntuRed,fill=ntuRed!4},
+  flow/.style={->,thick}
+]
+  \node[anchor=west,font=\small\bfseries] at (-1.9,1.05)
+    {训练：构造输入与标签，更新参数};
+  \node[stage] (pair) at (0,0)
+    {真实图 $x_1$、噪声 $x_0$\\随机时间 $t$};
+  \node[stage] (sample) at (4.8,0)
+    {$x_t=(1-t)x_0+t x_1$\\标签 $x_1-x_0$};
+  \node[result] (train) at (9.6,0)
+    {$u_\theta(x_t,t)$ 回归标签\\学习网络参数 $\theta$};
+  \draw[flow] (pair) -- (sample);
+  \draw[flow] (sample) -- (train);
+
+  \node[anchor=west,font=\small\bfseries] at (-1.9,-1.35)
+    {生成：固定已训练的参数，无需真实目标图片};
+  \node[stage] (noise) at (0,-2.4)
+    {新噪声\\$x^{(0)}\sim\mathcal N(0,I)$};
+  \node[stage] (steps) at (4.8,-2.4)
+    {反复按 $u_\theta(x,t)$\\修改各位置的数值};
+  \node[result] (output) at (9.6,-2.4)
+    {数值积分到终点\\得到生成图片};
+  \draw[flow] (noise) -- (steps);
+  \draw[flow] (steps) -- (output);
+\end{tikzpicture}
