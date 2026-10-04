@@ -27,6 +27,10 @@ courses/*/lms-exports/
 # only reviewed documentation, dependency files, and environment scripts.
 /assignments/sc4001/programming-assignments/pa-01/*
 
+# SC4061 Lab1 follows the same default-deny rule. Its local allowlist exposes
+# only the README, ignore rules, and a generic environment diagnostic.
+/assignments/sc4061/programming-assignments/lab-01/*
+
 # Large raw media should never be committed to this notes repository
 *.m4a
 *.mov

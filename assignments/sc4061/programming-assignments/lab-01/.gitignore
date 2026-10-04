@@ -1,0 +1,6 @@
+# Default deny: newly created files and directories are private too.
+*
+!/.gitignore
+!/README.md
+!/tools/
+!/tools/check_environment.m
