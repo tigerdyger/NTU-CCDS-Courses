@@ -557,4 +557,235 @@ Peterson's Algorithm（Peterson 算法）用 $flag$ 表示意愿、用 $turn$ �
   \item Producer--consumer 中先等待 $empty/full$、后等待 $mutex$；反序会让 process 持有 $mutex$ 睡眠，使能够改变资源计数的对方也无法进入。
 \end{itemize}
 
+\section{Lecture Quiz 4}
+\label{homework:SC2005-HW04}
+
+\exercisemeta
+  {SC2005-HW04}
+  {2026-10-04}
+  {NTULearn Lecture Quiz 4，10 道 multiple-choice questions（选择题）；题干与选项见下文}
+  {已完成并逐题核对}
+  {是（2026-10-04）}
+
+\Needspace{15\baselineskip}
+\exercisequestion{SC2005-HW04-Q01}{Question 1：Deadlock Avoidance}
+
+\textbf{题干：} What do deadlock avoidance algorithms do?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item They prevent deadlocks through active monitoring of resource requests.
+  \item They avoid all four deadlock conditions from occurring (circular wait, hold and wait, mutual exclusion and no preemption).
+  \item They allow deadlocks to occur, but then recover from deadlocks by breaking one of the four deadlock conditions (circular wait, hold and wait, mutual exclusion and no preemption).
+  \item None of the other options are correct.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L12-T01}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Avoidance（避免）动态检查 resource requests（资源请求），只批准分配后仍处于 safe state（安全状态）的请求。A 中的 prevent 是普通动词，不是在指 prevention 这一策略类别。Prevention（预防）通过规则破坏至少一个死锁必要条件，并不要求同时消除全部四个条件；C 描述的是 detection and recovery（检测与恢复）。
+\end{checkedsolution}
+
+\Needspace{18\baselineskip}
+\exercisequestion{SC2005-HW04-Q02}{Question 2：Banker's Algorithm 保持的状态}
+
+\textbf{题干：} Banker's algorithm ensures that the system never enters.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Unsafe state.
+  \item Safe state.
+  \item Deadlocked state.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L12-T01}，\texttt{SC2005-L12-T03}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+Banker's Algorithm（银行家算法）直接维护的不变量是系统始终 safe；使试分配结果变为 unsafe（不安全）的请求不会被批准。在进程遵守声明的最大需求等模型假设下，避免 deadlock 是这一不变量的结果。因此本题选最直接的 A；C 也是推论，不能为了区分选项而把 C 的陈述说成错误，更不能将 unsafe 与 deadlocked 等同。
+\end{checkedsolution}
+
+\Needspace{18\baselineskip}
+\exercisequestion{SC2005-HW04-Q03}{Question 3：Non-Nested Resource Acquisition}
+
+\textbf{题干：} Deadlocks cannot occur if resources (e.g., semaphores) are not locked in a nested manner.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item True; without nesting, a process cannot request for a resource while already holding another, this will prevent the hold and wait condition from occurring.
+  \item True; without nesting, a process cannot request for a resource while already holding another, this will prevent the mutual exclusion condition from occurring.
+  \item False; even if there is no nested resource requests, circular wait condition can occur and cause a deadlock.
+  \item False; even if there is no nested resource requests, mutual exclusion condition can occur and cause a deadlock.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L11-T02}
+
+\Needspace{5\baselineskip}
+\begin{checkedsolution}
+本题的资源获取模型中，不嵌套加锁意味着 process（进程）不会在持有一个资源时再申请另一个资源，因而破坏 hold and wait（持有并等待）。资源本身仍可要求 mutual exclusion（互斥）；被消除的是申请方式中的持有并等待，而不是互斥性。
+\end{checkedsolution}
+
+\Needspace{17\baselineskip}
+\exercisequestion{SC2005-HW04-Q04}{Question 4：Unsafe 不等于必然 Deadlock}
+
+\textbf{题干：} When a system is in the unsafe state, then deadlock is guaranteed.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item False; deadlock can still be avoided if processes release resources that are currently held before they take more resources.
+  \item False; deadlock can still be avoided if processes release resources when they terminate (in the \texttt{exit()} system call).
+  \item True; an unsafe state implies an imminent and unavoidable deadlock.
+  \item False; deadlock can still be avoided if processes complete based on any existing safe completion sequence.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L11-T02}，\texttt{SC2005-L12-T01}
+
+\Needspace{10\baselineskip}
+\begin{checkedsolution}
+Unsafe 表示按各进程\textbf{声明的剩余最大需求}找不到安全完成序列，不代表实际执行必然死锁。A 给出了继续申请前先释放已有资源的处理方式，破坏 hold and wait。
+
+\textbf{措辞辨析：}B 的退出释放须以进程能先结束为前提；若实际需求低于声明上限，确实可能顺利结束，因此其 ``can'' 措辞并非完全排他，但仅指出 \texttt{exit()} 会释放资源不足以解释进程如何摆脱等待。D 假设已有 safe completion sequence，与当前状态 unsafe 的定义矛盾；它并不是对 A、B 两种情况的概括。
+\end{checkedsolution}
+
+\Needspace{16\baselineskip}
+\exercisequestion{SC2005-HW04-Q05}{Question 5：Safe State 的存在性条件}
+
+\textbf{题干：} Every completion sequence must be safe, for the system to be in the safe state.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item False; the system is in the safe state as long as there is at least one safe completion sequence.
+  \item False; the system is in the safe state as long as there is one safe completion sequence, and all the other sequences are not unsafe.
+  \item True; this is the definition of a safe state.
+  \item False; the system is in the safe state as long as there is one safe completion sequence, and all the other sequences are not guaranteed to deadlock.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L12-T01}，\texttt{SC2005-L12-T02}
+
+\Needspace{5\baselineskip}
+\begin{checkedsolution}
+Safe state 要求\textbf{存在至少一个}安全完成序列，是 $\exists$ 而非 $\forall$。无需额外保证其他所有顺序也安全。安全算法寻找的是可满足各进程最大需求的完成顺序，不是在要求 CPU 实际严格按这个顺序逐个运行。
+\end{checkedsolution}
+
+\Needspace{16\baselineskip}
+\exercisequestion{SC2005-HW04-Q06}{Question 6：Need Matrix}
+
+\textbf{题干：} In Banker's algorithm, what is the information stored in the Need matrix?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item At each time instant, it denotes the remaining resource requests (not yet requested) for each process.
+  \item At each time instant, it denotes the allocated resources for each process.
+  \item At each time instant, it denotes the available resources in the system.
+  \item At each time instant, it denotes the remaining resource requests (not yet requested) for each process, over and above its maximum allowed requests.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L12-T01}
+
+\Needspace{8\baselineskip}
+\begin{checkedsolution}
+\[
+  \boxed{Need=Max-Allocation}.
+\]
+$Need[i,j]$ 表示进程 $i$ 为达到声明的最大需求，最多还可能需要多少类 $j$ 资源；不是超出 Max 的额外额度。A 的 ``not yet requested'' 是简化表述：严格说是尚未分配的剩余最大需求，不能与当前已发出、正在等待的一笔 Request 混淆。B 对应 Allocation，C 对应 Available。
+\end{checkedsolution}
+
+\Needspace{13\baselineskip}
+\exercisequestion{SC2005-HW04-Q07}{Question 7：Deadlock 的必要条件}
+
+\textbf{题干：} If a system satisfies any two of the four deadlock conditions (mutual exclusion, no preemption, hold and wait, circular wait), then a deadlock has occurred.
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item False; all four conditions are necessary for a deadlock.
+  \item False; all four conditions are sufficient for a deadlock.
+  \item True; any one of the four conditions is sufficient for a deadlock.
+  \item True; all four conditions are necessary but not sufficient for a deadlock.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L11-T02}
+
+\Needspace{5\baselineskip}
+\begin{checkedsolution}
+资源死锁发生时，四个必要条件必须同时成立；满足任意两个不能推出已经死锁。不要把必要条件当成充分判据，例如资源有多个实例时，resource-allocation graph（资源分配图）中存在环仍不一定死锁。
+\end{checkedsolution}
+
+\Needspace{24\baselineskip}
+\exercisequestion{SC2005-HW04-Q08}{Question 8：Fixed 与 Dynamic Priority}
+
+\textbf{题干：} The key difference between fixed-priority and dynamic-priority real-time CPU scheduling is that:
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Under fixed-priority real-time scheduling priorities are fixed between recurrent processes (all the instances of one recurrent process will have higher or lower priority than all the instances of another recurrent process), whereas under dynamic-priority real-time scheduling no such restrictions exist.
+  \item Under fixed-priority real-time scheduling priorities are fixed between recurrent processes (all the instances of one recurrent process will have higher or lower priority than all the instances of another recurrent process), whereas under dynamic-priority real-time scheduling priorities are only fixed between process instances (an instance of a recurrent process will have higher or lower priority than an instance of another recurrent process).
+  \item They are identical, except the fact that priorities are based on different parameters (T under fixed-priority scheduling and D under dynamic-priority scheduling).
+  \item None of the other responses are correct.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L13-T02}，\texttt{SC2005-L13-T03}
+
+\Needspace{9\baselineskip}
+\begin{checkedsolution}
+Fixed priority（固定优先级）在 recurrent task（反复释放实例的任务）之间保持固定排序，各任务的不同 job / instance（作业实例）继承这个排序；dynamic priority（动态优先级）没有这一跨实例限制。RM 根据 $T$ 排序，$T$ 越小优先级越高；EDF 根据各实例的\textbf{绝对截止时刻} $d_k=r_k+D$ 排序，不是只比较相对截止期限 $D$。
+
+B 将动态优先级过窄地限定为实例之间固定排序；这可描述 EDF 中给定两个实例的相对截止时刻关系，却不是所有动态优先级算法的定义。讲义来源为 Part6a PDF pp.~15--18。
+\end{checkedsolution}
+
+\Needspace{14\baselineskip}
+\exercisequestion{SC2005-HW04-Q09}{Question 9：Bare-Metal Hypervisor}
+
+\textbf{题干：} Which of the following is NOT true for bare-metal hypervisors?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item They are commonly used for end-user virtualization.
+  \item These hypervisors are secure because they directly manage the hardware resources.
+  \item These hypervisors have low latency because the number of abstraction layers is less when compared to hosted hypervisors.
+  \item These hypervisors are popular in the industry and deployed extensively.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L14-T03}
+
+\Needspace{6\baselineskip}
+\begin{checkedsolution}
+注意题目问的是 \textbf{NOT true}。本题按典型使用场景区分：Type 1 / bare-metal 直接管理硬件，常见于服务器、数据中心和企业环境；Type 2 / hosted 依托已有 host OS，常用于终端用户的桌面虚拟化。B、C 按减少宿主依赖和抽象层的典型优势理解，并非宣称 Type 1 绝对安全、没有漏洞或在任何负载下都更快。
+\end{checkedsolution}
+
+\Needspace{18\baselineskip}
+\exercisequestion{SC2005-HW04-Q10}{Question 10：Periodic 与 Sporadic Process}
+
+\textbf{题干：} The key difference between a periodic and a sporadic real-time process is that:
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item A periodic process is released periodically at fixed time intervals, whereas a sporadic process is released sporadically with a minimum time separation between successive releases.
+  \item A periodic process is released periodically at fixed time intervals, whereas a sporadic process is released sporadically with a maximum time separation between successive releases.
+  \item They are both identical and specified using the same three parameters, T for period, C for CPU burst length and D for relative deadine.
+  \item A periodic process is released periodically with a minimum time separation between successive releases, whereas a sporadic process is released sporadically at fixed time intervals.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L13-T01}，\texttt{SC2005-L13-T02}
+
+\Needspace{8\baselineskip}
+\begin{checkedsolution}
+Periodic（周期性）任务以固定间隔 $T$ 释放；sporadic（偶发）任务只限制相邻释放的最小间隔为 $T$：
+\[
+  \text{Periodic: }r_{k+1}-r_k=T,
+  \qquad
+  \text{Sporadic: }r_{k+1}-r_k\ge T.
+\]
+Sporadic 可以隔更久才释放下一实例，并没有“最多等 $T$”的要求。两者均可使用 $(T,C,D)$ 参数，但 $T$ 的语义不同，不能因此说它们完全相同。Part6a PDF p.~16 将 $T$ 写作 period / minimum release-separation time。
+\end{checkedsolution}
+
+\subsection{易错点}
+
+\begin{itemize}
+  \item Avoidance 动态检查安全性；prevention 破坏至少一个死锁必要条件；detection and recovery 则允许先发生再处理。
+  \item Safe 是存在至少一个安全序列；unsafe 不等于已经或必然 deadlocked。$Need=Max-Allocation$ 是剩余最大需求，不是当前 Request。
+  \item 固定优先级固定的是任务之间的排序；动态优先级允许不同实例改变排序。EDF 比较绝对截止时刻 $r+D$，不是只比较 $D$。
+  \item Periodic 的 $T$ 是固定释放间隔，sporadic 的 $T$ 是最小释放间隔；Type 1 / Type 2 区分 hypervisor 与 host OS 的结构关系。
+\end{itemize}
+
 \end{document}
