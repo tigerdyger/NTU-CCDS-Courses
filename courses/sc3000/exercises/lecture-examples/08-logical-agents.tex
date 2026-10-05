@@ -1,0 +1,134 @@
+% Template: templates/lecture-example.tex.
+% Genuine lecture examples: Logical Agent slides 18--20, 28, 31--33, 53--56.
+% Intermediate deductions expanded from the slides and checked against the grids.
+\exercisegroup{SC3000-L07-EX}{第 07 讲：Logical Agents}
+
+\exercisemeta
+  {SC3000-L07-EX}
+  {2026-10-05}
+  {Week 8 -- Logical Agent pp.~18--20、28、31--33、53--56；配套视频字幕}
+  {按讲义例题展开推导；网格坐标与模型赋值已核对}
+  {已讲解；笔记待审阅}
+
+\exercisequestion{SC3000-L07-E01}{Smoke：从知识状态到查询答案}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L07-T01}{知识库与 Tell/Ask}；\relatedtopic{SC3000-L07-T02}{智能体循环}。
+
+\subsubsection*{题目}
+
+向 KB 加入 $\mathrm{Smoke}\Rightarrow\mathrm{Fire}$、$\mathrm{Fire}\Rightarrow\mathrm{Call\_999}$ 和 $\mathrm{Smoke}$，回答查询 $\mathrm{Call\_999}$。说明该问题的状态、算子与目标。规则是本题的简化假设，不代表现实中所有烟雾都必然来自火灾。
+
+\begin{workedsolution}
+初始知识为
+\[
+  KB_0=\{\mathrm{Smoke}\Rightarrow\mathrm{Fire},\;
+         \mathrm{Fire}\Rightarrow\mathrm{Call\_999},\;\mathrm{Smoke}\}.
+\]
+由“$p$”及“$p\Rightarrow q$”推出“$q$”的规则，先导出 Fire，再导出 Call\_999：
+\[
+  KB_1=KB_0\cup\{\mathrm{Fire}\},\qquad
+  KB_2=KB_1\cup\{\mathrm{Call\_999}\}.
+\]
+因此 Ask 可以返回支持该查询的肯定答案，即使 Call\_999 最初并未直接存入 KB。States 是这些 KB 实例，operators 是 Tell 或 inference 带来的知识扩展，goal 是回答 Call\_999 查询。
+
+反过来，仅知道 Fire 不能凭 $\mathrm{Smoke}\Rightarrow\mathrm{Fire}$ 推出 Smoke；一条蕴含规则不能自动倒过来用。同样，得到行动结论与真正执行电话动作是两个步骤。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L07-E02}{Wumpus：综合局部观察，定位危险并寻找黄金}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L07-T03}{Wumpus World 的规则与安全条件}。
+
+\subsubsection*{题目与条件}
+
+使用 pp.~31--33 的 $4\times4$ 世界。agent 在安全起点 $(1,1)$ 面向东，先到 $(2,1)$，再退回起点并到 $(1,2)$，随后到 $(2,2)$ 和 $(2,3)$。依次结合各处感知，说明哪些格可以确定安全或危险。感知无噪声，坑与 Wumpus 静止，过程中未射箭；统一采用横坐标在前的 $(x,y)$。
+
+\begin{workedsolution}
+\textbf{第一步：起点没有微风，也没有臭味。}
+$(1,1)$ 只有 $(2,1)$、$(1,2)$ 两个相邻格，所以
+\[
+  \neg B_{1,1}\Rightarrow\neg P_{2,1}\land\neg P_{1,2},\qquad
+  \neg S_{1,1}\Rightarrow\neg W_{2,1}\land\neg W_{1,2}.
+\]
+二者均可安全进入。这不是“没看见坑就当作没坑”，而是由精确的传感规则推出相邻格无坑、无 Wumpus。
+
+\textbf{第二步：$(2,1)$ 有微风、没有臭味。}
+其邻居为 $(1,1)$、$(2,2)$、$(3,1)$。起点已知无坑，因此
+\[
+  \boxed{P_{2,2}\lor P_{3,1}},\qquad
+  \neg S_{2,1}\Rightarrow\neg W_{2,2}\land\neg W_{3,1}.
+\]
+目前只能说两个候选格中\emph{至少一个}有坑，二者都有坑也未排除。不能冒险断言 $(2,2)$ 或 $(3,1)$ 安全，故退回起点，再去已知安全的 $(1,2)$。
+
+\begin{center}
+  \input{figures/wumpus-reasoning-grid}
+
+  \small 按讲义 pp.~31--32 重绘，仅示左下 $3\times3$ 区域。A 为当前位置，V 为已访问，\par
+  OK/蓝底为已知安全；P? 为候选坑，P!/W! 为已确定危险；空白格仍未确定。
+\end{center}
+
+\textbf{第三步：$(1,2)$ 有臭味、没有微风。}
+无微风排除相邻格的坑，特别是
+\[
+  \neg P_{2,2},\qquad\neg P_{1,3}.
+\]
+将 $\neg P_{2,2}$ 与上一阶段的 $P_{2,2}\lor P_{3,1}$ 合并，得到
+\[
+  \boxed{P_{3,1}}.
+\]
+臭味意味着 $W_{1,1}\lor W_{2,2}\lor W_{1,3}$。起点安全，且 $(2,1)$ 的无臭味已排除 $W_{2,2}$，故
+\[
+  \boxed{W_{1,3}}.
+\]
+同时 $(2,2)$ 既无坑也无 Wumpus，\textbf{可以安全进入}。这里必须结合不同位置的观察：无微风用于排除坑，无臭味用于排除 Wumpus，不能把两类条件互相替代。
+
+\textbf{第四步：经 $(2,2)$ 到黄金所在的 $(2,3)$。}
+在 $(2,2)$ 没有微风、臭味，因此其相邻的 $(2,3)$、$(3,2)$ 均安全。agent 转向北进入 $(2,3)$，感到臭味、微风并看到 Glitter：臭味与已知的 $W_{1,3}$ 一致，Glitter 说明黄金就在当前格。
+
+此处微风的候选来源是 $(1,3)$、$(2,2)$、$(3,3)$、$(2,4)$。前两格已知无坑，故剩下
+\[
+  P_{3,3}\lor P_{2,4}.
+\]
+不必进一步冒险区分这两个候选格：抓取黄金后，可沿 $(2,3)\to(2,2)\to(1,2)\to(1,1)$ 返回。讲义从起点到黄金的十个动作是
+\[
+  F,L,L,F,R,F,R,F,L,F,
+\]
+其中 $F$ 为前进，$L/R$ 为左/右转；十个动作尚不包括 Grab 与返回。
+
+整个过程说明：可靠推理不仅利用“有什么感知”，也利用“没有什么感知”；只有多个条件共同排除了其余可能性，才把 P? 升级成 P!。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L07-E03}{Model Checking：八个候选世界，三个相容模型}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L07-T04}{模型与逻辑蕴含}；\relatedtopic{SC3000-L07-T05}{模型检查}。
+
+\subsubsection*{题目与知识时点}
+
+pp.~53--56 回到上一例的\textbf{第二步}：已知起点无微风、$(2,1)$ 有微风，\emph{还没有}去 $(1,2)$ 取得新观察。只考察 $P_{1,2},P_{2,2},P_{3,1}$ 三个变量，判断是否蕴含
+\[
+  \alpha_1=\neg P_{1,2},\qquad\alpha_2=\neg P_{2,2}.
+\]
+\textit{来源校正：}p.~55 的 $\alpha_1$ 按模型图取“$(1,2)$ 无坑”；该页配文写成 $(2,1)$，与图中的命题不一致。
+
+\begin{workedsolution}
+三个布尔变量共有 $2^3=8$ 种赋值。结合起点安全和前两次感知，对这三个变量的约束可化为
+\[
+  KB_{\mathrm{pit}}\equiv\neg P_{1,2}\land(P_{2,2}\lor P_{3,1}).
+\]
+四种 $P_{1,2}=\mathrm{T}$ 的赋值违反第一项；$P_{1,2}=P_{2,2}=P_{3,1}=\mathrm{F}$ 又不能解释微风。因此恰剩三个模型：
+
+\begin{center}
+\begin{tabular}{@{}cccccc@{}}
+  \toprule
+  模型 & $P_{1,2}$ & $P_{2,2}$ & $P_{3,1}$ & $\alpha_1=\neg P_{1,2}$ & $\alpha_2=\neg P_{2,2}$ \\
+  \midrule
+  $m_1$ & F & F & T & T & T \\
+  $m_2$ & F & T & F & T & F \\
+  $m_3$ & F & T & T & T & F \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+$\alpha_1$ 在三个模型中都成立，所以 $KB_{\mathrm{pit}}\models\neg P_{1,2}$。但 $m_2,m_3$ 是 $\alpha_2$ 的反模型，所以 $KB_{\mathrm{pit}}\not\models\neg P_{2,2}$。另一方面，$m_1$ 使 $P_{2,2}$ 为假，故也不能断言 $KB_{\mathrm{pit}}\models P_{2,2}$：此时正确状态是\textbf{尚不确定}。
+
+“三个模型中有两个含 $P_{2,2}$”并不自动给出有坑概率 $2/3$；逻辑枚举没有规定各模型的概率。只有后续在 $(1,2)$ 观察到无微风，加入 $\neg P_{2,2}$，才会排除 $m_2,m_3$，留下 $m_1$ 并确定 $P_{3,1}$。不能把这次未来观察提前用于当前阶段的模型检查。
+\end{workedsolution}

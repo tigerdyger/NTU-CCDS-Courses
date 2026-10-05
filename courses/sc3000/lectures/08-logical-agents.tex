@@ -1,0 +1,135 @@
+% Template: templates/lecture.tex.
+% Regular lecture L07; the preceding diffusion supplement uses SUP01.
+% Source: Week 8 - Logical Agent-slides.pptx, 57 slides.
+% Scope: pp. 4--34 and 36--56; pp. 1--3 schedule, p. 35 break, p. 57 closing.
+% Video transcript: 71934 - 0_ks0nwe2r - PID 117.txt; covers both parts.
+\section{第 07 节课：Logical Agents}
+\label{lecture:SC3000-L07}
+
+\lecturemeta
+  {SC3000-L07}
+  {2026-10-05（Week 8）}
+  {Week 8 -- Logical Agent-slides}
+  {pp.~4--34、36--56；Logical Agent 1 与 2}
+  {字幕 71934 / 0\_ks0nwe2r；已对照两部分内容及 Wumpus 图示}
+  {已完成讲解；笔记待审阅}
+
+\subsection{本讲主线}
+
+Logical agent（逻辑智能体）把感知、事实与规则写成明确的知识，再通过推理选择动作。本讲从 Knowledge Base（知识库，KB）的工作方式出发，用 Wumpus World 说明如何在只能看到局部信息时排除危险，最后用 model、entailment 和 inference 精确定义“一个结论有依据”。下一周才进一步展开 Propositional Logic（命题逻辑）的具体表示与推理方法。
+
+\lecturetopic{SC3000-L07-T01}{逻辑、知识库与表示层次}
+
+Logic（逻辑）研究正确推理。Formal logic（形式逻辑）使用具有明确语法、语义和推理规则的符号语言；informal logic（非形式逻辑）分析自然语言中的论证。一个论证是 valid（有效）的，指\emph{假如前提成立，结论就必然成立}；sound argument（健全的论证）还要求前提事实上为真。有效性不能自动保证前提真实。
+
+KB 是一组 sentences（语句），既包含事实，也可包含规则。本讲的 knowledge-based agent 用逻辑语言表示知识，再通过 inference mechanism（推理机制）导出后果。
+
+\begin{itemize}
+  \item \textbf{Tell：}向 KB 加入语句，例如“Smoke”或规则“$\mathrm{Smoke}\Rightarrow\mathrm{Fire}$”。
+  \item \textbf{Ask：}查询 KB 支持什么结论。答案不必逐字存储在 KB 中，也可以由事实与规则推出；但不能凭空猜测。
+\end{itemize}
+
+同一条知识可从三个层次理解（p.~25）：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+  \toprule
+  层次 & 关注点与例子 \\
+  \midrule
+  Epistemological（知识层） & 声明式描述知道什么：厨房有烟；若有烟则有火。 \\
+  Logical（逻辑层） & 用形式语句编码：$\mathrm{Smoke}$、$\mathrm{Smoke}\Rightarrow\mathrm{Fire}$。 \\
+  Implementation（实现层） & 在程序中存为字符串、语法树或数组中的关系记录。 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+三者是同一知识的不同描述层次；改变存储结构不应改变规则含义。
+
+\lecturetopic{SC3000-L07-T02}{Knowledge-Based Agent 的循环}
+
+每次收到 percept（感知），智能体执行 interpretation（解释）、inference（推理）与 execution（执行）三个环节。按 pp.~21--24 的通用算法整理：
+\begin{enumerate}
+  \item 将当前感知连同时间 $t$ 转成语句，执行 $\operatorname{Tell}(KB,\operatorname{PerceptSentence}(percept,t))$。
+  \item 用 $\operatorname{Ask}$ 查询当前应该执行的动作，得到 $action$。
+  \item 将选定动作与时间写回 KB，再令 $t\leftarrow t+1$；返回动作，由执行器作用于环境。
+\end{enumerate}
+static KB 和 $t$ 在多次调用间持续保存，不表示不可改变。时间标记区分过去与当前的状态；记录选定动作不等于已验证执行成功。
+
+从 problem formulation（问题形式化）的角度看，\textbf{state 是当前 KB 的内容}，operator 是 Tell 或通过 inference 加入结论，goal 是回答给定 query。这里改变的是知识状态，不一定是外部世界的物理状态。例如导出 Fire，并不是推理本身点燃了一场火。
+
+\textbf{对应例题：}\relatedexercise{SC3000-L07-E01}{从 Smoke 推到 Call\_999}。
+
+\lecturetopic{SC3000-L07-T03}{Wumpus World：局部感知下的安全行动}
+
+Wumpus World 用规则明确的网格世界展示逻辑智能体。坐标统一写为 $(x,y)$：$x$ 向右、$y$ 向上；\textbf{相邻只指上下左右，不包括对角线}。agent 从 $(1,1)$ 出发，寻找黄金并安全返回，但不能直接看到完整危险分布。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+  \toprule
+  PEAS & 讲义设定（p.~28） \\
+  \midrule
+  Performance & 获得黄金 $+1000$，死亡 $-1000$，每步 $-1$，使用箭 $-10$。 \\
+  Environment & 静止的坑、Wumpus 与黄金；只有一支箭。 \\
+  Actuators & 左转、右转、前进、抓取、放下、射箭。 \\
+  Sensors & Breeze（微风）、Stench/Smell（臭味）、Glitter（闪光）。 \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+以下使用讲义中无噪声、尚未射杀 Wumpus 的传感规则：令 $P_{x,y}$、$W_{x,y}$ 分别表示该格有坑、有 Wumpus，$B_{x,y}$、$S_{x,y}$ 表示该格感到微风、臭味，则
+\[
+  B_{x,y}\ \Longleftrightarrow\!
+    \bigvee_{(u,v)\in\operatorname{Adj}(x,y)}P_{u,v},
+  \qquad
+  S_{x,y}\ \Longleftrightarrow\!
+    \bigvee_{(u,v)\in\operatorname{Adj}(x,y)}W_{u,v}.
+\]
+$\operatorname{Adj}(x,y)$ 仅包括网格内的相邻格。Glitter 当且仅当黄金与 agent 在同一格。双向关系使\emph{没有微风}也成为信息：所有相邻格都没有坑；但\emph{有微风}通常只确定至少一个相邻格有坑，不能直接确定哪一格。
+
+相对于坑和仍存活的 Wumpus，安全要求 $\operatorname{Safe}_{x,y}\equiv\neg P_{x,y}\land\neg W_{x,y}$：没有坑还不够，必须同时排除 Wumpus。多个地点的感知与世界规则共同缩小可能状态集合。
+
+这个环境是 \textbf{partially observable、deterministic、sequential、static、discrete、single-agent}：只能感知局部，但动作效果有确定规则；行动会影响后续选择；危险不自行移动；状态与动作离散；Wumpus 在此被当作自然危险而非策略对手。\textbf{不知道实际状态不等于环境转移是随机的。}
+
+\textbf{对应例题：}\relatedexercise{SC3000-L07-E02}{由微风、臭味定位危险并取得黄金}。
+
+\lecturetopic{SC3000-L07-T04}{Syntax、Semantics、Model 与 Entailment}
+
+\textbf{Syntax（语法）}规定怎样组成合法表达式；\textbf{semantics（语义）}规定表达式在给定解释下何时为真。例如 $x+2\ge y$ 语法合法，但在 $x=7,y=1$ 时为真，在 $x=0,y=6$ 时为假。语法正确不意味着命题永远为真，也不能把 well-formed（合式）与 valid（逻辑有效）混用。
+
+\textbf{Model（模型）}在此指形式化的可能世界或解释，例如命题变量的一组真值赋值，不是机器学习训练出的参数模型。记
+\[
+  m\models\alpha\quad\text{表示 $\alpha$ 在模型 $m$ 中为真},
+  \qquad M(\alpha)=\{m:m\models\alpha\}.
+\]
+$m\models KB$ 表示 KB 中所有语句都在 $m$ 中为真。Entailment（逻辑蕴含）要求结论在\emph{每一个}符合 KB 的模型中都为真：
+\[
+  \boxed{KB\models\alpha
+    \quad\Longleftrightarrow\quad
+    M(KB)\subseteq M(\alpha)}.
+\]
+方向不能反过来。KB 通常比单独的结论包含更多约束，允许的世界更少。例如 $G\land R\models G$：所有同时满足 $G,R$ 的世界，都满足 $G$；只满足 $G$ 的世界不一定满足 $R$。
+
+要证明\emph{不}蕴含，只需找到一个 countermodel（反模型）：它使 KB 为真，却使 $\alpha$ 为假。对于一致的 KB，可能有些相容模型支持 $\alpha$，另一些支持 $\neg\alpha$；此时两者都不能确定：
+\[
+  KB\not\models\alpha\quad\text{不意味着}\quad KB\models\neg\alpha.
+\]
+这里的“未知”是智能体知识不足，不是在每个经典逻辑模型中额外增加第三个真值。新增一致的信息会进一步缩小 $M(KB)$，从而可能使原先不确定的命题变得确定。
+
+\lecturetopic{SC3000-L07-T05}{Inference、Soundness、Completeness 与 Model Checking}
+
+Inference（推理）是实际构造结论的过程。记 $KB\vdash_i\alpha$ 表示使用推理过程 $i$，能够从 KB 推导出 $\alpha$；$\models$ 描述语义上的保证，$\vdash_i$ 描述某个过程的推导能力。
+
+\begin{align*}
+  \text{Soundness（可靠性）：}\quad
+  &KB\vdash_i\alpha\ \Longrightarrow\ KB\models\alpha,\\
+  \text{Completeness（完备性）：}\quad
+  &KB\models\alpha\ \Longrightarrow\ KB\vdash_i\alpha.
+\end{align*}
+Sound 表示\textbf{不会推出没有逻辑依据的结论}；complete 表示\textbf{不会漏掉 KB 逻辑上蕴含的结论}。前者不保证 KB 的事实与规则符合现实，后者不保证推理速度快，也不保证能回答知识之外的全部问题。算法的 soundness 与 T01 中“有效且前提真实”的 sound argument 关注的对象不同。
+
+Model checking（模型检查）直接按 entailment 的定义工作：先枚举相关变量的可能赋值（$n$ 个布尔变量有 $2^n$ 种）；再保留使 KB 所有语句成立的模型；最后检查待证命题是否在每个保留模型中都成立。若有一个反模型，就不能断言蕴含。
+有限命题场景下，穷举且正确实现的模型检查可同时做到 sound 和 complete，但直接枚举的规模随变量数指数增长。它检查的是\emph{所有可能性}，不是按多数表决，也不会自动赋予各模型相同概率。
+
+\textbf{对应例题：}\relatedexercise{SC3000-L07-E03}{从八个候选世界筛出三个相容模型}。
+
+\subsection{一分钟回顾}
+
+KB 用事实和规则表达知识，Tell 加入信息，Ask 通过推理回答查询；智能体持续记录感知与动作。Wumpus World 的关键是把多个局部观察合起来排除可能世界，而不是看到一次微风就猜坑的位置。$KB\models\alpha$ 要求 $M(KB)\subseteq M(\alpha)$；$KB\vdash_i\alpha$ 则表示某个过程能导出结论。Sound 不乱推，complete 不漏推；既不能证明有坑、也不能证明无坑时，应保留“不确定”。
