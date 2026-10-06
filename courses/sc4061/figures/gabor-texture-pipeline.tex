@@ -1,0 +1,26 @@
+% Original schematic: M parallel filters, M features, K output clusters.
+\begin{tikzpicture}[font=\small,>=Latex]
+  \tikzset{
+    box/.style={draw=noteBlue,fill=blue!4,rounded corners=2pt,
+      minimum width=2.0cm,minimum height=0.75cm,align=center},
+    result/.style={box,draw=ntuRed,fill=red!3},
+    flow/.style={->,thick,noteBlue}
+  }
+  \node[box] (input) at (0,0) {原图\\$f(x,y)$};
+  \node[box] (h1) at (3,1.25) {Gabor $h_1$};
+  \node[box] (h2) at (3,0) {Gabor $h_2$};
+  \node[box] (hm) at (3,-1.25) {Gabor $h_M$};
+  \node[box] (t1) at (6.4,1.25) {$g_1\to\sum_{\mathcal N}|g_1|$};
+  \node[box] (t2) at (6.4,0) {$g_2\to\sum_{\mathcal N}|g_2|$};
+  \node[box] (tm) at (6.4,-1.25) {$g_M\to\sum_{\mathcal N}|g_M|$};
+  \node[box,minimum width=2.2cm] (vec) at (10,0) {拼接 $M$ 个特征\\$\bm\tau(x,y)\in\mathbb R^M$};
+  \node[result] (clusters) at (13.3,0) {K-means\\$K$ 个簇标签};
+  \foreach \h/\t in {h1/t1,h2/t2,hm/tm}{
+    \draw[flow] (input.east) -- (\h.west);
+    \draw[flow] (\h.east) -- (\t.west);
+    \draw[flow] (\t.east) -- (vec.west);
+  }
+  \draw[flow] (vec) -- (clusters);
+  \node[font=\footnotesize,noteBlue] at (3,-2.05) {不同方向、不同尺度};
+  \node[font=\footnotesize,noteBlue] at (10.9,-1.45) {特征维数 $M$ 不必等于簇数 $K$};
+\end{tikzpicture}

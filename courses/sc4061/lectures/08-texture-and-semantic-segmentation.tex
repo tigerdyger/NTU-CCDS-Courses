@@ -1,0 +1,183 @@
+% Actual class: 08, normal lesson on 2026-10-06.
+% Source: LEC05 Image Segmentation - 2026, PDF pp. 27--50.
+% Videos: 64215 (Texture) and 64279 (Semantic Segmentation).
+
+\section{第 08 节课：Texture and Semantic Segmentation}
+\label{lecture:SC4061-L08}
+
+\lecturemeta
+  {SC4061-L08}
+  {2026-10-06}
+  {LEC05 Image Segmentation -- 2026}
+  {pp.~27--40：Texture；pp.~41--50：Semantic Segmentation}
+  {字幕 64215、64279；本讲完成 L5 后半部分}
+  {已确认本次学习范围（2026-10-06）}
+
+\subsection{本讲主线}
+
+灰度阈值只比较像素的明暗；纹理分割比较局部结构，语义分割则判断每个像素属于什么类别。本讲先用 Gabor filter bank 提取纹理向量，再用 K-means 聚类；随后学习 FCN 如何产生逐像素预测，以及 encoder--decoder 和 skip connections 如何兼顾语义与边界细节。
+
+\lecturetopic{SC4061-L08-T01}{Gabor 滤波器与纹理特征向量}
+
+\subsubsection*{为什么仅看灰度不够}
+
+两个区域可以具有相同的灰度直方图、均值和方差，却一个是横条纹、另一个是竖条纹：\textbf{纹理包含灰度值的空间排列信息}。一个阈值只能产生两个灰度组；多个阈值虽能产生更多组，也不能仅凭相同的灰度分布区分不同纹理。
+
+Gabor filter（Gabor 滤波器）把正弦波限制在一个 Gaussian envelope（高斯包络）内，因而对\textbf{局部特定方向、特定空间频率的结构}有选择性响应。讲义采用的复数形式为
+\[
+  \boxed{h(x,y)=\exp\!\left(-\frac{x'^2+\gamma^2y'^2}{2\sigma^2}\right)
+  \exp\!\left[i\left(\frac{2\pi x'}{\lambda}+\psi\right)\right]},
+\]
+\[
+  x'=x\cos\theta+y\sin\theta,\qquad
+  y'=-x\sin\theta+y\cos\theta.
+\]
+由 $e^{i\phi}=\cos\phi+i\sin\phi$，其实部是高斯包络乘余弦，虚部是高斯包络乘正弦。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{1.5cm}X@{}}
+  \toprule
+  参数 & 含义与作用 \\
+  \midrule
+  $\lambda$ & 波长，空间频率为 $1/\lambda$；波长越短，条纹越密。\\
+  $\theta$ & $x'$ 轴的方向，即正弦变化方向；等相位条纹与此方向垂直。\\
+  $\psi$ & 相位，控制正弦波在包络内的位置。\\
+  $\sigma$ & 高斯包络的尺度，影响滤波器覆盖的局部范围。\\
+  $\gamma$ & 包络的纵横比参数；$\gamma=1$ 时为圆对称包络。\\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+滤波是在邻域内做加权求和，不是移动像素。具体滑窗计算见\relatedexercise{SC4061-L08-E01}{局部加权和}。
+
+\subsubsection*{从多个响应图到每个像素的向量}
+
+只用一个方向和尺度，可能无法区分图像中的全部纹理。Filter bank（滤波器组）选取 $M$ 个不同参数的滤波器，对\emph{同一幅原图}分别滤波：
+\[
+  g_j=f*h_j,\qquad j=1,\ldots,M.
+\]
+这是并行提取不同特征，不是把前一个滤波结果连续送入下一个滤波器。讲义 p.~34 再在每个响应图的局部邻域 $\mathcal N$ 内聚合响应幅值：
+\[
+  \tau_j(x,y)=\sum_{(u,v)\in\mathcal N}|g_j(x+u,y+v)|,\qquad
+  \bm\tau(x,y)=\begin{bmatrix}\tau_1(x,y)&\cdots&\tau_M(x,y)\end{bmatrix}^{\!T}.
+\]
+绝对值（复数响应时为模）避免正、负振荡相互抵消。讲义写局部\emph{求和}，视频也以局部平均描述；固定窗口大小时，两者只差相同的常数因子。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/gabor-texture-pipeline}}
+  \caption{纹理分割的原创流程示意：多个滤波器分别作用于同一图像，聚合后形成逐像素特征向量，再进行聚类。}
+  \label{fig:sc4061-l08-texture}
+\end{figure}
+
+后续比较的是 $M$ 维\textbf{特征空间}中的向量，而非直接比较像素坐标 $(x,y)$ 或单个灰度。滤波器数量 $M$ 决定特征维数，聚类数 $K$ 决定输出组数，二者不必相等；也不是一个滤波器对应一种最终类别。方向、频率和窗口应根据待区分纹理选择，没有适合所有图像的固定 filter bank。
+
+\lecturetopic{SC4061-L08-T02}{K-means：在特征空间中划分纹理}
+
+令 $\bm\tau_p$ 表示像素 $p$ 的特征向量。K-means 用 $K$ 个中心 $\bm\mu_k$ 划分这些向量，最小化类内平方距离和：
+\[
+  \boxed{J=\sum_{k=1}^{K}\sum_{p\in S_k}\|\bm\tau_p-\bm\mu_k\|_2^2}.
+\]
+这里的类内紧凑性是\emph{特征相似}，不要求像素位置连成一片。算法步骤为：
+\begin{enumerate}
+  \item 指定 $K$，初始化 $K$ 个 seed centroids（种子中心）。
+  \item \textbf{Assignment：}把每个向量分到最近的中心，
+  $c_p\in\operatorname*{arg\,min}_k\|\bm\tau_p-\bm\mu_k\|_2$。
+  \item \textbf{Update：}对每个非空簇，用成员的均值更新中心，
+  $\displaystyle\bm\mu_k=\frac{1}{|S_k|}\sum_{p\in S_k}\bm\tau_p$。
+  \item 重复分配和更新，直到分配稳定或满足停止条件；空簇需另行处理，例如重新初始化其中心。
+\end{enumerate}
+使用距离或平方距离进行 assignment 得到相同最近中心；均值更新对应的是\emph{平方}距离目标。讲义的四点例题及后续完整迭代见\relatedexercise{SC4061-L08-E02}{四个二维样本的 K-means}。
+
+每步不会增加目标值，但初始中心可能导致不同的局部解，不能把收敛等同于全局最优。$K$ 也不是通过单纯选最小训练 $J$ 就能确定：增加簇数通常使最优类内平方和下降，却不一定产生更有意义的分割。
+
+\subsubsection*{为什么边界附近可能出现额外一簇}
+
+纹理特征依赖邻域。中心像素靠近两种纹理的边界时，其窗口可能同时包含两侧纹理，得到混合响应，难以归入任一纯纹理簇；原始图像边缘不必真的模糊。讲义 p.~39 用五种纹理、$K=6$，让额外一簇处理这类边界问题，见\relatedexercise{SC4061-L08-E03}{五种纹理为何设六簇}。这是一种示例性选择，不是“纹理数加一”总能正确分割的规则。
+
+\lecturetopic{SC4061-L08-T03}{Semantic Segmentation、FCN 与逐像素损失}
+
+\subsubsection*{区域编号不等于语义类别}
+
+K-means 是无监督聚类，簇 1、簇 2 本身不带“羊”“道路”等名称。Semantic segmentation（语义分割）通常从带逐像素类别标注的数据中学习，输出有意义的类别图。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.2cm}X@{}}
+  \toprule
+  任务 & 输出区分什么 \\
+  \midrule
+  Semantic segmentation & 每个像素的语义类别；五只羊都属于同一个 sheep 类。\\
+  Instance segmentation & 分开同类物体的不同实例；五只羊有五个实例 ID，但仍是同一语义类。\\
+  Panoptic segmentation & 覆盖全图：可数物体有类别与实例 ID，道路、天空等背景区域也有语义标签。\\
+  \bottomrule
+\end{tabularx}
+\end{center}
+实例分割输出物体的像素掩膜，不只是一个 bounding box（边界框）。
+
+\subsubsection*{FCN 如何一次产生整幅图的预测}
+
+Fully convolutional network（FCN，全卷积网络）保留空间结构，以卷积形式产生 dense prediction（稠密预测），不必先把整幅图展平成一个向量再只输出一个类别。一个共享网络同时预测各位置，并不是每个像素分别训练一套网络。
+
+省略 batch 维，假设最终输出与输入空间分辨率对齐，则主要形状为
+\[
+  \underbrace{3\times H\times W}_{\text{RGB 输入}}
+  \ \longrightarrow\ \underbrace{D\times h\times w}_{\text{中间特征}}
+  \ \longrightarrow\ \underbrace{C\times H\times W}_{\text{各类 logits}}
+  \ \longrightarrow\ \underbrace{H\times W}_{\text{标签图}}.
+\]
+中间通道数 $D$ 由特征提取结构决定，未必等于类别数 $C$；最终的 $C$ 个通道才对应固定的语义类别。这里的 FCN \textbf{允许使用 pooling 和激活函数}；“全卷积”不意味着所有层都只能是卷积，也不意味着网络内部不允许下采样。讲义最简单的保持分辨率结构只是一个示例。
+
+在固定像素 $(x,y)$，网络给出 $C$ 个 logits $z_c(x,y)$。Softmax 沿\textbf{类别通道}归一化：
+\[
+  p_c(x,y)=\frac{e^{z_c(x,y)}}{\sum_{j=1}^{C}e^{z_j(x,y)}},\qquad
+  \widehat y(x,y)=\operatorname*{arg\,max}_c p_c(x,y).
+\]
+因此每个像素的 $C$ 个概率之和为 1，不是把整幅图所有像素一起归一化；softmax 不改变同一像素内的最大值位置，预测标签也可直接对 logits 取 argmax。
+
+\subsubsection*{训练时如何比较预测与正确标签}
+
+Ground truth（真实标注）可写成 $H\times W$ 的整数类别图，也可等价地表示成 $C\times H\times W$ 的 one-hot 张量 $t_c(x,y)$。对于每个像素恰有一个类别的任务，cross-entropy（交叉熵）为
+\[
+  \boxed{L_{xy}=-\sum_{c=1}^{C}t_c(x,y)\log p_c(x,y)
+  =-\log p_{y(x,y)}(x,y)}.
+\]
+若所有像素均有有效标注，可以用全图平均损失
+\[
+  L=\frac{1}{HW}\sum_{x,y}L_{xy}
+\]
+进行反向传播。训练需要真实标签；推理时只需输入图像，不需要已知答案。交叉熵关注\emph{真实类别的概率}，而不是不论真实标签为何都取 $-\log\max_c p_c$。
+
+\textbf{对应例题：}\relatedexercise{SC4061-L08-E04}{单像素交叉熵}。
+
+\lecturetopic{SC4061-L08-T04}{下采样、Encoder--Decoder 与 Skip Connections}
+
+\subsubsection*{降低计算量为什么可能牺牲边界}
+
+一直保持高分辨率特征图，逐层卷积的代价很高。Encoder（编码器）通过 pooling 或带步长的卷积减小空间尺寸，提取较粗尺度、高层次的信息；Decoder（解码器）随后逐步提高分辨率。
+
+在卷积核与通道数固定时，标准卷积的计算量近似正比于 $hw$，下采样可降低计算量；但参数量
+\[
+  k_hk_w C_{\mathrm{in}}C_{\mathrm{out}}+C_{\mathrm{out}}
+\]
+并不包含空间尺寸。因此“特征图变小”不自动意味着“可训练参数更少”，实际网络还常同时增加通道数。
+
+下采样会损失精细位置信息，仅将粗预测放大不能保证恢复准确边界。Skip connection（跳跃连接）把编码器中较高分辨率的特征送到解码器对应层，将\textbf{细节定位}与\textbf{高层语义}结合。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.96\textwidth}{!}{\input{figures/segmentation-encoder-decoder}}
+  \caption{编码器--解码器的原创简化示意。横向连接传递同尺度细节；图中采用空间尺寸对齐的设计，不是原始 U-Net 的精确尺寸图。}
+  \label{fig:sc4061-l08-unet}
+\end{figure}
+
+\subsubsection*{U-Net 和多尺度 FCN 应怎样理解}
+
+U-Net 的典型连接把编码器特征与解码器特征沿\textbf{通道维拼接（concatenation）}，再用卷积融合，不应自动理解为 ResNet 中的逐元素相加。最后可用 $1\times1$ 卷积把特征通道映射为 $C$ 个类别得分。
+
+\textbf{结构补充：}讲义 p.~48 的原始 U-Net 使用无填充卷积：输入 $572\times572$，输出 $388\times388$，skip 特征先裁剪再拼接。其他使用 padding 的设计可以保持输入输出对齐。上采样或 transposed convolution（转置卷积）不保证是下采样的数学逆运算。\footnote{结构与术语补充核对：Ronneberger et al., \href{https://arxiv.org/abs/1505.04597}{U-Net}, 2015, Section 2；Long et al., \href{https://openaccess.thecvf.com/content_cvpr_2015/html/Long_Fully_Convolutional_Networks_2015_CVPR_paper.html}{Fully Convolutional Networks for Semantic Segmentation}, 2015, Sections 3--4。}
+
+讲义 p.~49 对比 FCN-32s、FCN-16s 与 FCN-8s：通过融合更细尺度的特征或预测，边界逐步改善；32、16、8 描述最终上采样前预测图相对于输入的步幅，不是层数，也不是类别数。它们与 U-Net 共享“粗语义结合细定位”的思想，但不是完全相同的网络。
+
+\subsection{一分钟回顾}
+
+Gabor 用高斯包络限制正弦波，多方向、多尺度响应形成纹理向量。K-means 交替分配到最近中心、更新簇内均值；边界窗口可能混合纹理。语义分割输出 $C\times H\times W$ 得分，softmax 沿类别维计算，交叉熵取真实类别概率的负对数。下采样节省计算但损失细节，skip connections 为解码器补充精细定位信息。

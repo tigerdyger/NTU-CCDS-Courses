@@ -1,0 +1,26 @@
+% Original two-level aligned-resolution schematic, not exact 2015 U-Net.
+\begin{tikzpicture}[font=\small,>=Latex]
+  \tikzset{
+    box/.style={draw=noteBlue,fill=blue!4,rounded corners=2pt,
+      minimum width=3.0cm,minimum height=0.8cm,align=center},
+    decoder/.style={box,draw=ntuRed,fill=red!3},
+    flow/.style={->,thick,noteBlue},
+    skip/.style={->,thick,ntuRed}
+  }
+  \node[box] (e1) at (0,0) {Encoder：精细特征\\$D_1\times H\times W$};
+  \node[box] (e2) at (0,-1.8) {Encoder：较粗特征\\$D_2\times H/2\times W/2$};
+  \node[box] (b) at (4.9,-3.3) {低分辨率语义特征\\$D_3\times H/4\times W/4$};
+  \node[decoder] (d2) at (9.8,-1.8) {Decoder：拼接后卷积\\恢复到 $H/2\times W/2$};
+  \node[decoder] (d1) at (9.8,0) {Decoder：拼接后卷积\\恢复到 $H\times W$};
+  \node[align=center] (in) at (0,1.35) {RGB 输入：$3\times H\times W$};
+  \node[align=center] (out) at (9.8,1.45) {$1\times1$ 卷积：$C\times H\times W$\\类别 argmax：$H\times W$};
+  \draw[flow] (in) -- (e1);
+  \draw[flow] (e1) -- node[left,font=\footnotesize]{下采样} (e2);
+  \draw[flow] (e2.south) |- (b.west);
+  \draw[flow] (b.east) -| node[pos=0.7,right,font=\footnotesize]{上采样} (d2.south);
+  \draw[flow] (d2) -- node[right,font=\footnotesize]{上采样} (d1);
+  \draw[flow] (d1) -- (out);
+  \draw[skip] (e1) -- node[above,font=\footnotesize]{skip：高分辨率定位细节} (d1);
+  \draw[skip] (e2) -- node[above,font=\footnotesize]{skip：对应尺度的特征} (d2);
+  \node[font=\footnotesize,align=center,noteBlue] at (4.9,-0.85) {沿通道拼接\\并非默认逐元素相加};
+\end{tikzpicture}

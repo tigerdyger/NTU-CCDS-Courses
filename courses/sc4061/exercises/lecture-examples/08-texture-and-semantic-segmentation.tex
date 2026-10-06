@@ -1,0 +1,133 @@
+% Related lecture: SC4061-L08.
+% Source examples: LEC05 Image Segmentation - 2026, pp. 32, 37, 39, 50.
+% Numerical continuations are labelled; dialogue checks are omitted.
+
+\exercisegroup{SC4061-L08-EX}{第 08 讲：Texture and Semantic Segmentation}
+
+\exercisemeta
+  {SC4061-L08-EX}
+  {2026-10-06}
+  {LEC05 pp.~32、37、39、50；Texture / Semantic Segmentation 视频}
+  {原讲义例题已核对；K-means 后续迭代为补全计算}
+  {已确认本次学习范围（2026-10-06）}
+
+\noindent\begin{minipage}{\linewidth}
+\exercisequestion{SC4061-L08-E01}{滑动滤波器：局部加权和}
+
+\textbf{来源：}讲义 p.~32 的滑动滤波示意。
+
+\textbf{对应知识点：}\relatedtopic{SC4061-L08-T01}{Gabor 滤波器与纹理特征向量}。
+
+\subsubsection*{题目}
+
+图示某次滑窗覆盖的像素与相应权重为
+\[
+  P=\begin{bmatrix}10&11&12\\17&18&19\\24&25&26\end{bmatrix},\qquad
+  W=\begin{bmatrix}0.1&0.2&0.3\\0.4&0.5&0.6\\0.7&0.8&0.9\end{bmatrix}.
+\]
+按图中对应位置相乘、再求和，计算这一次滑窗输出，并说明一个滤波器与整个响应图的关系。
+\end{minipage}\par
+
+\begin{checkedsolution}
+\[
+\begin{aligned}
+  r&=(1+2.2+3.6)+(6.8+9+11.4)+(16.8+20+23.4)\\
+   &=\boxed{94.2}.
+\end{aligned}
+\]
+这是一个输出位置的响应；移动同一组权重，在不同位置重复计算，才形成完整响应图。真正的 Gabor 权重由其参数生成，图中这组数字用于演示加权求和，不表示一个具体的 Gabor 核。
+
+图示采用直接位置对应的乘加，即未翻转核的相关运算约定；严格数学卷积会先翻转核。理解卷积实现时应核对约定，不能在本题中擅自翻转已经给定的对应关系。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L08-E02}{四个二维样本的 K-means：从种子到稳定分组}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~37 给出初始化及第一次更新；此处补全后续迭代。
+
+\textbf{对应知识点：}\relatedtopic{SC4061-L08-T02}{K-means 纹理聚类}。
+
+\subsubsection*{题目}
+
+四个样本为 $\bm x_1=(1,1)$、$\bm x_2=(2,2)$、$\bm x_3=(5,5)$、$\bm x_4=(6,6)$。取 $K=2$，初始中心为 $\bm c_0=(1,1)$、$\bm c_1=(2,2)$，用欧氏距离执行分配和中心更新。
+
+\begin{checkedsolution}
+\textbf{第一次分配。}距离矩阵的行对应 $\bm c_0,\bm c_1$，列对应四个样本：
+\[
+  D^{(0)}=\begin{bmatrix}
+    0&\sqrt2&4\sqrt2&5\sqrt2\\
+    \sqrt2&0&3\sqrt2&4\sqrt2
+  \end{bmatrix}.
+\]
+每列选距离较小的行，得到
+\[
+  S_0=\{\bm x_1\},\qquad S_1=\{\bm x_2,\bm x_3,\bm x_4\}.
+\]
+讲义的 classification matrix 是这次分配的 one-hot 表示：
+\[
+  A^{(0)}=\begin{bmatrix}1&0&0&0\\0&1&1&1\end{bmatrix}.
+\]
+按簇内均值更新：
+\[
+  \bm c_0=(1,1),\qquad
+  \bm c_1=\left(\frac{2+5+6}{3},\frac{2+5+6}{3}\right)
+  =\left(\frac{13}{3},\frac{13}{3}\right).
+\]
+
+\textbf{补全第二次分配。}注意距离必须用\emph{新中心}重新计算：
+\[
+  D^{(1)}=\begin{bmatrix}
+    0&\sqrt2&4\sqrt2&5\sqrt2\\
+    \frac{10\sqrt2}{3}&\frac{7\sqrt2}{3}&\frac{2\sqrt2}{3}&\frac{5\sqrt2}{3}
+  \end{bmatrix}.
+\]
+对 $\bm x_2$，$\sqrt2<7\sqrt2/3$，因此它从 $S_1$ 移到 $S_0$；其他样本不变。于是
+\[
+  S_0=\{\bm x_1,\bm x_2\},\qquad S_1=\{\bm x_3,\bm x_4\},
+\]
+\[
+  \boxed{\bm c_0=(1.5,1.5),\qquad\bm c_1=(5.5,5.5)}.
+\]
+再次分配时，各样本仍属于上述簇，均值也不再改变，算法停止。最终分组不是直接按初始种子决定的：第一次更新后仍需重新分配。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L08-E03}{五种纹理为什么使用六个簇}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~39 的纹理分割例图。
+
+\textbf{对应知识点：}\relatedtopic{SC4061-L08-T02}{纹理边界与额外簇}。
+
+\subsubsection*{例图情景}
+
+图像由五种不同纹理组成。讲义对 Gabor 特征进行 K-means 聚类时采用 $K=6$，并注明额外一簇用于处理 texture boundary problems。为什么五种纹理不一定只用五个簇？
+
+\begin{checkedsolution}
+位于纹理内部时，局部窗口主要覆盖同一种结构，特征向量较典型；靠近分界线时，窗口可能同时覆盖两侧纹理，产生混合响应。若只允许五个纯纹理簇，就必须把这些不典型向量硬归到某个内部簇。
+
+额外一个簇可以容纳部分边界附近的特征，减少其对纯纹理分组的干扰。它不是第六种真实纹理，也不是“每个像素多预测一个类别”；K-means 仍为每个像素分配一个簇标签。该设置是讲义例图的选择，不保证在任意图像上都恰好得到一个干净的边界簇。
+\end{checkedsolution}
+
+\noindent\begin{minipage}{\linewidth}
+\exercisequestion{SC4061-L08-E04}{单像素交叉熵：取真实类别的概率}
+
+\textbf{来源：}讲义 p.~50 第 2 题。
+
+\textbf{对应知识点：}\relatedtopic{SC4061-L08-T03}{逐像素 softmax 与交叉熵}。
+
+\subsubsection*{题目}
+
+某像素对四个类别的预测概率为 $(0.05,0.15,0.70,0.10)$，真实类别是第 3 类。忽略其他像素，求这一像素的 cross-entropy contribution。
+\end{minipage}\par
+
+\begin{checkedsolution}
+真实标签的 one-hot 表示为 $\bm t=(0,0,1,0)$，所以
+\[
+\begin{aligned}
+  L&=-\sum_{c=1}^4 t_c\log p_c\\
+   &=-(0\log0.05+0\log0.15+1\log0.70+0\log0.10)\\
+   &=\boxed{-\log0.70}\approx0.3567\quad\text{（自然对数）}.
+\end{aligned}
+\]
+对应原题 C。不再除以 4，因为此处求一个像素的损失，而不是对四个类别求平均。这里最大概率碰巧属于真实类别；一般公式始终取\emph{真实类别}的概率，而不是默认取最大概率。
+\end{checkedsolution}
