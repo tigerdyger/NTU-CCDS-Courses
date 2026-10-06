@@ -1,0 +1,129 @@
+% Based on templates/tutorial.tex; finished notes omit conversational checks.
+% Source: tut7.pdf, Tutorial Seven, p. 7-1 (PDF p. 1), Questions 1--3.
+% Supporting sources: Part6a pp. 5--7, 11, 18; Part6b pp. 20--23.
+% No official solutions supplied. Q1(a) remains wording-dependent.
+% Session date: 2026-10-06 (teaching Week 8).
+
+\exercisegroup{SC2005-TUT07}{Tutorial 07：Real-Time OS 与 Virtualization}
+\label{tutorial:SC2005-TUT07}
+
+\exercisemeta
+  {SC2005-TUT07}
+  {2026-10-06（第八教学周）}
+  {tut7.pdf，p.~7-1（PDF p.~1），Questions 1--3；原文件无参考答案}
+  {依据 Lecture 13--14 核对；EDF 分支按明确的调度约定验证}
+  {已完成学习；Q1(a) 的官方判定尚未提供}
+
+\exercisequestion{SC2005-TUT07-Q01}{实时性与虚拟化层次判断}
+\nopagebreak[4]
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L13-T01}{实时性与任务模型}；
+\relatedtopic{SC2005-L14-T02}{Guest OS 与 VMM}；
+\relatedtopic{SC2005-L14-T03}{Type 1 与半虚拟化}。
+
+\subsubsection*{题目}
+
+判断正误并说明理由：
+\begin{enumerate}[label=(\alph*)]
+  \item Real-time CPS 应用\textbf{通常}要求在非常短的时间内响应（原文：\emph{usually require a response within a very short time}）。
+  \item Guest OS 抽象硬件，并在硬件与 hypervisor 之间提供接口。
+  \item 管理 guest OS 与其应用之间的交互，是 hypervisor 的主要功能之一。
+  \item 在 Type-1 para-virtualized 架构下，hypervisor 直接与硬件交互，并提供虚拟调用 API 与 guest OS 交互。
+\end{enumerate}
+
+\begin{checkedsolution}
+\nopagebreak[4]
+\textbf{(a) 概念辨析倾向 False，但原句有歧义。}6a pp.~5--7 强调 Real-time $\ne$ Fast：实时正确性要求满足由应用决定的 deadline，关注最坏情况下的可预测性，并不要求所有应用的响应时间都极短。不过，“通常很短”是关于常见应用的描述，不等同于“实时的定义就是很快”；仅凭定义不能严格否定该经验描述。\verify{本题官方 T/F 判定待确认；复习重点是按时、可预测，而非单纯追求短响应。}
+
+\textbf{(b) False。}题目颠倒了层次。Type-1 系统从上到下为
+\[
+  \text{应用}\;\longrightarrow\;\text{Guest OS}\;
+  \longrightarrow\;\text{Hypervisor}\;\longrightarrow\;\text{物理硬件}.
+\]
+Hypervisor 管理底层资源并向 guest 提供虚拟硬件；guest OS 在虚拟机内为应用提供操作系统服务。
+
+\textbf{(c) False。}应用的系统调用、进程管理等通常由 guest OS 处理；hypervisor 管理 VM 与底层资源的映射、调度和隔离。并非每次应用调用 guest OS 都需要 hypervisor 介入。
+
+\textbf{(d) True。}Type 1 说明 hypervisor 的部署层次；paravirtualization（半虚拟化）说明 guest 适配合作接口，通过 hypercall（超级调用）请求 VMM 服务。这是两条不同的分类轴。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT07-Q02}{混合工作负载的虚拟化部署}
+\nopagebreak[4]
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L14-T02}{虚拟机与服务器整合}；
+\relatedtopic{SC2005-L14-T03}{VMM 分类}；
+\relatedtopic{SC2005-L14-T04}{CPU 复用与资源控制}。
+
+\subsubsection*{题目}
+
+在若干物理服务器上运行重量级数据处理应用与轻量级 Web 服务，目标是兼顾性能、资源利用率和不同工作负载的灵活性。原文仅给出此场景，未列具体问句；以下按\textbf{提出并解释部署方案}的开放题处理。
+
+\begin{checkedsolution}
+\nopagebreak[4]
+一种合理方案是采用 \textbf{Type-1 hypervisor}，在物理服务器上整合多个相互隔离的 VM，并按负载分配资源：
+\begin{itemize}
+  \item \textbf{重量级应用：}使用独立 VM，预留足够的 CPU 与内存；确有性能隔离需求时可使用专属核心，减少资源竞争。
+  \item \textbf{轻量 Web 服务：}共享物理服务器的计算资源，同时设置资源限制与隔离边界，防止某个服务挤占其他服务。
+  \item \textbf{灵活性与利用率：}根据实际负载调整资源分配，不机械地给每个应用独占整台机器；避免在同时繁忙时过量分配资源。
+\end{itemize}
+Type 1 适合此类服务器部署，但并不自动保证零开销或最佳性能；独立 VM 也不意味着其 vCPU 独占物理核心。本题未给出负载规模、OS 兼容性等条件，因此不能确定唯一的最优配置。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT07-Q03}{EDF：绝对截止时刻、平局分支与可调度性}
+\nopagebreak[4]
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L13-T01}{周期任务模型}；
+\relatedtopic{SC2005-L13-T03}{EDF 动态优先级}。
+
+\subsubsection*{题目}
+
+周期任务参数按 $\langle T,C,D\rangle$（周期、执行需求、相对 deadline）排列：
+\[
+  P_1=\langle5,2,5\rangle,\qquad
+  P_2=\langle10,3,10\rangle,\qquad
+  P_3=\langle20,5,20\rangle.
+\]
+构造所有可能的 EDF 调度，并判断该任务集是否可调度。
+
+\begin{checkedsolution}
+\nopagebreak[4]
+\textbf{模型约定。}采用课堂的单 CPU、可抢占模型：各任务独立、首次均于 $t=0$ 释放，执行需求如题给定，忽略切换开销；有就绪任务时 CPU 不主动空闲。第 $k$ 个实例的释放与绝对截止时刻为
+\[
+  r_{i,k}=kT_i,\qquad d_{i,k}=kT_i+D_i,\qquad k=0,1,\ldots.
+\]
+EDF 从已释放且未完成的实例中选 $d_{i,k}$ 最小者，不按任务的 $D_i$ 固定排序。共同重复周期为 $H=\operatorname{lcm}(5,10,20)=20$。
+
+\textbf{共同前缀与剩余工作。}最初依次运行
+\[
+  0\!:\!2\ P_1,\quad 2\!:\!5\ P_2,\quad 5\!:\!7\ P_1,\quad
+  7\!:\!10\ P_3,\quad 10\!:\!12\ P_1.
+\]
+在 $t=10$，$P_3$ 已执行 $3$、尚余 $2$，其 deadline 仍为 $20$；新释放的 $P_1$ 需执行 $2$、deadline 为 $15$，所以先抢占执行。到 $t=12$，$P_2$ 尚需 $3$，$P_3$ 尚需 $2$，二者 deadline 都为 $20$；$t=15$ 又释放需执行 $2$、deadline 也为 $20$ 的 $P_1$。
+
+\textbf{平局分支。}讲义 6a p.~18 允许任意打破 deadline 平局。为了有限枚举，进一步约定\textbf{只在实例释放或当前实例完成时重新调度}，则一个共同周期内有图示四种分支：
+\begin{center}
+  \input{figures/tutorial07-edf-schedules}
+  \par\small 依据本题参数自行绘制；各图中的同名任务可属于不同周期实例。
+\end{center}
+
+\begin{itemize}
+  \item A、B：$t=12$ 先选 $P_2$，于 $15$ 完成；此时 $P_1$、$P_3$ 各需 $2$ 且同在 $20$ 截止，可以任选先后。
+  \item C：$t=12$ 先选 $P_3$，于 $14$ 完成；随后 $P_2$ 运行到 $17$。在 $15$ 新到的 $P_1$ 并无更早 deadline，故不必抢占。
+  \item D：前面同 C，但在 $t=15$ 平局时切换给 $P_1$，于 $17$ 再恢复剩余 $2$ 单位的 $P_2$。
+\end{itemize}
+若另规定“相同 deadline 不抢占当前任务”，只保留 A--C。若允许同 deadline 实例在任意时刻分片，还会有更多交错；不能脱离调度决策时机和平局规则，断言 EDF 无条件只有三种或四种调度。
+
+\textbf{可调度性。}以 C 为例，$P_1$ 的四个实例分别在 $2,7,12,19$ 完成，对应 deadline 为 $5,10,15,20$；$P_2$ 在 $5,17$ 完成，对应 deadline 为 $10,20$；$P_3$ 在 $14$ 完成，早于 $20$。所有实例均按时完成。
+\[
+  W=4\times2+2\times3+1\times5=19,\qquad
+  U=\frac25+\frac3{10}+\frac5{20}=\frac{19}{20}=95\%.
+\]
+四种分支均在 $19$ 完成全部工作，$19$--$20$ 空闲。到 $20$ 无遗留实例，新的释放模式与 $t=0$ 相同，因此可重复同一周期的调度，证明本题在上述模型下\textbf{可调度}。利用率是工作量核对；逐实例的 deadline 检查与可重复时间线给出了本题的可行性证明。
+\end{checkedsolution}
+
+\subsubsection*{一分钟回顾}
+
+实时性要求按时且可预测，不等于越快越好；guest OS 管应用，hypervisor 管 VM 与底层资源。混合负载宜按需求预留或共享资源，而非一律独占整机。EDF 比较实例的绝对 deadline；相同 deadline 不强制抢占，枚举调度前须声明平局与决策时机。本题在 $20$ 单位周期内需执行 $19$ 单位，所有实例均可按时完成。

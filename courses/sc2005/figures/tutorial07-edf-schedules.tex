@@ -1,0 +1,26 @@
+% Original Gantt diagrams for Tutorial Seven Q3, one hyperperiod [0,20).
+% Each entry is start/end/task, with task 0 denoting idle time.
+\begingroup
+\begin{tikzpicture}[x=0.66cm,y=0.95cm,font=\scriptsize,
+  job1/.style={fill=blue!14},
+  job2/.style={fill=orange!20},
+  job3/.style={fill=green!17}]
+  \newcommand{\tutsevenrow}[4]{%
+    \node[anchor=east,font=\small\bfseries] at (-0.3,{#2+0.26}) {#1};
+    \foreach \start/\finish/\task in {#3}{%
+      \ifnum\task=0
+        \draw[dashed,fill=gray!5] (\start,#2) rectangle (\finish,{#2+0.52}) node[midway,font=\tiny] {idle};
+      \else
+        \draw[job\task] (\start,#2) rectangle (\finish,{#2+0.52}) node[midway] {$P_{\task}$};
+      \fi
+    }
+    \foreach \t in {#4}{%
+      \draw (\t,#2)--(\t,{#2-0.08}) node[below,font=\tiny] {\t};
+    }
+  }
+  \tutsevenrow{A}{3.3}{0/2/1,2/5/2,5/7/1,7/10/3,10/12/1,12/15/2,15/17/1,17/19/3,19/20/0}{0,2,5,7,10,12,15,17,19,20}
+  \tutsevenrow{B}{2.2}{0/2/1,2/5/2,5/7/1,7/10/3,10/12/1,12/15/2,15/17/3,17/19/1,19/20/0}{0,2,5,7,10,12,15,17,19,20}
+  \tutsevenrow{C}{1.1}{0/2/1,2/5/2,5/7/1,7/10/3,10/12/1,12/14/3,14/17/2,17/19/1,19/20/0}{0,2,5,7,10,12,14,17,19,20}
+  \tutsevenrow{D}{0}{0/2/1,2/5/2,5/7/1,7/10/3,10/12/1,12/14/3,14/15/2,15/17/1,17/19/2,19/20/0}{0,2,5,7,10,12,14,15,17,19,20}
+\end{tikzpicture}
+\endgroup
