@@ -2,11 +2,21 @@
 
 本表同时记录实际课堂顺序、原始材料范围和对应练习。主题与习题通过稳定 ID 关联，不依赖会变化的 PDF 页码。
 
+\begingroup
 \small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{2.1cm}@{}}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{\dimexpr\textwidth-9.4cm-8\tabcolsep\relax}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{2.1cm}@{}}
   \toprule
   课堂 & 原始材料与精确范围 & 主题 ID & 习题/代码作业 ID & 状态 \\
   \midrule
+  \endfirsthead
+  \toprule
+  课堂 & 原始材料与精确范围 & 主题 ID & 习题/代码作业 ID & 状态 \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
   L01\newline 2026-08-12 & Week 1：L0 pp.~1--18；T0 pp.~1--8；T1 pp.~1--16
   & \texttt{SC4002-L01-}\newline\texttt{T01--T03}
   & \texttt{SC4002-L01-}\newline\texttt{E01--E02}\newline
@@ -45,6 +55,11 @@
   & \texttt{SC4002-L07-}\newline\texttt{E01--E03}
   & 例题已讲解\newline 笔记已整理 \\
   \addlinespace
+  L08\newline 2026-10-07 & Lec1 recorded pp.~23--56；Lec1 week8 pp.~6--54；录播字幕 72570
+  & \texttt{SC4002-L08-}\newline\texttt{T01--T06}
+  & \texttt{SC4002-L08-}\newline\texttt{E01--E02}
+  & 资料已核对\newline 笔记待审阅 \\
+  \addlinespace
   TUT02\newline 2026-09-02 & Tutorial 2: Text Normalization，PDF pp.~1--2，Questions 1--5
   & \texttt{SC4002-L02-}\newline\texttt{T01--T05}\newline
     \texttt{SC4002-L03-}\newline\texttt{T01}
@@ -66,6 +81,5 @@
     \texttt{SC4002-L07-}\newline\texttt{T01--T02}
   & \texttt{SC4002-TUT05-}\newline\texttt{Q01--Q05}
   & 已讨论整理\newline 工具题为分析 \\
-  \bottomrule
-\end{tabularx}
-\normalsize
+\end{longtable}
+\endgroup

@@ -1,0 +1,21 @@
+% Original local dependency diagram based on Lec1_week8.pdf, pp. 44--45.
+\begin{tikzpicture}[
+  >=Latex,font=\small,
+  quantity/.style={draw=noteBlue,thick,rounded corners,fill=blue!5,
+    minimum width=1.65cm,minimum height=0.85cm,align=center}
+]
+  \node[quantity] (w) at (0,0) {$w_{22}^{(2)}$};
+  \node[quantity] (z) at (3.6,0) {$z_2^{(3)}$};
+  \node[quantity] (a) at (7.2,0) {$a_2^{(3)}$};
+  \node[quantity] (c) at (10.8,0) {$C$};
+  \draw[->,thick,noteBlue] (w) -- node[above] {加权和} (z);
+  \draw[->,thick,noteBlue] (z) -- node[above] {$f$} (a);
+  \draw[->,thick,noteBlue] (a) -- node[above] {后续计算} (c);
+  \draw[->,thick,ntuRed] (c.south) to[bend left=28]
+    node[below] {$\partial C/\partial a_2^{(3)}$} (a.south);
+  \draw[->,thick,ntuRed] (a.south) to[bend left=28]
+    node[below] {$\times f'(z_2^{(3)})$} (z.south);
+  \draw[->,thick,ntuRed] (z.south) to[bend left=28]
+    node[below] {$\times a_2^{(2)}$} (w.south);
+  \node[anchor=south,text=noteBlue] at (5.4,0.95) {前向：计算中间量与损失};
+\end{tikzpicture}

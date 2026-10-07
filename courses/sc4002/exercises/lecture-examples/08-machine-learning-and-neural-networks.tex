@@ -1,0 +1,108 @@
+% Related lecture: SC4002-L08.
+% Sources: Lec1_week8.pdf, slides/PDF pp. 7--19, 41--45.
+% E01 combines the actual lecture example and displayed training snapshots.
+% E02 expands the symbolic backpropagation example, without invented inputs.
+
+\exercisegroup{SC4002-L08-EX}{第 08 讲：Machine Learning 与 Neural Networks}
+
+\exercisemeta
+  {SC4002-L08-EX}
+  {2026-10-07}
+  {Lec1\_week8 pp.~7--19、41--45；公式补全与数值核算}
+  {两组真实讲义例子及解析，非 Tutorial；训练快照沿用讲义，未另行训练}
+  {讲解后请求整理；笔记成稿待审阅}
+
+\exercisequestion{SC4002-L08-E01}{学习时长：线性得分、通过概率与训练快照}
+
+\textbf{来源与题意：}现场讲义 pp.~7--19。以学习时长 $x$ 预测是否通过，标签 $y=0$ 表示未通过，$y=1$ 表示通过。讲义先展示直线 $\hat y\approx0.168x-0.15$，再给出示意概率模型 $p=\sigma(1.2x-4.8)$。解释 $x=2,4,7$ 的预测、阈值与曲线参数的作用，并解读后续训练快照。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L08-T02}{逻辑回归与交叉熵}、\relatedtopic{SC4002-L08-T03}{梯度下降}。
+
+\begin{workedsolution}
+直接使用直线时，$x=7$ 得到 $\hat y\approx1.026$，不能将其直接解释为概率。逻辑回归则先算 $z=1.2x-4.8$，再用 $p=(1+e^{-z})^{-1}$ 映射到 $(0,1)$：
+
+\begin{center}
+\begin{tabular}{@{}r r r c c@{}}
+\toprule
+$x$（小时） & $z$ & $p$ & 阈值 $0.5$ & 阈值 $0.8$ \\
+\midrule
+2 & $-2.4$ & $0.083$ & 未通过 & 未通过 \\
+4 & $0$ & $0.500$ & 通过 & 未通过 \\
+7 & $3.6$ & $0.973$ & 通过 & 通过 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+两列决策都采用 $p\ge\text{阈值}$ 时判为通过。这里 $p$ 是模型估计的概率，并非保证某个具体学生的结果。
+
+\begin{center}
+\input{figures/logistic-study-hours}
+
+{\small 根据 SC4002 Lec1\_week8 pp.~9--15 的给定函数原创绘制；标出的是模型输出，不是训练样本标签。}
+\end{center}
+
+$p=0.5$ 等价于 $1.2x-4.8=0$，所以分界时长是 4 小时；提高阈值不会改变概率曲线，但会改变决策。对于一般的 $\sigma(wx+b)$，$|w|$ 控制陡峭程度，符号决定递增或递减；固定 $w\ne0$ 时，$b$ 改变位置，$p=0.5$ 位于 $x=-b/w$。
+
+讲义 pp.~16--18 另外展示了同类模型的训练过程，数值按原页保留：
+\begin{center}
+\begin{tabular}{@{}l r r r@{}}
+\toprule
+状态 & $w$ & $b$ & 平均交叉熵 \\
+\midrule
+初始 & $0.00$ & $0.00$ & $0.693$ \\
+10 次更新后 & $0.94$ & $-3.69$ & $0.300$ \\
+300 次更新后 & $1.47$ & $-5.51$ & $0.275$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+初始时所有样本都得到 $p=\sigma(0)=0.5$，无论真实标签为何，损失均为 $-\log0.5\approx0.693$。训练保持输入与标签不变，只改变 $w,b$ 与概率曲线。表中的损失不是准确率；更新次数也不能直接当成 epoch 数。前面的 $(1.2,-4.8)$ 用于演示概率映射，不是表中声称的最终参数。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L08-E02}{沿计算图求隐藏层连接权重的梯度}
+
+\textbf{来源与题意：}现场讲义 pp.~44--45 的神经网络例图，链式法则见 pp.~41--43。沿用讲义编号：输入为 $\mathbf a^{(1)}=\mathbf x$，两个隐藏层的激活为 $\mathbf a^{(2)},\mathbf a^{(3)}$，最终标量损失为 $C$。求连接两层第 2 个单元的权重 $w_{22}^{(2)}$ 的梯度。讲义未给数值输入或权重，因此保留符号解，不另造数值算例。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L08-T04}{神经元与非线性}、\relatedtopic{SC4002-L08-T05}{反向传播}。
+
+\begin{workedsolution}
+前向计算为
+\[
+  \mathbf z^{(2)}=W^{(1)}\mathbf x+\mathbf b^{(1)},\quad
+  \mathbf a^{(2)}=f(\mathbf z^{(2)}),\qquad
+  \mathbf z^{(3)}=W^{(2)}\mathbf a^{(2)}+\mathbf b^{(2)},\quad
+  \mathbf a^{(3)}=f(\mathbf z^{(3)}).
+\]
+上标表示层或层间连接编号，不是乘方。目标权重出现在
+\[
+  z_2^{(3)}=w_{21}^{(2)}a_1^{(2)}+w_{22}^{(2)}a_2^{(2)}+b_2^{(2)},
+  \qquad a_2^{(3)}=f(z_2^{(3)}).
+\]
+
+\begin{center}
+\input{figures/backprop-weight-path}
+
+{\small 原创重绘，依据 SC4002 Lec1\_week8 pp.~44--45；只展开所求权重对应的局部路径。}
+\end{center}
+
+从 $w_{22}^{(2)}$ 到 $C$ 依次经过 $z_2^{(3)}$ 和 $a_2^{(3)}$，故
+\begin{align*}
+  \frac{\partial C}{\partial w_{22}^{(2)}}
+  &=\frac{\partial C}{\partial a_2^{(3)}}
+    \frac{\partial a_2^{(3)}}{\partial z_2^{(3)}}
+    \frac{\partial z_2^{(3)}}{\partial w_{22}^{(2)}}\\[3pt]
+  &=\underbrace{\frac{\partial C}{\partial a_2^{(3)}}}_{\text{下游梯度}}
+    \underbrace{f'(z_2^{(3)})}_{\text{激活的局部导数}}
+    \underbrace{a_2^{(2)}}_{\text{连接的输入}}.
+\end{align*}
+第一个因子已经汇总此激活对最终损失的所有下游影响；第二个因子取决于激活函数；第三个因子来自对 $w_{22}^{(2)}a_2^{(2)}$ 求导。若令 $\delta_2^{(3)}=\partial C/\partial z_2^{(3)}$，结果也可写为 $\delta_2^{(3)}a_2^{(2)}$。对应偏置的梯度为 $\partial C/\partial b_2^{(2)}=\delta_2^{(3)}$。
+
+向前一层继续传播时，$a_2^{(2)}$ 连接两个下游单元，其贡献必须汇总：
+\[
+  \frac{\partial C}{\partial a_2^{(2)}}
+  =\sum_{j=1}^{2}\frac{\partial C}{\partial z_j^{(3)}}w_{j2}^{(2)},
+  \qquad
+  \frac{\partial C}{\partial z_2^{(2)}}
+  =\frac{\partial C}{\partial a_2^{(2)}}f'(z_2^{(2)}).
+\]
+这一步是对例图与多路径链式法则的推导补全。每条路径内部相乘，不同路径相加；不能因为正在求某条权重的梯度，就把更前面节点的其他下游分支忽略。求得梯度后才由优化器执行参数更新。
+\end{workedsolution}

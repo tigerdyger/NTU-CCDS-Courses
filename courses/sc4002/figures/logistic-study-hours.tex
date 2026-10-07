@@ -1,0 +1,23 @@
+% Original function plot from Lec1_week8.pdf, pp. 9--15.
+\begin{tikzpicture}[x=1.15cm,y=3.45cm,>=Latex,font=\small]
+  \draw[->] (0,0) -- (8.65,0) node[right] {$x$（小时）};
+  \draw[->] (0,0) -- (0,1.14) node[above] {$p$};
+  \foreach \x in {0,2,4,6,8} {
+    \draw (\x,0) -- (\x,-0.02) node[below] {\x};
+  }
+  \foreach \y in {0.5,1} {
+    \draw (0,\y) -- (-0.07,\y) node[left] {\y};
+  }
+  \draw[dashed,black!45] (0,0.5) -- (8.2,0.5);
+  \draw[dashed,black!35] (4,0) -- (4,0.5);
+  \draw[very thick,noteBlue,domain=0:8.2,samples=100]
+    plot (\x,{1/(1+exp(-(1.2*\x-4.8)))});
+  \fill[ntuRed] (2,0.0831727) circle (2pt)
+    node[above left,text=black] {$(2,0.083)$};
+  \fill[ntuRed] (4,0.5) circle (2pt)
+    node[above left,text=black] {$(4,0.500)$};
+  \fill[ntuRed] (7,0.9734030) circle (2pt)
+    node[below right,text=black] {$(7,0.973)$};
+  \node[anchor=south east,text=noteBlue] at (8.25,1.05)
+    {$p=\sigma(1.2x-4.8)$};
+\end{tikzpicture}

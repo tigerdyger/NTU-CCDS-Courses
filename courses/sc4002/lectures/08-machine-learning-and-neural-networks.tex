@@ -1,0 +1,246 @@
+% Actual class: 08, 2026-10-07 (Week 8).
+% Sources: Lec1_recorded(1).pdf, slides/PDF pp. 23--56;
+%          Lec1_week8.pdf, slides/PDF pp. 6--54.
+% Recorded pp. 1--22 and Week 8 pp. 1--5 provide introductory context.
+% Transcript: 72570 - 0_jtsyq6od - PID 117.txt; no timestamps supplied.
+% ML is covered by the recording; DL scope follows the Week 8 slide deck.
+% Notes requested after explanation and discussion; finished PDF pending review.
+
+\section{第 08 节课：Machine Learning 与 Neural Networks}
+\label{lecture:SC4002-L08}
+
+\lecturemeta
+  {SC4002-L08}
+  {2026-10-07}
+  {Lec1\_recorded(1)；Lec1\_week8}
+  {录播讲义 PDF / slide pp.~23--56；现场讲义 pp.~6--54；两份材料开头为课程与任务概览}
+  {本地字幕 72570，无时间戳；录播讲 ML，现场 DL 范围依据 Week 8 讲义；原稿不收入仓库}
+  {讲解后请求整理（2026-10-07）；笔记成稿待审阅}
+
+\subsection{本讲主线与范围}
+
+本讲转向用数据学习 NLP 模型：线性模型产生预测，概率模型用似然定义损失，梯度方法优化参数，神经网络进一步学习非线性表示。课程编号延续为 L08；资料中的 Lec1 是后半学期新教学单元的第一讲。录播讲义 pp.~54--55 的优化器变体标为 Optional（选读），此处不展开；word representations、sequence models、Transformer 等只属于后续路线，不计入本讲内容。
+
+\lecturetopic{SC4002-L08-T01}{监督学习任务、模型假设与线性回归}
+
+Sentiment analysis（情感分析）预测文本情感，named entity recognition（命名实体识别）给词分配实体标签，parsing（句法分析）预测语言结构，summarization（摘要）、question answering（问答）和 machine translation（机器翻译）产生或选择目标文本。具体输出不同，但都可以通过数据学习输入与输出的映射。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+学习范式 & 训练信号与主要目的 \\
+\midrule
+Supervised learning（监督学习） & 输入带有目标标签，学习预测映射；本讲的重点。\\
+Unsupervised learning（无监督学习） & 没有这类目标标签，寻找数据结构或表示。\\
+Reinforcement learning（强化学习） & 与环境交互，利用奖励学习行为。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Classification（分类）预测离散类别；regression（回归）预测连续数值。监督学习的数据记为 $\mathcal D=\{(\mathbf x_i,y_i)\}_{i=1}^N$，$\mathbf x_i\in\mathbb R^d$。流程是 model assumption（模型假设）$\rightarrow$ training（训练）$\rightarrow$ testing（测试）：先选择线性或非线性等归纳偏置，再学习参数，最后用未参与训练的数据检查 generalization（泛化）。训练集拟合好不保证泛化好。
+
+Linear regression（线性回归）使用
+\[
+  \hat y_i=\mathbf w^T\mathbf x_i+b,
+  \qquad
+  J(\mathbf w,b)=\frac1N\sum_{i=1}^N(\hat y_i-y_i)^2.
+\]
+权重 $\mathbf w$ 决定各输入特征的贡献，$b$ 是偏置；输出可取任意实数。Mean squared error（均方误差）衡量数值预测误差。$J$ 是损失函数，$\theta^*=\arg\min_\theta J(\theta)$ 才是最优参数，不能把函数和最小化操作混写。将输入扩展为 $(1,\mathbf x_i^T)^T$ 时，可以把偏置吸收进权重。
+
+\lecturetopic{SC4002-L08-T02}{逻辑回归、最大似然与交叉熵}
+
+\subsubsection{二分类概率与决策边界}
+
+Logistic regression（逻辑回归）用于分类，而非直接预测连续目标。对 $y\in\{0,1\}$，先计算线性 score（得分），再映射为概率：
+\[
+  z=\mathbf w^T\mathbf x+b,
+  \qquad
+  p=P(y=1\mid\mathbf x)=\sigma(z)=\frac1{1+e^{-z}}.
+\]
+有限 $z$ 对应 $0<p<1$，且 $z=0\Leftrightarrow p=0.5$。Sigmoid 与 logit（对数几率）互为逆函数，不是同义词：
+\[
+  \operatorname{logit}(p)=\log\frac{p}{1-p}=z.
+\]
+按现场讲义的阈值规则，$p\ge0.5$ 判为 1，否则为 0。概率预测与阈值决策是两个步骤：改变阈值不改变 $p$。虽然 sigmoid 是非线性函数，但阈值 $0.5$ 对应的 decision boundary（决策边界）仍为 $\mathbf w^T\mathbf x+b=0$，即原始特征空间中的超平面。
+
+\subsubsection{由最大似然得到二元交叉熵}
+
+设 $p_i=\sigma(\mathbf w^T\mathbf x_i+b)$。真实标签的条件概率统一写成
+\[
+  P(y_i\mid\mathbf x_i;\theta)=p_i^{y_i}(1-p_i)^{1-y_i}.
+\]
+当 $y_i=1$ 时保留 $p_i$，当 $y_i=0$ 时保留 $1-p_i$；零次幂对应的因子为 1。在给定输入与参数后各样本标签独立的假设下，maximum likelihood estimation（最大似然估计）选择使观测标签最可能的参数：
+\begin{align*}
+  \theta^*
+  &=\arg\max_\theta\prod_{i=1}^N p_i^{y_i}(1-p_i)^{1-y_i}\\
+  &=\arg\max_\theta\sum_{i=1}^N
+       \bigl[y_i\log p_i+(1-y_i)\log(1-p_i)\bigr].
+\end{align*}
+取对数不改变最优点；再取负号，将最大化变成最小化。平均 negative log-likelihood（负对数似然）即 binary cross-entropy（二元交叉熵）：
+\[
+  \boxed{J(\theta)=-\frac1N\sum_{i=1}^N
+    \bigl[y_i\log p_i+(1-y_i)\log(1-p_i)\bigr].}
+\]
+单个正类样本的损失为 $-\log p$，负类样本为 $-\log(1-p)$。训练要求提高\emph{真实类别}的概率，不是要求所有样本的 $p$ 都变大；自信地预测错误会受到较大惩罚。
+
+\subsubsection{单标签多分类与 Softmax}
+
+对 $K$ 个互斥类别，每个类别有自己的线性得分
+\[
+  z_c=\mathbf w_c^T\mathbf x+b_c,
+  \qquad
+  p_c=\frac{e^{z_c}}{\sum_{k=1}^K e^{z_k}}.
+\]
+Softmax（归一化指数函数）保证 $p_c>0$ 且 $\sum_c p_c=1$，按 $\arg\max_c p_c$ 预测类别。令 one-hot（独热）标签 $y_c=\mathbb I(y=c)$，则
+\[
+  P(y\mid\mathbf x)=\prod_{c=1}^K p_c^{y_c},
+  \qquad
+  \ell=-\sum_{c=1}^K y_c\log p_c=-\log p_y.
+\]
+与二分类一样，交叉熵就是对真实答案所获概率取负对数。这里每个样本恰属一个类别；不能直接套用于一个样本可同时拥有多个标签的任务。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L08-E01}{学习时长、概率曲线与训练快照}。
+
+\lecturetopic{SC4002-L08-T03}{梯度下降、批量与学习率}
+
+Gradient descent（梯度下降）沿当前损失的负梯度更新参数：
+\[
+  \theta_{t+1}=\theta_t-\eta\nabla_\theta J(\theta_t),
+  \qquad \eta>0.
+\]
+Learning rate（学习率）$\eta$ 控制步长；梯度指向局部增长最快的方向。损失曲面的横轴表示参数而非训练样本。步长过小收敛慢，过大可能振荡或发散，不能保证任意步长都降低损失。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+方法 & 每次更新使用的数据 & 主要特点 \\
+\midrule
+Batch GD（全批量） & 全部 $N$ 个样本 & 对训练集的完整平均损失求梯度，每次更新计算量大。\\
+SGD（随机梯度下降） & 一个样本 & 梯度估计波动较大；通常打乱样本顺序。\\
+Mini-batch GD（小批量） & 一批 $B$ 个样本 & 平均批内梯度，兼顾估计与并行计算效率。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Epoch（轮次）是完整遍历训练集一次，不是更新一次。保留末尾不足一批的数据时，小批量方法每轮更新 $\lceil N/B\rceil$ 次。单次更新较快不等于达到某一效果的总训练时间一定更短。
+
+\subsubsection{补充推导：逻辑回归梯度为何是预测与标签之差}
+
+对单个样本 $\ell=-y\log p-(1-y)\log(1-p)$、$p=\sigma(z)$，由链式法则得到
+\[
+  \frac{\partial\ell}{\partial p}=-\frac yp+\frac{1-y}{1-p},
+  \qquad
+  \frac{\partial p}{\partial z}=p(1-p),
+  \qquad
+  \frac{\partial\ell}{\partial z}=p-y.
+\]
+因此
+\[
+  \nabla_{\mathbf w}\ell=(p-y)\mathbf x,
+  \qquad \frac{\partial\ell}{\partial b}=p-y.
+\]
+该推导补全了讲义的优化公式：正类概率太低时更新倾向于提高该样本得分，负类概率太高时则降低得分；共享参数需要综合不同样本的梯度。
+
+\lecturetopic{SC4002-L08-T04}{表示学习、非线性与激活函数}
+
+传统 NLP 模型常使用人工设计的特征，例如 NER 中的当前词、相邻词、词形与词性。Representation learning（表示学习）进一步让模型学习哪些中间特征有用；deep learning（深度学习）通过多层变换学习不同层级的表示，不只是为固定特征调权重。
+
+一个隐藏层写成
+\[
+  \mathbf z=W\mathbf x+\mathbf b,
+  \qquad \mathbf a=f(\mathbf z),
+\]
+其中 activation function（激活函数）$f$ 逐元素作用。隐藏激活是传给下一层的特征，不必具有某个类别概率的含义；输出层才按任务选择连续数值、sigmoid 或 softmax 等形式。把神经网络类比为多个逻辑回归单元连接起来，只是运算结构上的直觉。
+
+\subsubsection{为何只堆线性层不够}
+
+没有中间非线性时，仿射层可以合并：
+\[
+  W_2(W_1\mathbf x+\mathbf b_1)+\mathbf b_2
+  =\underbrace{W_2W_1}_{W'}\mathbf x+
+   \underbrace{W_2\mathbf b_1+\mathbf b_2}_{\mathbf b'}.
+\]
+因此单纯加深这类网络不会超出一个仿射映射的函数形式。插入非线性 $f$ 后，一般无法再如此合并；非线性单元的组合可表示更复杂的函数，但表达能力增加不保证泛化更好。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+激活函数 & 形式 & 性质与局限 \\
+\midrule
+Sigmoid & $\sigma(z)=(1+e^{-z})^{-1}$ & 值域 $(0,1)$；两端饱和，导数趋近零。\\
+Tanh（双曲正切） & $\tanh z$ & 值域 $(-1,1)$，以零为中心；仍会饱和。\\
+ReLU（修正线性单元） & $\max(0,z)$ & 正半轴导数为 1，负半轴为 0；整体分段线性。\\
+Leaky ReLU & $z\ge0$ 时 $z$，否则 $\alpha z$ & $0<\alpha<1$ 为小常数，在负半轴保留斜率。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Sigmoid 的导数 $\sigma'(z)=\sigma(z)(1-\sigma(z))$ 在两端很小。多层链式相乘可能导致 vanishing gradient（梯度消失），使前面各层难以学习。ReLU 可缓解部分问题，但不保证任意网络都没有梯度消失。
+
+\lecturetopic{SC4002-L08-T05}{前向传播、链式法则与反向传播}
+
+多层神经网络的损失通常是 non-convex（非凸）的，仍可使用梯度方法，但一般不能保证找到全局最优点。训练中的三个步骤必须区分：
+\begin{enumerate}
+  \item Forward propagation（前向传播）：依次计算中间激活、预测及标量损失。
+  \item Backpropagation（反向传播）：从损失出发，计算各中间量及参数的梯度。
+  \item Parameter update（参数更新）：由优化器利用梯度更新参数。
+\end{enumerate}
+反向传播负责求导，不是梯度下降的同义词；梯度下降负责用导数移动参数。
+
+\subsubsection{一条路径相乘，多条路径相加}
+
+若 $u=g(x)$、$C=f(u)$，则
+\[
+  \frac{\partial C}{\partial x}
+  =\frac{\partial C}{\partial u}\frac{\partial u}{\partial x}.
+\]
+若 $x$ 通过 $u_1,\ldots,u_m$ 多条分支影响 $C$，则
+\[
+  \boxed{\frac{\partial C}{\partial x}
+  =\sum_{j=1}^m\frac{\partial C}{\partial u_j}
+                    \frac{\partial u_j}{\partial x}.}
+\]
+每一条路径上的局部导数相乘，再汇总所有路径的贡献。Computational graph（计算图）的节点是中间计算结果，有向边表示依赖关系；反向传播按反向顺序应用链式法则并复用中间结果。下游传回的梯度应已包含该下游节点通往最终损失的全部影响。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L08-E02}{隐藏层连接权重的梯度}，保留讲义的层编号并展开三个导数因子。
+
+\lecturetopic{SC4002-L08-T06}{正则化与梯度裁剪：泛化和稳定性}
+
+\subsubsection{Dropout 与参数正则化}
+
+Overfitting（过拟合）是过度适应训练样本的细节，导致新数据上的表现不好；regularization（正则化）限制这种倾向。模型过于受限则可能 underfit（欠拟合）。
+
+Dropout（随机失活）在训练时随机将部分激活置零，而非永久删除神经元或把权重永久设为零。它减轻模型对固定单元组合的依赖，可理解为具有共享参数子网络的近似集成效果，\emph{不是}独立训练许多完整模型。通常验证、测试时关闭随机失活并使用全部单元；常见实现于训练时缩放保留的激活以匹配推理尺度。
+
+L1 / L2 regularization（L1 / L2 正则化）在数据损失上增加参数惩罚：
+\[
+  J_{\rm total}(\theta)=J_{\rm data}(\theta)+\lambda R(\theta),
+  \quad\lambda>0,
+  \qquad
+  R(\theta)=
+  \begin{cases}
+    \sum_j|\theta_j|,&\text{L1},\\
+    \sum_j\theta_j^2,&\text{L2}.
+  \end{cases}
+\]
+L1 倾向于产生 sparsity（稀疏性），使部分参数为零；L2 倾向于让权重变小，而通常不会促成大量精确零。惩罚过强也可能造成欠拟合。
+
+\subsubsection{Gradient clipping 限制更新幅度}
+
+Gradient clipping（梯度裁剪）主要改善数值与优化稳定性，而非直接控制过拟合。SGD 更新为 $\theta_{t+1}=\theta_t-\eta\mathbf g$，过大的梯度会造成过大更新，严重时出现 Inf 或 NaN。本讲采用 norm clipping（范数裁剪）：
+\[
+  \mathbf g_{\rm clip}=
+  \begin{cases}
+    \mathbf g,&\|\mathbf g\|_2\le\tau,\\[2pt]
+    \displaystyle\frac{\tau}{\|\mathbf g\|_2}\mathbf g,
+       &\|\mathbf g\|_2>\tau,
+  \end{cases}
+  \qquad \tau>0.
+\]
+超阈值时整体乘以同一个正数，故\textbf{方向不变、长度缩短}。对于这里的 SGD，裁剪后参数步长范数不超过 $\eta\tau$。它不是直接裁剪权重，也不能解决梯度消失；逐元素裁剪则不一定保持原方向。讲义把这些训练技巧放在一起，复习时仍应区分正则化的泛化目标与梯度裁剪的稳定性目标。
+
+\subsection{一分钟回顾}
+
+线性回归预测连续数值，逻辑回归将线性得分变成类别概率；最大似然导出交叉熵，核心是提高真实类别的概率。梯度下降沿负梯度更新参数，epoch 与更新次数不同。神经网络通过多层非线性变换学习表示，没有非线性的仿射层仍可合并。反向传播利用链式法则求梯度，一条路径相乘、多条路径相加，再交给优化器更新参数。Dropout 与 L1/L2 主要约束过拟合，范数梯度裁剪主要避免更新过大并保持梯度方向。
