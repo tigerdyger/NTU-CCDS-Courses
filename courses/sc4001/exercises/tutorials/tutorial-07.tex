@@ -1,0 +1,141 @@
+% Tutorial set: 07
+% Source: tute7.pdf, PDF p. 1, Questions 1--2 and Figure Q1
+% Session date: 2026-10-07 (Week 8)
+% Q1 derived from the supplied dimensions; no answer sheet supplied.
+% Q2 uses explicitly attributed supplementary sources. t7q2.ipynb unavailable;
+% no course-notebook execution or experimental accuracy is claimed.
+
+\exercisegroup{SC4001-TUT07}{Tutorial 07：Convolutional Neural Networks II}
+\label{tutorial:SC4001-TUT07}
+\exercisemeta
+  {SC4001-TUT07}
+  {2026-10-07（第 8 周）}
+  {\texttt{tute7.pdf} p.~1，Q1--Q2；Q2 的外部补充来源见题内链接}
+  {Q1 尺寸推导已核对；Q2 原理已讲解，课程 notebook 未提供、实验未运行}
+  {已请求整理笔记（2026-10-07）}
+
+原题页眉沿用旧代码 CZ4042。本组关注 residual block（残差块）的形状约束，以及 transfer learning（迁移学习）的数据与参数处理。
+
+\exercisequestion{SC4001-TUT07-Q01}{残差块：通道匹配与空间尺寸}
+\textbf{对应讲义：}\relatedtopic{SC4001-L06-T02}{卷积尺寸与参数}；\relatedtopic{SC4001-L07-T01}{Residual Connection}；\relatedtopic{SC4001-L07-T02}{Pointwise Convolution}。
+
+\subsubsection*{题目（p.~1，Figure Q1）}
+输入采用 $C\times H\times W$ 顺序，为 $256\times32\times32$。主分支依次经过三层普通卷积：
+\begin{center}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+层 & 卷积核数量 & 每个核的尺寸 & Stride & Padding \\
+\midrule
+第一层 & $n_1$ & $d_1\times F_1\times F_1$ & $1$ & $0$ \\
+第二层 & $32$ & $64\times3\times3$ & $1$ & $1$ \\
+第三层 & $n_2$ & $d_2\times F_2\times F_2$ & $1$ & $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+另一条 identity shortcut（恒等捷径）直接传递原始输入，与第三层输出逐元素相加；捷径没有投影或缩放操作。要求确定第一层的 $n_1,d_1,F_1$ 和第三层的 $n_2,d_2,F_2$，并解释设计。
+
+\begin{checkedsolution}
+\textbf{通道约束。}普通卷积中，每个核的深度等于该层输入通道数，核的数量等于输出通道数。因此
+\[
+d_1=256,\qquad n_1=64,\qquad d_2=32,\qquad n_2=256.
+\]
+其中 $n_1=64$ 来自第二层核深度为 $64$；$n_2=256$ 则来自残差相加要求两路通道一致。
+
+\textbf{空间约束。}卷积边长公式为
+\[
+L_{\mathrm{out}}=\left\lfloor\frac{L_{\mathrm{in}}+2P-F}{S}\right\rfloor+1.
+\]
+第一层输出边长 $33-F_1$，第二层的 $F=3,P=1,S=1$ 保持边长，第三层输出边长因此为 $34-F_1-F_2$。它必须等于捷径的 $32$，故
+\[
+F_1+F_2=2.
+\]
+卷积核边长为正整数，唯一可能是 $F_1=F_2=1$。完整答案为
+\[
+\boxed{(n_1,d_1,F_1)=(64,256,1),\qquad(n_2,d_2,F_2)=(256,32,1).}
+\]
+
+\begin{figure}[H]
+\centering
+\input{figures/tutorial-07-residual-block}
+\caption{Q1 的有效残差块，按题目 Figure Q1 重绘并填入解得的尺寸。核尺寸采用 $C_{\mathrm{in}}\times F\times F$，特征图采用 $C\times H\times W$。}
+\label{fig:sc4001-tut07-residual}
+\end{figure}
+
+这是 bottleneck（瓶颈）式设计：先用 $1\times1$ 卷积压缩通道，在较少的通道上做 $3\times3$ 卷积，再恢复通道数以进行残差相加。$1\times1$ 指核的\emph{空间尺寸}，不代表只有一个输入或输出通道；第三层实际有 $256$ 个 $32\times1\times1$ 的核。
+
+\textbf{自检。}整条主分支的形状为
+\[
+256\times32\times32\ \longrightarrow\ 64\times32\times32
+\ \longrightarrow\ 32\times32\times32\ \longrightarrow\ 256\times32\times32.
+\]
+相加不是通道拼接；结果仍为 $256\times32\times32$，不是 $512\times32\times32$。
+\end{checkedsolution}
+
+\exercisequestion{SC4001-TUT07-Q02}{Transfer Learning：蜜蜂与蚂蚁分类}
+\textbf{对应讲义：}\relatedtopic{SC4001-L07-T04}{迁移学习与数据增强}；\relatedtopic{SC4001-L06-T04}{CNN 分类头}。
+
+\subsubsection*{题目与材料范围（p.~1）}
+阅读并尝试 \texttt{t7q2.ipynb}：(a) 理解如何进行 data augmentation（数据增强）；(b) 梳理 transfer learning（迁移学习）的步骤；(c) 运行蜜蜂与蚂蚁分类代码。
+
+\verify{课程 notebook 未提供。下文借助 PyTorch 官方同主题示例讲解，未核验教师代码及其输出，也未运行 (c)。}
+
+\subsubsection*{(a) 数据增强与预处理}
+增强将训练样本 $(x,y)$ 变为 $(T(x),y)$，前提是 $T$ 保留类别语义。例如水平翻转通常不改变昆虫类别，但若裁剪去掉整个目标，标签就可能不再适合。先划分训练、验证数据，再增强训练集，避免同一原图的不同变体跨集合泄漏。
+
+官方示例采用如下流程：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+阶段 & 输入处理 \\
+\midrule
+训练 & 随机裁剪并缩放至 $224\times224$，随机水平翻转，转为张量，再标准化。 \\
+验证 & 保持宽高比缩放短边至 $256$，中心裁剪 $224\times224$，转为张量，再采用相同标准化。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+随机变换使同一训练图像在不同次读取时可能呈现不同版本；固定验证变换则避免评价因随机输入变化而波动。上述设置来自\href{https://docs.pytorch.org/tutorials/beginner/transfer_learning_tutorial.html}{PyTorch 官方 Transfer Learning 示例}。
+
+标准化按 RGB 通道独立计算
+\[
+x'_c=\frac{x_c-\mu_c}{\sigma_c},
+\]
+其中 $\mu_c,\sigma_c$ 为事先指定、与预训练模型输入约定相匹配的常数。它调整数值尺度，不是随机增强；既不会对每张图重新估计均值、方差，也不是网络内部的 BatchNorm。参见\href{https://docs.pytorch.org/vision/stable/generated/torchvision.transforms.Normalize.html}{Torchvision Normalize 文档}。
+
+\subsubsection*{(b) 复用表示，替换分类头}
+迁移学习复用预训练\emph{参数}及其表示能力，而不只是使用相同网络结构。早期 CNN 层常提取边缘、纹理等较通用特征，较深层通常更依赖原任务。将模型分为 backbone（主干）与 classification head（分类头）：
+\[
+\underbrace{h=f_\theta(x)}_{\text{主干提取特征}},\qquad
+\underbrace{z=Wh+b\in\mathbb{R}^{2}}_{\text{新分类头给出两个类别得分}}.
+\]
+旧分类头对应原任务类别，须替换为适合新任务的输出层；其输入维度仍需与 $h$ 匹配。
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+方式 & 预训练主干参数 $\theta$ & 新分类头 $W,b$ \\
+\midrule
+固定特征提取器 & 冻结，不更新 & 从初始化开始训练 \\
+Fine-tuning（微调） & 更新部分或全部 & 同时训练 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+微调通常对预训练层使用较小学习率，以免迅速破坏已有特征。可调整参数更多并不保证效果更好；小数据集上需防止过拟合，并依据验证表现比较。补充依据：\href{https://cs231n.github.io/transfer-learning/}{Stanford CS231n Transfer Learning}。
+
+\subsubsection*{(c) 训练流程与输出口径}
+官方示例加载 ImageNet 预训练的 ResNet-18，替换最后全连接层，并演示微调与冻结主干两种设置。阅读代码时抓住以下步骤：
+\begin{enumerate}
+\item 为训练、验证数据分别设置预处理并加载批次。
+\item 加载预训练权重，换上输出两个 logits（原始得分）的分类头。
+\item 确定哪些参数参与优化：仅分类头，或同时更新部分／全部主干。
+\item 训练阶段前向计算损失、反向传播并更新；验证阶段只评价，不更新参数。
+\item 按验证准确率保存最佳快照，恢复后查看预测与错误样本。
+\end{enumerate}
+上述模型与选择规则来自\href{https://docs.pytorch.org/tutorials/beginner/transfer_learning_tutorial.html}{官方示例}。
+
+\textbf{二分类也可以输出两个得分。}设 $z=(z_{\mathrm{ant}},z_{\mathrm{bee}})$，则
+\[
+\widehat y=\arg\max_k z_k,\qquad
+\ell(z,y)=-\log\frac{e^{z_y}}{e^{z_{\mathrm{ant}}}+e^{z_{\mathrm{bee}}}}.
+\]
+\texttt{CrossEntropyLoss} 接收 logits，无须事先手动 softmax；若需要展示概率，再对得分做 softmax。另一种有效设计是单个 logit 经 sigmoid 得到概率后计算二元交叉熵；使用融合 sigmoid 的损失接口时则直接输入 logit。两种分类设计的输出与损失必须匹配。参见\href{https://docs.pytorch.org/docs/2.14/generated/torch.nn.CrossEntropyLoss.html}{PyTorch CrossEntropyLoss 文档}。
+
+\textbf{要点。}数据增强改变训练输入的呈现方式，迁移学习复用已有参数，微调决定这些参数是否继续更新。实际性能应通过验证数据比较，不能仅凭方法名称判断优劣。

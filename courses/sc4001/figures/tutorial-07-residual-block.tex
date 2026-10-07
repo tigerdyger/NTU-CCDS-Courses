@@ -1,0 +1,26 @@
+% Original explanatory redraw of tute7.pdf p. 1, Figure Q1.
+% All filter counts and shapes below are derived answers, not extra layers.
+\begin{tikzpicture}[
+  font=\small, >=Stealth,
+  block/.style={draw=noteBlue, rounded corners, fill=noteBlue!5,
+                text width=5.1cm, minimum height=10mm, align=center},
+  flow/.style={->, thick, noteBlue}
+]
+\node (input) at (0,0) {输入 $256\times32\times32$};
+\node[block] (conv1) at (0,-1.05)
+  {$64$ 个 $256\times1\times1$ 核，$S=1,P=0$\\输出 $64\times32\times32$};
+\node[block] (conv2) at (0,-2.3)
+  {$32$ 个 $64\times3\times3$ 核，$S=1,P=1$\\输出 $32\times32\times32$};
+\node[block] (conv3) at (0,-3.55)
+  {$256$ 个 $32\times1\times1$ 核，$S=1,P=0$\\输出 $256\times32\times32$};
+\node[draw=noteBlue, circle, inner sep=2pt] (sum) at (0,-4.65) {$+$};
+\node (output) at (0,-5.4) {输出 $256\times32\times32$};
+\draw[flow] (input) -- (conv1);
+\draw[flow] (conv1) -- (conv2);
+\draw[flow] (conv2) -- (conv3);
+\draw[flow] (conv3) -- (sum);
+\draw[flow] (sum) -- (output);
+\draw[flow] (input.east) -- (4.55,0) -- (4.55,-4.65) -- (sum.east);
+\node[align=center, fill=white, inner sep=4pt] at (4.55,-2.3)
+  {恒等捷径\\$256\times32\times32$};
+\end{tikzpicture}
