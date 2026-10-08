@@ -1,0 +1,117 @@
+% Based on templates/lecture.tex.
+% Lecture 15, 2026-10-08. Learning boundary agreed with the user.
+% Source: Memory Organization.pdf, PDF pp. 1--22, slide footers 7.1--7.22.
+% Video titles only: Intro & Address Binding; Contiguous Allocation.
+% No recording or transcript was available; the official daily boundary is not verified.
+
+\section{第 15 节课：地址绑定、连续分配与内存碎片}
+\label{lecture:SC2005-L15}
+
+\lecturemeta
+  {SC2005-L15}
+  {2026-10-08}
+  {Memory Organization，Part 7}
+  {讲义 7.1--7.22（PDF pp.~1--22）；下一节从 7.23 的 Paging 开始}
+  {Intro \& Address Binding、Contiguous Allocation，仅根据用户提供的标题对应；视频与字幕不可用}
+  {已完成本次学习；讲义文字与关键图示已核对；两节划分为学习安排，非已核实的官方授课分界}
+
+\keyidea{地址绑定决定程序中的引用如何对应实际内存；连续分配要求整个进程放在一个连续物理区域，因此“空闲总量够”不等于“存在足够大的空洞”。运行时重定位使系统能够搬移进程，通过紧凑缓解外部碎片。}
+
+\lecturetopic{SC2005-L15-T01}{进程映像、地址绑定与保护}
+
+\textbf{来源：7.2--7.13。}Process image（进程映像）包括 text（机器指令）、data（全局数据）、heap（动态分配区域）与 stack（函数调用相关区域）。讲义的典型布局中，heap 向高地址、stack 向低地址增长；这不是所有系统必须采用的唯一布局。
+
+\textbf{从程序文件到执行。}Compiler（编译器）生成目标代码；linker（链接器）组合目标模块与库并解析引用；loader（装入器）建立进程映像、分配内存并装入内容。CPU 的取指与数据访问都涉及地址，因此不仅数据变量需要地址绑定。
+
+Logical address（逻辑地址）是程序执行时 CPU 产生的地址；physical address（物理地址）是内存单元实际接收的地址。Address binding（地址绑定）建立程序中的指令／数据引用与内存位置的联系。以下采用讲义的简单连续区域模型，不把它推广为所有硬件的具体寻址方式。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+绑定时机 & 机制 & 改变物理起始位置时 \\
+\midrule
+Compile time（编译时） & 已知装入位置，生成 absolute code（绝对地址代码） & 本模型下需要重新编译 \\
+Load time（装入时） & 生成 relocatable code（可重定位代码），装入器修正相应地址引用 & 可在下次装入时重新重定位；当前映像不能不作处理就任意搬移 \\
+Execution time（执行时） & 保留逻辑地址，由 MMU 在访存时转换 & 搬移内容并正确更新映射，可支持运行期间改变物理位置 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Base 与 limit。}令 $B$ 为起始物理地址，$L$ 为区域长度，$r$ 为逻辑偏移。对单字节访问，执行时绑定的规则为
+\[
+  0\le r<L\quad\Longrightarrow\quad PA=B+r;
+  \qquad r\notin[0,L)\quad\Longrightarrow\quad\text{越界错误}.
+\]
+MMU（Memory Management Unit，内存管理单元）通过 relocation/base register（重定位／基址寄存器）完成这里的加法映射。\textbf{Limit 是长度，不是最后一个物理地址}；逻辑区间为 $[0,L)$，物理区间为 $[B,B+L)$，上界均不包含。
+
+若是讲义中的编译时／装入时绑定，CPU 已产生绝对地址 $a$，则检查
+\[
+  B\le a<B+L,\qquad PA=a,
+\]
+不能再加一次 $B$。讲义中 $800\mapsto1824$ 的三种绑定图与边界见\relatedexercise{SC2005-L15-E01}{地址绑定图示解析}。
+
+\textbf{模型边界。}7.13 将逻辑地址空间抽象为从 $0$ 开始的一维字节序列；这不意味着现实 OS 中地址 $0$ 必然有合法映射。搬迁保持逻辑地址不变，改变的是物理位置与映射；系统仍须协调执行、复制内容并更新相关状态。
+
+\lecturetopic{SC2005-L15-T02}{连续分配与空洞选择}
+
+\textbf{来源：7.14--7.19。}Contiguous allocation（连续分配）将一个进程放在一个连续物理区域；non-contiguous allocation（非连续分配）允许其逻辑空间的不同部分位于分散的物理区域，后者留待下一节。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+方式 & 分区规则 & 主要限制 \\
+\midrule
+Fixed partitioning（固定分区） & 分区边界预先确定；各分区不必等大 & 进程必须装得进某个可用分区；分配区域内可能有未使用空间 \\
+Dynamic partitioning（动态分区） & 进程到来时，从足够大的空洞中按需划出区域 & 分配与释放后，空洞可能被在用区域隔开 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Hole（空洞）是尚未分配的连续空闲区域。OS 维护已分配区与空洞的位置、大小；分配后可留下较小空洞，释放后可以合并\textbf{相邻}空洞。中间隔着仍被占用的区域时，不能只将大小相加就视为一个可用连续区域。
+
+对大小为 $n$ 的连续分配请求，设当前各空洞大小为 $h_i$，不进行搬移时需要
+\[
+  \exists i:\ h_i\ge n.
+\]
+只有 $\sum_i h_i\ge n$ 不够。讲义的 $300K+260K$ 空闲空间无法容纳 $500K$ 进程，详见\relatedexercise{SC2005-L15-E02}{动态分区的内存变化}。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+策略 & 从足够大的空洞中选择 & 搜索与余量 \\
+\midrule
+First-fit（首次适应） & 按列表顺序找到的第一个 & 找到即可停止；只有列表按地址排序时，才相当于优先选择低地址区域 \\
+Best-fit（最佳适应） & 最小的那个 & 本次选中空洞的剩余量最小；未按大小组织时通常需检查全部候选 \\
+Worst-fit（最坏适应） & 最大的那个 & 本次选中空洞的剩余量最大；搜索成本取决于是否维护大小顺序等信息 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Best-fit 不保证长期全局利用率最高：它优化当前选择的余量，却可能留下很小、后续难利用的空洞。三种策略均不能直接把不相邻空洞拼成一个连续分区。
+
+\lecturetopic{SC2005-L15-T03}{内部碎片、外部碎片与紧凑}
+
+\textbf{来源：7.20--7.22。}碎片的分类取决于空间所处的位置，而不是空间“很小”这一点。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.8cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+类型 & 含义 & 判断依据 \\
+\midrule
+Internal fragmentation（内部碎片） & 已分配区域大于实际需要，多余空间在分配区域内部未被使用 & 分配量与需求量之间的差；并非可供其他进程立即分配的空洞 \\
+External fragmentation（外部碎片） & 未分配空间被占用区域隔开，总量足够却没有合适的连续区域 & $\sum_i h_i\ge n$，但 $\max_i h_i<n$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+本节基本模型中，固定分区的典型问题是内部碎片，按需切分的动态分区的典型问题是外部碎片。
+
+Compaction（紧凑／压紧）搬移进程内容，使原先分散的空洞聚成一个较大的连续区域。它\textbf{不增加空闲总量}，主要缓解外部碎片，也不会自动回收固定分区内部的浪费。讲义 7.22 中通过移动 P3，让 P5 无须等待 P1 退出即可装入，见\relatedexercise{SC2005-L15-E03}{紧凑与运行时重定位}。
+
+\textbf{为什么需要执行时绑定。}设被搬移进程的逻辑偏移为 $r$，则
+\[
+ PA_{\rm old}=B_{\rm old}+r
+ \quad\longrightarrow\quad
+ PA_{\rm new}=B_{\rm new}+r.
+\]
+相对位置 $r$ 不变，更新的是 $B$。讲义在此模型下要求运行时重定位：若仍使用旧的绝对地址，单纯复制内存会使后续引用指向旧位置。紧凑还需要复制与同步开销；\textbf{合并已经相邻的空洞}只需相应管理操作，与\textbf{搬动占用区域来聚拢空洞}不是一回事。
+
+\textbf{一分钟回顾。}编译时、装入时、执行时绑定的区别是何时建立实际地址联系。Base 是起点，limit 是长度；执行时先检查 $0\le r<L$，再计算 $B+r$。连续分配需要一个足够大的空洞，而不仅是足够的空闲总量。内部碎片在已分配区内，外部碎片来自空闲区分散；紧凑通过搬迁和运行时重定位把空闲空间聚拢。下一节从 Paging 开始，不在本节展开。

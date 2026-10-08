@@ -1,0 +1,95 @@
+% Based on templates/lecture-example.tex.
+% Source illustrations and allocation example, not invented exercises or concept checks.
+
+\exercisegroup{SC2005-L15-EX}{第 15 讲：地址绑定、动态分区与紧凑图示}
+
+\exercisemeta
+  {SC2005-L15-EX}
+  {2026-10-08}
+  {Memory Organization，7.6--7.11、7.17--7.18、7.22（PDF pp.~6--11、17--18、22）}
+  {讲义图示与数值已核对；以下为图示解析，非讲义正式问答题；计算与因果说明为补全解释}
+  {已完成讲解}
+
+\exercisequestion{SC2005-L15-E01}{同一数据引用在三种绑定方式中的表示}
+
+\textbf{来源：}7.6--7.11。\quad
+\textbf{对应：}\relatedtopic{SC2005-L15-T01}{地址绑定与保护}。
+
+讲义将程序装入物理起点 $B=1024$；数据位于程序内部偏移 $800$，跳转目标位于偏移 $400$。图中分配区的上界为 $2024$，因此长度为 $L=2024-1024=1000$。比较两条指令中的地址在何时确定，以及访存时是否再加基址。
+
+\begin{checkedsolution}
+两处目标的物理地址分别为 $1024+800=1824$ 与 $1024+400=1424$。
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+方式 & 进程映像中的相关指令 & 绑定发生处 \\
+\midrule
+编译时 & \texttt{LOAD 1824}，\texttt{JUMP 1424} & 编译时已经写入相应绝对地址 \\
+装入时 & 装入前示意为 \texttt{LOAD 800}、\texttt{JUMP 400}；装入后变为 \texttt{LOAD 1824}、\texttt{JUMP 1424} & Loader 按本次基址修正相应引用 \\
+执行时 & 装入后仍为 \texttt{LOAD 800}、\texttt{JUMP 400} & MMU 在实际访存时计算 $B+r$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+编译时／装入时模型检查绝对地址是否满足 $1024\le a<2024$；执行时模型检查 $0\le r<1000$，再加 $1024$。最后一个合法物理字节地址是 $2023$，不是 $2024$；已经是绝对地址时不能重复加基址。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L15-E02}{动态分区：总空闲量与最大连续空洞}
+
+\textbf{来源：}7.17--7.18。\quad
+\textbf{对应：}\relatedtopic{SC2005-L15-T02}{连续分配与空洞选择}。
+
+总内存 $2560K$，OS 占用低地址的 $400K$，可用空间 $2160K$。讲义中的作业队列如下；容量沿用原图的 $K$ 记法，以下区间边界也以 $K$ 为单位，不涉及换算为字节。
+\begin{center}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+进程 & P1 & P2 & P3 & P4 & P5 \\
+\midrule
+内存需求 & $600K$ & $1000K$ & $300K$ & $700K$ & $500K$ \\
+讲义 time & $10$ & $5$ & $20$ & $8$ & $15$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+按讲义给出的内存事件顺序：$t=0$ 装入 P1、P2、P3；$t=5$ P2 结束；$t=10$ P1 结束。此处讨论内存分配，不另行推断 CPU 调度算法。
+
+\begin{checkedsolution}
+\nopagebreak[4]
+所有区间均左闭右开，从低地址到高地址读取：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+时刻／事件 & 进程位置（不含 OS 的 $[0,400)$） & 空洞与后续决定 \\
+\midrule
+$t=0$ & P1：$[400,1000)$；P2：$[1000,2000)$；P3：$[2000,2300)$ & $[2300,2560)$，只有 $260K$，P4、P5 都不能装入 \\
+$t=5$，P2 退出 & P1、P3 不变 & 新增 $[1000,2000)$ 的 $1000K$ 空洞，可容纳 P4 \\
+装入 P4 后 & P4：$[1000,1700)$；P1、P3 不变 & $[1700,2000)$ 与 $[2300,2560)$，分别为 $300K$、$260K$ \\
+$t=10$，P1 退出 & P4、P3 不变 & 新增 $[400,1000)$ 的 $600K$ 空洞，可容纳 P5 \\
+装入 P5 后 & P5：$[400,900)$；P4、P3 不变 & 原 P1 区域剩下 $[900,1000)$ 的 $100K$ 空洞 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+关键是 $t=5$ 装入 P4 后：
+\[
+ H_{\rm total}=300+260=560K\ge500K,
+ \qquad H_{\rm max}=300K<500K.
+\]
+所以 P5 仍需等待。两个空洞之间隔着 P3，不能直接合并；这是\textbf{外部碎片}，不是某个已分配分区内部未使用的空间。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L15-E03}{移动 P3 后，P5 可以提前装入}
+
+\textbf{来源：}7.22，沿用 7.17--7.18 的参数。\quad
+\textbf{对应：}\relatedtopic{SC2005-L15-T03}{碎片与紧凑}。
+
+在 $t=5$ 装入 P4 后，OS、P1、P4 连续占用 $[0,1700)$，P3 占用 $[2000,2300)$，空洞为 $[1700,2000)$ 与 $[2300,2560)$。现在允许系统紧凑内存，比较 P5 是否仍须等到 $t=10$。
+
+\begin{checkedsolution}
+将 P3 移到 $[1700,2000)$，空闲区便变成 $[2000,2560)$，大小为 $560K$。P5 可立即装入 $[2000,2500)$，留下 $[2500,2560)$ 的 $60K$，无须等待 P1 退出。
+
+\begin{center}
+\input{figures/memory-compaction-layouts}
+\par\small 根据讲义 7.22 的容量与布局自行重绘；纵向按容量比例表示。
+\end{center}
+
+紧凑前后的空闲总量均为 $560K$；收益来自连续性，而不是产生了更多空间。P3 的物理基址由 $2000K$ 变为 $1700K$，其内部逻辑偏移保持不变。在讲义的执行时绑定模型中，完成搬移并更新基址后，同一个逻辑引用就会映射到新位置；若仍沿用旧绝对地址，复制内容本身不足以保证正确性。
+\end{checkedsolution}

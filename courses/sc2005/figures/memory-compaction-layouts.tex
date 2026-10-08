@@ -1,0 +1,37 @@
+% Original redraw from Memory Organization.pdf, slide 7.22.
+% Addresses and sizes use the slide's K units; scale: 650K per vertical cm.
+\begin{tikzpicture}[font=\small,>=Latex]
+  \node at (1.3,0.45) {压紧前};
+  \node at (5.8,0.45) {移动 P3 后};
+  \node at (10.3,0.45) {装入 P5 后};
+  \foreach \x/\lo/\hi/\label/\shade in {
+    0/0/400/OS 400K/black!10,
+    0/400/1000/P1 600K/blue!10,
+    0/1000/1700/P4 700K/blue!10,
+    0/1700/2000/空闲 300K/white,
+    0/2000/2300/P3 300K/orange!18,
+    0/2300/2560/空闲 260K/white,
+    4.5/0/400/OS 400K/black!10,
+    4.5/400/1000/P1 600K/blue!10,
+    4.5/1000/1700/P4 700K/blue!10,
+    4.5/1700/2000/P3 300K/orange!18,
+    4.5/2000/2560/空闲 560K/white,
+    9/0/400/OS 400K/black!10,
+    9/400/1000/P1 600K/blue!10,
+    9/1000/1700/P4 700K/blue!10,
+    9/1700/2000/P3 300K/orange!18,
+    9/2000/2500/P5 500K/green!15}
+  {
+    \draw[fill=\shade] (\x,{-\lo/650}) rectangle ({\x+2.6},{-\hi/650});
+    \node at ({\x+1.3},{-(\lo+\hi)/1300}) {\label};
+  }
+  \draw (9,{-2500/650}) rectangle (11.6,{-2560/650});
+  \draw[->,noteBlue,thick] (2.85,-2) -- (4.25,-2);
+  \draw[->,noteBlue,thick] (7.35,-2) -- (8.75,-2);
+  \node[align=center,font=\footnotesize] at (3.55,-1.55) {搬移 P3};
+  \node[align=center,font=\footnotesize] at (8.05,-1.55) {分配 P5};
+  \draw (10.3,{-2530/650}) -- (10.3,-4.35);
+  \node[anchor=north] at (10.3,-4.35) {空闲 60K};
+  \node[anchor=north,font=\footnotesize] at (1.3,-4.12) {总空闲 560K，最大空洞 300K};
+  \node[anchor=north,font=\footnotesize] at (5.8,-4.12) {一个连续的 560K 空洞};
+\end{tikzpicture}
