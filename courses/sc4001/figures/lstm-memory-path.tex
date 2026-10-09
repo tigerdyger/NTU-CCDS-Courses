@@ -1,0 +1,31 @@
+% Original simplified memory-path diagram, based on 8_rnn.pdf, pp. 45--55.
+\begin{tikzpicture}[
+ font=\small, >=Stealth,
+ flow/.style={->,thick,noteBlue},
+ op/.style={draw=noteBlue,circle,fill=noteBlue!7,inner sep=3pt},
+ box/.style={draw=noteBlue,rounded corners,fill=noteBlue!5,inner sep=5pt}
+]
+\node (old) at (0,0) {$c_{t-1}$};
+\node[op] (keep) at (2,0) {$\times$};
+\node[op] (sum) at (5,0) {$+$};
+\node (new) at (7,0) {$c_t$};
+\node (forget) at (2,1) {$f_t$};
+\node[op] (write) at (5,-1.5) {$\times$};
+\node (in) at (3.6,-1.5) {$i_t$};
+\node (candidate) at (5,-2.6) {$\tilde c_t$};
+\draw[flow] (old) -- (keep);
+\draw[flow] (forget) -- (keep);
+\draw[flow] (keep) -- node[above] {保留旧记忆} (sum);
+\draw[flow] (in) -- (write);
+\draw[flow] (candidate) -- (write);
+\draw[flow] (write) -- node[right] {写入} (sum);
+\draw[flow] (sum) -- (new);
+\node[box] (activation) at (8.8,0) {$\tanh$};
+\node[op] (expose) at (10.8,0) {$\times$};
+\node (outgate) at (10.8,1) {$o_t$};
+\node (h) at (12.2,0) {$h_t$};
+\draw[flow] (new) -- (activation);
+\draw[flow] (activation) -- (expose);
+\draw[flow] (outgate) -- (expose);
+\draw[flow] (expose) -- (h);
+\end{tikzpicture}

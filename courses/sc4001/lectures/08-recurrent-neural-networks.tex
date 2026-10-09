@@ -1,0 +1,231 @@
+% Actual class: 08, Week 8, 2026-10-09
+% Source: 8_rnn.pdf, file pp. 1--85 (printed numbering skips 82--83).
+% Videos: all four parts; sampled frames and full local ASR used together.
+% Prepared from templates/lecture.tex; conversational checks excluded.
+
+\section{第 08 节课：Recurrent Neural Networks 与序列建模}
+\label{lecture:SC4001-L08}
+
+\lecturemeta
+  {SC4001-L08}
+  {2026-10-09（第八周）}
+  {8\_rnn：Recurrent Neural Networks}
+  {文件 pp.~1--85；前 81 页与印刷页码一致，文件 pp.~82--85 对应印刷 pp.~84--87}
+  {8\_rnn\_part1--4：19:18、13:33、12:47、18:08；已结合画面抽查及本地自动转写核对范围，转写不作为逐字准确原文}
+  {课堂讲解与订正已完成；公式、维度及前向例题已核对；配套 notebook 未提供，训练实验未运行}
+
+\subsection{本讲主线与范围}
+
+RNN（循环神经网络）用隐藏状态概括历史，BPTT（随时间反向传播）训练展开后的计算图；长距离 Jacobian 连乘带来梯度消失或爆炸，LSTM（长短期记忆网络）以门控改善记忆路径。Encoder--decoder（编码器--解码器）处理变长输入输出，attention（注意力）则让解码器按当前需要重新汇总输入表示。
+
+Part 1 对应 pp.~1--22，Part 2 对应 pp.~23--39，Part 3 对应 pp.~40--56，Part 4 对应 pp.~57--85。以下均用\textbf{文件页码}；末尾参考资料不扩展为另一个授课主题，Transformer 留待后续课程。
+
+\Needspace{8\baselineskip}
+\lecturetopic{SC4001-L08-T01}{普通 RNN：状态、时间展开与参数共享}
+
+\textbf{来源：}pp.~2--22。
+
+\keyidea{序列的顺序携带信息；每一步把当前输入与过去的内部摘要结合，而不是独立处理每个 token。}
+
+\subsubsection{前向计算与矩阵维度}
+
+采用列向量：$x_t\in\mathbb R^d$ 为当前输入，$h_t\in\mathbb R^m$ 为 hidden state（隐藏状态），$y_t\in\mathbb R^k$ 为输出。讲义的 Elman RNN 使用
+\[
+ \boxed{h_t=\tanh(U^\top x_t+W^\top h_{t-1}+b)},\qquad
+ u_t=V^\top h_t+b_y,\quad y_t=g(u_t),
+\]
+其中 $U\in\mathbb R^{d\times m}$、$W\in\mathbb R^{m\times m}$、$V\in\mathbb R^{m\times k}$，$b\in\mathbb R^m$、$b_y\in\mathbb R^k$。这里将讲义输出 bias $c$ 政名为 $b_y$，避免与后面的 LSTM cell state 混淆。
+
+$U^\top x_t$ 处理当前输入，$W^\top h_{t-1}$ 处理历史摘要；$h_0$ 可置零，也可作为可学习的初始状态。隐藏状态是任务相关的压缩表示，不保证保留全部历史。输出函数 $g$ 随任务选择：回归可用恒等映射，多类别分类可用 softmax；例题指定逐元素 sigmoid。
+
+\begin{figure}[htbp]
+ \centering
+ \input{figures/rnn-time-unfolding}
+ \caption{原创时间展开示意，依据 pp.~12--17。横向传递的是隐藏状态；各时间步共享同一套参数，并非彼此独立的网络。}
+ \label{fig:sc4001-l08-unfolding}
+\end{figure}
+
+Elman 的 recurrence（循环连接）来自上一隐藏状态；Jordan 则反馈上一输出。本讲前向公式及 BPTT 推导采用 Elman 结构。文本生成可利用历史 token 预测后续 token；图像描述还可将 CNN 提取的图像表示提供给序列生成网络。
+
+\subsubsection{共享参数不等于所有权重相同}
+
+$U,W,V,b,b_y$ 在各时间步重复使用，同一矩阵内部不同元素仍可不同。一次前向计算中参数不变，而 $h_t$ 随输入变化；训练更新的是共享参数。固定维度下，含 bias 的参数量为
+\[
+ P=dm+m^2+mk+m+k,
+\]
+不随序列长度 $T$ 增加。计算量及标准 BPTT 保存的中间状态则随 $T$ 增长。完整四步计算见\relatedexercise{SC4001-L08-E01}{普通 RNN 的前向传播}。
+
+\Needspace{8\baselineskip}
+\lecturetopic{SC4001-L08-T02}{BPTT：链式法则与共享参数的梯度}
+
+\textbf{来源：}pp.~23--28、32--33。
+
+\subsubsection{沿时间展开后进行反向传播}
+
+若每步有监督，$L=\sum_{t=1}^T\ell_t(y_t,\hat y_t)$；many-to-one 任务也可只在最后一步计算损失。后者仍可通过 $h_1\to\cdots\to h_T\to L$ 训练早期计算，不要求每一步都有独立标签。前向按时间推进，反向则从后往前应用 chain rule（链式法则）。
+
+中间状态 $h_t$ 同时影响当前输出及未来状态，因此两条分支的梯度需要相加。令
+\[
+ D_{t+1}=\operatorname{diag}(1-h_{t+1}\odot h_{t+1}),\qquad
+ J_{t+1}=\frac{\partial h_{t+1}}{\partial h_t}=D_{t+1}W^\top.
+\]
+若 $q_t=\nabla_{u_t}\ell_t$ 表示当前输出分支的梯度，$g_t=\nabla_{h_t}L$ 表示总梯度，则
+\[
+ \boxed{g_t=Vq_t+J_{t+1}^\top g_{t+1}
+              =Vq_t+W D_{t+1}g_{t+1}}.
+\]
+末步无未来项；没有当前输出损失的时间步取 $q_t=0$。\textbf{记号勘误：}p.~33 的部分转置与前向列向量定义不一致；这里按 $u_t=V^\top h_t+b_y$ 和上述 $J_{t+1}$ 统一，不能在反传时再次误用 $V^\top$ 或 $W^\top D_{t+1}$。
+
+\subsubsection{同一参数的多处贡献必须相加}
+
+设 $z_t=U^\top x_t+W^\top h_{t-1}+b$，$\delta_t=\nabla_{z_t}L$。由链式法则补全：
+\[
+ \delta_t=(1-h_t\odot h_t)\odot g_t,\qquad
+ \nabla_U L=\sum_t x_t\delta_t^\top,\qquad
+ \nabla_W L=\sum_t h_{t-1}\delta_t^\top.
+\]
+求和是因为\emph{同一个}参数在多处被使用，而不是分别训练 $W_1,W_2,\ldots$。固定网络维度时，标准前向及反传成本随 $T$ 线性增长；时间步之间有依赖，但 batch 及矩阵运算仍可并行，不能理解为 GPU 完全无用。
+
+\Needspace{8\baselineskip}
+\lecturetopic{SC4001-L08-T03}{长期依赖、梯度消失／爆炸与裁剪}
+
+\textbf{来源：}pp.~29--39。
+
+Long-term dependency（长期依赖）要求当前预测利用较早的输入。结构上存在连接，并不保证训练能有效学到这条依赖。从较晚状态向较早状态传播梯度时，会出现
+\[
+ J_{t+1}^\top J_{t+2}^\top\cdots J_T^\top g_T.
+\]
+矩阵连乘在某些方向持续缩小或放大梯度，分别造成 vanishing gradient（梯度消失）或 exploding gradient（梯度爆炸）。标量类比中，每步乘 $0.5$，20 步后只剩 $0.5^{20}\approx9.54\times10^{-7}$。真实判断取决于 Jacobian 乘积，不能只检查某个权重是否大于 $1$。
+
+对 $\tanh$，导数 $1-\tanh^2z\in(0,1]$；输出接近 $\pm1$ 时导数接近零，容易进一步衰减梯度。梯度消失使早期计算收到的学习信号很弱，梯度爆炸则可能导致不稳定的大更新。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+裁剪方式 & 规则 & 对方向的影响 \\
+\midrule
+逐元素裁剪 & $g_i\leftarrow\operatorname{clip}(g_i,-v,v)$ & 各分量独立限制，可能改变向量方向。 \\
+范数裁剪 & 若 $\|g\|_2>v$，令 $g\leftarrow vg/\|g\|_2$ & 整体按正比例缩短，保留方向。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Gradient clipping（梯度裁剪）主要控制爆炸，不能恢复已经消失的信号。门控循环结构则从信息及梯度传播路径入手改善长期依赖。GRU（门控循环单元）使用 reset/update gates（重置／更新门），没有 LSTM 那样独立的 cell state；本讲仅作结构概览，不展开完整 GRU 推导。
+
+\Needspace{8\baselineskip}
+\lecturetopic{SC4001-L08-T04}{LSTM：保留、写入与读出}
+
+\textbf{来源：}pp.~40--56。
+
+LSTM 同时传递 cell state（细胞状态）$c_t$ 与 hidden state（隐藏状态）$h_t$：前者保存内部记忆，后者是当前对外提供并参与下一步门计算的表示，二者都不是最终预测的必然同义词。
+
+\subsubsection{门与状态更新公式}
+
+对当前 $x_t,h_{t-1}$，三个 sigmoid 门及一个候选记忆为
+\[
+\begin{aligned}
+ f_t&=\sigma(U_f^\top x_t+W_f^\top h_{t-1}+b_f),
+     &&\text{forget gate（遗忘门）},\\
+ i_t&=\sigma(U_i^\top x_t+W_i^\top h_{t-1}+b_i),
+     &&\text{input gate（输入门）},\\
+ o_t&=\sigma(U_o^\top x_t+W_o^\top h_{t-1}+b_o),
+     &&\text{output gate（输出门）},\\
+ \tilde c_t&=\tanh(U_c^\top x_t+W_c^\top h_{t-1}+b_c),
+     &&\text{candidate（候选记忆）}.
+\end{aligned}
+\]
+状态更新的核心为
+\[
+ \boxed{c_t=f_t\odot c_{t-1}+i_t\odot\tilde c_t},\qquad
+ \boxed{h_t=o_t\odot\tanh(c_t)}.
+\]
+门是逐分量的软控制，值在 $0$ 与 $1$ 之间；候选记忆则可正可负。四组变换各有自己的参数，但分别在时间步之间共享。\textbf{三个门加一个候选变换，不是四个门。}
+
+\begin{figure}[htbp]
+ \centering
+ \input{figures/lstm-memory-path}
+ \caption{原创 LSTM 记忆路径，依据 pp.~45--55 整理。所有乘法节点均为逐元素乘法；为突出旧记忆与新写入的相加，省略从 $x_t,h_{t-1}$ 到各门的参数化变换。}
+ \label{fig:sc4001-l08-memory}
+\end{figure}
+
+\subsubsection{门控如何改善记忆与梯度路径}
+
+遗忘门控制保留多少旧内容，输入门控制写入多少新内容，输出门控制当前暴露多少内部记忆。\emph{暂时不输出不等于删除}：输出门可以压低 $h_t$，同时将信息保留在 $c_t$ 内。门的各维由训练学习，不能预设某个坐标必然代表某个人类可命名属性。
+
+沿 $c_{t-1}\to c_t$ 的\emph{直接记忆路径}，局部导数是 $\operatorname{diag}(f_t)$；若相关分量接近 $1$，信息与梯度有机会较少衰减地传递。这不等于完整总导数只有这一项，因为完整图还包含经 $h_{t-1}$ 和各门的路径。LSTM 改善长期学习条件，但不保证永不遗忘，也不保证彻底消除所有梯度问题。
+
+\textbf{对应例题：}\relatedexercise{SC4001-L08-E02}{多时间延迟的序列回归}。该题比较 LSTM、RNN 与 GRU，但未提供实验成绩，不将结构动机当作已测得的性能排名。
+
+\Needspace{8\baselineskip}
+\lecturetopic{SC4001-L08-T05}{输入输出形式与 Encoder--Decoder}
+
+\textbf{来源：}pp.~57--68。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+输入输出形式 & 典型任务 \\
+\midrule
+One-to-one（一对一） & 图像到类别。 \\
+One-to-many（一对多） & 图像到一句描述。 \\
+Many-to-one（多对一） & 整段评论到情感类别。 \\
+Many-to-many（对齐） & 视频各帧到对应标签。 \\
+Many-to-many（不等长） & 源语言句子到目标语言句子。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Sequence-to-sequence（序列到序列，Seq2Seq）把输入长度 $T$ 与输出长度 $T'$ 分开。Encoder 先计算 $h_i=f(x_i,h_{i-1})$；基础模型用最终状态 $h_T$ 形成 context vector（上下文向量）$c$，并初始化 decoder（必要时经过映射）。Decoder 根据前一输出、自己的前一状态及上下文更新
+\[
+ s_t=g(y_{t-1},s_{t-1},c),
+\]
+再经输出层预测下一个 token。这里的 $c$ 表示上下文，\textbf{不是 LSTM cell state 的定义}。
+
+讲义的翻译情境为 \emph{we are eating bread} 到 \emph{estamos comiendo pan}：编码器读 4 个输入词，解码器从 \texttt{[START]} 开始，依次生成 3 个目标词，再生成 \texttt{[STOP]}。已经生成的词成为后续条件，属于 autoregressive generation（自回归生成）；停止符不算句子的实义词。
+
+固定上下文的 bottleneck（瓶颈）在于：长句的重要细节都要先压缩到同一个表示，再供所有输出步骤使用。不是数学上绝对无法编码长句，而是学习、保留及提取细节更困难。Attention 保留所有编码器位置的表示，并为不同输出步骤重新汇总。
+
+\Needspace{8\baselineskip}
+\lecturetopic{SC4001-L08-T06}{Attention：按输出步骤重新汇总输入}
+
+\textbf{来源：}pp.~69--78；训练建议与总结见 pp.~79--82。
+
+\subsubsection{打分、归一化与加权求和}
+
+保留编码器状态 $h_1,\ldots,h_T$。在 decoder 的第 $t$ 步，根据其前一状态 $s_{t-1}$ 与每个输入位置的表示计算 scalar score（标量分数），随后归一化：
+\[
+ e_{t,i}=f_{\rm att}(s_{t-1},h_i),\qquad
+ \boxed{a_{t,i}=\frac{\exp(e_{t,i})}{\sum_{j=1}^T\exp(e_{t,j})}}.
+\]
+这里 $f_{\rm att}$ 是可学习的打分网络。固定输出时间步 $t$，对\emph{全部输入位置} $i$ 做 softmax，因此 $a_{t,i}\ge0$ 且 $\sum_i a_{t,i}=1$。用这些权重生成当前上下文：
+\[
+ \boxed{c_t=\sum_{i=1}^T a_{t,i}h_i},\qquad
+ s_t=g(y_{t-1},s_{t-1},c_t).
+\]
+加权对象是编码器隐藏表示，不是必须挑出一个原始词。不同输出步骤的权重和 $c_t$ 可以变化，但打分网络的参数共享；这仍是 RNN encoder--decoder，并非 Transformer。
+
+\subsubsection{翻译示意与对齐图的读法}
+
+输入位置按 \emph{we / are / eating / bread} 排列。讲义的解释性权重如下，\textbf{不是本次运行测得的结果}：
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+目标词 & we & are & eating & bread \\
+\midrule
+estamos & 0.45 & 0.45 & 0.05 & 0.05 \\
+comiendo & 0.05 & 0.10 & 0.80 & 0.05 \\
+\bottomrule
+\end{tabular}
+\end{center}
+第一步侧重 \emph{we are}，第二步侧重 \emph{eating}，于是上下文随当前输出需求变化。Soft attention（软注意力）的这些运算可微，翻译损失可训练打分网络，\emph{不要求逐词人工对齐标签}；仍需要源句、目标句等任务监督。
+
+p.~78 的英法热力图以输入词为横轴、输出词为纵轴，亮度表示权重。接近对角线表示大致按原顺序对应；\emph{European Economic Area} 到 \emph{zone économique européenne} 体现词序改变；\emph{was signed} 到 \emph{a été signé} 体现词数不必一一对应。注意力分布不是强制的单调匹配，也不能仅凭亮格宣称完整解释了模型的因果推理。
+
+\textbf{训练与边界。}离散 token 可使用 embedding（嵌入表示），连续输入应适当归一化；训练时关注梯度裁剪和验证曲线。更复杂的门控模型也可能过拟合。RNN 的时间递推仍限制跨时间并行；attention 缓解基础 Seq2Seq 的单一上下文瓶颈，不自动消除所有长期依赖与优化难题。
+
+\subsection{一分钟回顾}
+
+RNN 用隐藏状态承接过去，时间展开重复使用同一组参数；BPTT 对展开图应用链式法则，并汇总共享参数的梯度。长期 Jacobian 连乘可能使梯度消失或爆炸，裁剪主要控制后者；LSTM 的遗忘、输入和输出门分别控制保留、写入和读出。Seq2Seq 允许输入输出不等长，attention 则为每个输出步骤重新加权编码器全部位置的表示。结构提供学习条件，具体表现仍需验证，不能代替实验结果。

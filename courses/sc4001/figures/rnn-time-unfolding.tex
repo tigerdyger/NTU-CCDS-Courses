@@ -1,0 +1,21 @@
+% Original schematic based on 8_rnn.pdf, file pp. 12--17.
+\begin{tikzpicture}[
+ font=\small, >=Stealth,
+ state/.style={draw=noteBlue,fill=noteBlue!7,rounded corners,
+               minimum width=16mm,minimum height=9mm},
+ flow/.style={->,thick,noteBlue}
+]
+\foreach \n/\xx in {1/1.5,2/4.2,3/6.9,4/9.6} {
+ \node[state] (h\n) at (\xx,0) {$h_{\n}$};
+ \node (x\n) at (\xx,-1.0) {$x_{\n}$};
+ \node (y\n) at (\xx,1.0) {$y_{\n}$};
+ \draw[flow] (x\n) -- (h\n);
+ \draw[flow] (h\n) -- (y\n);
+}
+\node (h0) at (-0.3,0) {$h_0$};
+\draw[flow] (h0) -- (h1);
+\draw[flow] (h1) -- (h2);
+\draw[flow] (h2) -- (h3);
+\draw[flow] (h3) -- (h4);
+\node at (5.5,-1.8) {各步共享 $U,W,V,b,b_y$；状态 $h_t$ 随时间变化};
+\end{tikzpicture}
