@@ -1,0 +1,138 @@
+% Tutorial set: 04; prepared from templates/tutorial.tex.
+% Source: T4-ML and PG.pdf, printed/PDF p. 1, Questions 1--2(a--c).
+% Session date: 2026-10-09 (Week 8).
+% No official solution supplied; probability and proof checked independently.
+% Finished notes exclude conversational checks and learner-response records.
+
+\exercisegroup{SC3000-TUT04}{Tutorial 04：Naive Bayes 与 Policy Gradient}
+\label{tutorial:SC3000-TUT04}
+
+\exercisemeta
+  {SC3000-TUT04}
+  {2026-10-09（第八周）}
+  {T4-ML and PG，印刷／文件 p.~1，Questions 1--2(a--c)}
+  {概率数值与梯度证明已核对；未提供官方参考答案}
+  {已确认并整理（2026-10-09）}
+
+\exercisequestion{SC3000-TUT04-Q01}{两项检查结果下的患病后验概率}
+
+\textbf{对应讲义：}\relatedtopic{SC3000-L06-T01}{Bayes 定理}；\relatedtopic{SC3000-L06-T03}{Naive Bayes}。
+
+\textbf{题目（Q1）。}设 $C$ 表示患甲状腺癌，$\bar C$ 表示未患病。先验为 $P(C)=0.1$，检查的条件概率为
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+条件 & $P(\text{CT 异常}\mid\text{条件})$ & $P(\text{标志物阳性}\mid\text{条件})$ \\
+\midrule
+患病 $C$ & 0.7 & 0.8 \\
+未患病 $\bar C$ & 0.2 & 0.1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+CT 只有正常／异常两种结果，肿瘤标志物只有阳性／阴性两种结果。患者 A 的 CT 正常、标志物阳性；用 Bayes 定理与 Naive Bayes classifier（朴素贝叶斯分类器）估计其患病概率。
+
+\begin{checkedsolution}
+令 $N$ 表示 CT 正常，$M$ 表示标志物阳性。由互补事件可得
+\[
+ P(N\mid C)=0.3,\qquad P(N\mid\bar C)=0.8,\qquad P(\bar C)=0.9.
+\]
+Naive Bayes 假设\textbf{给定类别后，两项检查条件独立}，并非两项检查在总体上独立，也不是现实医学检查必然满足的性质。因此
+\[
+ P(N,M\mid C)=0.3\times0.8=0.24,\qquad
+ P(N,M\mid\bar C)=0.8\times0.1=0.08.
+\]
+用全概率公式归一化：
+\[
+\begin{aligned}
+ P(C\mid N,M)
+ &=\frac{P(C)P(N,M\mid C)}
+ {P(C)P(N,M\mid C)+P(\bar C)P(N,M\mid\bar C)}\\
+ &=\frac{0.1\times0.3\times0.8}
+ {0.1\times0.3\times0.8+0.9\times0.8\times0.1}
+ =\frac{0.024}{0.096}=\boxed{0.25}.
+\end{aligned}
+\]
+在题设模型下，患病后验概率为 $25\%$，未患病为 $75\%$。若两类误判代价相同，最大后验分类会选择未患病；这是模型的分类结果，不等于确定没有病。
+
+仅比较类别可省略共同分母，计算具体后验概率则必须归一化。本题分子 $0.024$ 是联合概率，不能直接作为后验。
+\end{checkedsolution}
+
+\exercisequestion{SC3000-TUT04-Q02}{策略梯度、一步 TD 误差与 Baseline}
+
+\textbf{对应讲义：}\relatedtopic{SC3000-L06-T05}{Policy Gradient}；\relatedtopic{SC3000-L05-T01}{Temporal Difference}。
+
+\textbf{题目（Q2）。}随机策略 $\pi_\theta(a_t\mid s_t)$ 直接用 gradient ascent（梯度上升）优化期望回报。原题给出的策略梯度形式为
+\[
+ \nabla_\theta J(\theta)=\mathbb E_\pi\!\left[
+ G_t\frac{\nabla_\theta\pi_\theta(a_t\mid s_t)}{\pi_\theta(a_t\mid s_t)}
+ \right].
+\]
+其中 $G_t$ 为从当前时刻起的折扣累计回报，期望来自当前策略生成的经验。要求：
+\begin{enumerate}[label=(\alph*)]
+ \item 结合分母的权重作用，解释 exploration（探索）与 exploitation（利用）。
+ \item 给定即时奖励 $r_t$、折扣因子 $\gamma$ 及状态价值 $V$，写出“新估计减旧估计”的替代量 $B_t$。
+ \item 证明用 $B_t$ 替代 $G_t$ 不改变上述期望梯度；提示为 $\sum_a\pi_\theta(a\mid s)=1$。
+\end{enumerate}
+
+\begin{checkedsolution}
+\textbf{记号与范围。}在可微、正概率的策略上，令
+\[
+ \psi_\theta(s,a)=\nabla_\theta\log\pi_\theta(a\mid s)
+ =\frac{\nabla_\theta\pi_\theta(a\mid s)}{\pi_\theta(a\mid s)}.
+\]
+以下核对原题的\emph{单步梯度项}；完整轨迹目标还需按时间或相应的状态访问分布汇总。$r_t$ 表示从 $s_t$ 采取 $a_t$ 后收到的奖励，$G_t=r_t+\gamma G_{t+1}$。
+
+\paragraph{(a) 回报加权与随机探索.}
+采样到的更新项为 $G_t\psi_\theta(s_t,a_t)$。其他因素相同时，更高的正回报给该方向更大的权重；对足够小的单样本梯度上升步，它更强地鼓励该动作，体现利用。
+
+动作按 $\pi_\theta$ 随机抽样，而非始终取概率最大的动作，所以非零概率的其他动作仍有被尝试的机会。按原题提示，较小的 $\pi_\theta(a\mid s)$ 对应较大的 $1/\pi_\theta(a\mid s)$，将该次 $\nabla_\theta\pi_\theta(a\mid s)$ 转为相对变化率。
+
+\textbf{结论边界：}分子也随策略参数变化，不能只看分母便断言低概率动作的\emph{实际参数更新}必然更大。随机策略提供探索机会，但公式本身不保证充分探索或最佳探索比例；“高于平均才鼓励”的解释还需引入 baseline（基线）。
+
+\paragraph{(b) 新估计减旧估计.}
+一步交互后，以已得到的奖励加折扣后的下一状态价值形成新的回报估计：
+\[
+ \boxed{B_t=\underbrace{r_t+\gamma V(s_{t+1})}_{\text{新估计}}
+             -\underbrace{V(s_t)}_{\text{旧估计}}}.
+\]
+它是 TD error（时序差分误差），可用作 advantage（优势）的样本估计。$B_t>0$ 表示该次结果比旧估计更好，$B_t<0$ 则相反；真实终止状态的后续价值取零。
+
+这里不必等待整条轨迹结束，但仍通过采样估计期望。原题所谓 breakdown 应理解为\emph{替代更新信号}，不是每条轨迹上都有 $G_t=B_t$ 的恒等关系。
+
+\paragraph{(c) 期望梯度不变：两步证明.}
+在 Markov 模型、on-policy（同策略）采样及可积条件下，先固定当前状态 $s$，并假设 $V=V^\pi$ 为当前策略的真实状态价值。有限时域时，应把剩余时间包含在状态内或在价值函数上加时间下标。
+
+\textbf{第一步：替代完整回报。}由条件期望与 Bellman 关系，
+\[
+ \mathbb E[G_t\mid s_t=s,a_t=a]
+ =Q^\pi(s,a)
+ =\mathbb E[r_t+\gamma V^\pi(s_{t+1})\mid s_t=s,a_t=a].
+\]
+给定 $s,a$ 后，$\psi_\theta(s,a)$ 不再依赖未来随机结果。故两边乘以该因子，再对动作取期望，得到
+\[
+ \mathbb E_\pi[G_t\psi_\theta(s_t,a_t)\mid s_t=s]
+ =\mathbb E_\pi[(r_t+\gamma V^\pi(s_{t+1}))\psi_\theta(s_t,a_t)\mid s_t=s].
+\]
+
+\textbf{第二步：减去状态基线。}对任何给定状态后不依赖当前动作的基线 $b(s)$，有限动作空间下
+\[
+\begin{aligned}
+ \mathbb E_{a\sim\pi_\theta(\cdot\mid s)}[b(s)\psi_\theta(s,a)]
+ &=b(s)\sum_a\pi_\theta(a\mid s)
+       \frac{\nabla_\theta\pi_\theta(a\mid s)}{\pi_\theta(a\mid s)}\\
+ &=b(s)\sum_a\nabla_\theta\pi_\theta(a\mid s)\\
+ &=b(s)\nabla_\theta\sum_a\pi_\theta(a\mid s)
+ =b(s)\nabla_\theta1=0.
+\end{aligned}
+\]
+取 $b(s)=V^\pi(s)$，合并两步，并对相同的状态分布取期望，即得
+\[
+ \boxed{\mathbb E_\pi[B_t\psi_\theta(s_t,a_t)]
+       =\mathbb E_\pi[G_t\psi_\theta(s_t,a_t)]}.
+\]
+这里梯度只作用于策略；基线在更新项中作为权重，即使其数值依赖 $\theta$，也不是对 $b(s)\pi_\theta(a\mid s)$ 整体求导。
+
+\textbf{两种操作的条件不同。}减去动作无关的基线不要求基线准确；但第一步使用准确 $V^\pi$ 才得到上述保证，任意近似 $V$ 的 bootstrap（自举）一般可能引入偏差。只证明第二步为零，不足以自动证明使用任意 TD 估计都不改变期望梯度。相等指\emph{期望}，不是每个样本的更新量都相同。
+
+上述成立条件是对原题简写的数学补充。Baseline 与一步 TD 的关系亦可参阅\href{https://hankyang.seas.harvard.edu/OptimalControlReinforcementLearning/policy-gradient.html}{Harvard《Optimal Control and Reinforcement Learning》Chapter 3，Sections 3.2.4 与 3.3.2}。
+\end{checkedsolution}
