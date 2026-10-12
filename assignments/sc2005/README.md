@@ -8,3 +8,4 @@
 - 编程作业：[`programming-assignments/`](programming-assignments/)
   - Lab 1：[`SC2005-LAB01`](programming-assignments/lab-01/)（xv6、system call 与 pipe，核心任务已验证）
   - Lab 2：[`SC2005-LAB02`](programming-assignments/lab-02/)（进程调度与用户线程，核心任务及三核复测已完成）
+  - Lab 3：[`SC2005-LAB03`](programming-assignments/lab-03/)（同步、信号量与有界缓冲区，三核综合测试已通过）

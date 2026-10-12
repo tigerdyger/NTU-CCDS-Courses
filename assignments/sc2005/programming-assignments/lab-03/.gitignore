@@ -1,0 +1,12 @@
+# Publish only the reviewed notes and the two modified source files.
+# Keep archives, full xv6 checkouts, screenshots and build outputs local.
+*
+!.gitignore
+!README.md
+!synchronization-trace.md
+!implementation-notes.md
+!code/
+!code/README.md
+!code/LICENSE
+!code/semaphore.c
+!code/race_test.c

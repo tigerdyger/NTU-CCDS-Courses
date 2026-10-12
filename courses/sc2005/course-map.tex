@@ -87,10 +87,13 @@
 \textbf{后续学习安排：}Memory Organization 下一节覆盖 7.23--7.44 的 Paging（含 TLB、共享页）、两级页表、倒排页表与 Segmentation，并结合 7.45--7.52 总结。此划分依据讲义内容与用户提供的视频标题，尚未核实官方逐次授课边界；后半部分尚未学习。
 
 \medskip
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{4.05cm}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{1.45cm}@{}}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{4.05cm}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}p{\dimexpr\textwidth-9.9cm-8\tabcolsep\relax}>{\raggedright\arraybackslash}p{1.45cm}@{}}
   \toprule
   课堂 & 原始材料与精确范围 & 主题 ID & 习题/代码作业 ID & 状态 \\
   \midrule
+  \endhead
+  \bottomrule
+  \endfoot
   \shortstack[l]{TUT02\\2026-08-25}
     & Tutorial Two p.~2-1（PDF p.~1），Questions 1--4
     & \shortstack[l]{\texttt{SC2005-L03}\\\texttt{T01--T03}\\\texttt{SC2005-L04}\\\texttt{T01--T05}}
@@ -131,5 +134,9 @@
     & \shortstack[l]{\texttt{SC2005-L13}\\\texttt{T01,T03}\\\texttt{SC2005-L14}\\\texttt{T02--T04}}
     & \shortstack[l]{\texttt{SC2005-TUT07}\\\texttt{Q01--Q03}}
     & 已学习；解答已核对 \\
-  \bottomrule
-\end{tabularx}
+  \shortstack[l]{LAB03\\2026-10-12}
+    & Lab 3 Manual PDF pp.~1--10；Parts 1--4；综合测试使用 CPUS=3
+    & \shortstack[l]{\texttt{SC2005-L08}\\\texttt{T04--T05}\\\texttt{SC2005-L09}\\\texttt{T01--T05}\\\texttt{SC2005-L10}\\\texttt{T01--T03}}
+    & \texttt{SC2005-LAB03}
+    & 核心任务已验证 \\
+\end{longtable}
