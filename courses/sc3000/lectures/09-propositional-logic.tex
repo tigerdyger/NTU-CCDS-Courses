@@ -1,0 +1,160 @@
+% Based on templates/lecture.tex; regular lecture L08, not L09.
+% Date: 2026-10-12, Week 9. Diffusion remains the unnumbered SUP01 supplement.
+% Source: Week 9 - Propositional Logic.pptx, 71 slides, original slide order.
+% Scope: slides 2--34, 39--70. Slides 36--38 are hidden recap slides.
+% Transcript: 79486 - 0_ctsix09x - PID 117.txt, covers both parts to limitations.
+% Stable labels are retained; visible IDs and conversational checks are omitted.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
+\section{第 08 节课：Propositional Logic}
+\label{lecture:SC3000-L08}
+
+\textbf{日期与资料：}2026-10-12（Week 9）；Week 9 -- Propositional Logic，原始幻灯片第 2--34、39--70 页；配套字幕覆盖 Part 1、2。下文页码按 PPT 原始顺序，包含隐藏页的编号。
+
+命题逻辑将事实写成真假陈述，用联结词表达关系，再通过可靠规则导出新知识。本讲承接 Logical Agents：从表示与真值计算出发，建立推理规则，最后用 Wumpus World 演示从感知到行动的推导。
+
+\lecturetopic{SC3000-L08-T01}{命题表示、语法与联结词}
+
+Proposition（命题）是在给定解释下为真或为假的陈述。Atomic sentence（原子语句）包括命题符号及逻辑常量；compound sentence（复合语句）由较小公式经联结词构成。例如令 $P$ 为“Anil 聪明”、$Q$ 为“Anil 勤奋”，则 $P\land Q$ 表示两者兼具，$P\lor Q$ 表示至少具备一项，也允许两者都有。
+
+Syntax（语法）规定合法结构，semantics（语义）规定给定模型中的真值；语法合法不等于永真。课件的 Backus--Naur Form（BNF）递归规定：原子语句是公式；给公式加括号、取否定，或用二元联结词连接公式，仍得到公式。采用本课的中缀记法与优先级
+\[
+ \neg\;>\;\land\;>\;\lor\;>\;\Rightarrow\;>\;\Leftrightarrow.
+\]
+因此 $\neg P\land Q\lor R\Rightarrow S$ 读作 $((\neg P\land Q)\lor R)\Rightarrow S$；不确定时直接加括号。
+
+\begin{center}
+\small
+\begin{tabular}{@{}cc|ccccc@{}}
+\toprule
+$P$ & $Q$ & $\neg P$ & $P\land Q$ & $P\lor Q$ & $P\Rightarrow Q$ & $P\Leftrightarrow Q$ \\
+\midrule
+T & T & F & T & T & T & T \\
+T & F & F & F & T & F & F \\
+F & T & T & F & T & T & F \\
+F & F & T & F & F & T & T \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Negation（否定）翻转真值；conjunction（合取）要求两项都真；disjunction（析取）要求至少一项真，默认不是 exclusive OR（异或）。Biconditional（双条件）$P\Leftrightarrow Q$ 在两项真值相同时为真。
+
+\textbf{Implication（条件命题）。}$P\Rightarrow Q$ 只排除 $P$ 真而 $Q$ 假的情况：
+\[
+ \boxed{P\Rightarrow Q\equiv\neg P\lor Q}.
+\]
+$P$ 是 antecedent（前件），$Q$ 是 consequent（后件）。当前件为假时，条件命题没有被违反，故整体为真；\emph{并非}因此断言 $Q$ 为真。条件命题也不自动表示因果关系，不能倒过来使用。$P\Rightarrow Q$ 与 $Q$ 不足以推出 $P$，因为 $P=\mathrm F,Q=\mathrm T$ 就是反例。
+
+课件把 Intelligent(Anil) 当作完整陈述；在本讲中可用单一符号 $P$ 代表它，不对其对象与谓词作内部推理。括号如何改变陈述含义，见\relatedexercise{SC3000-L08-E01}{John 与巧克力的真值表}。
+
+\lecturetopic{SC3000-L08-T02}{模型、可满足性与有效性}
+
+Model（模型）在这里是一组命题真值赋值，而非训练出的机器学习参数。$n$ 个布尔变量有 $2^n$ 种赋值；给定赋值后，按公式结构逐层计算真值，即 compositional semantics（组合语义）。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXl@{}}
+\toprule
+性质 & 定义 & 例子 \\
+\midrule
+Valid（永真） & 每个模型中都为真，也称 tautology（重言式） & $P\lor\neg P$ \\
+Satisfiable（可满足） & 至少存在一个使公式为真的模型 & $P\land Q$ \\
+Unsatisfiable（不可满足） & 不存在使公式为真的模型 & $P\land\neg P$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Valid 蕴含 satisfiable，反向不成立；可满足并不要求公式在\emph{部分但非全部}模型中为真。一个具体模型中的真，亦不等于永真。检查 satisfiability 时找到一个满足模型就足够；证明 validity 则不能存在任何反模型。
+
+\textbf{与上一讲的 entailment（逻辑蕴含）连接。}对有限知识库，记其全部语句的合取为 $K$，则按语义定义可得
+\[
+ KB\models\alpha
+ \iff (K\Rightarrow\alpha)\text{ 永真}
+ \iff (K\land\neg\alpha)\text{ 不可满足}.
+\]
+这是对课件真值表方法的归纳：不允许出现“全部前提真、结论假”的赋值。特别地，$\alpha$ 永真当且仅当 $\neg\alpha$ 不可满足。
+
+\textbf{未知不是假。}$KB\not\models\alpha$ 只表明不能保证结论；并不自动给出 $KB\models\neg\alpha$。公式分解与永真式的完整计算见\relatedexercise{SC3000-L08-E02}{真值求值与可靠推理的验证}。
+
+\lecturetopic{SC3000-L08-T03}{可靠推理规则与 Resolution}
+
+Sound inference rule（可靠推理规则）保证：只要全部前提为真，结论就为真。先用真值表证明一个模式可靠，之后便可重复应用，不必每次重新枚举全部模型。以下横线上是前提，横线下是结论。
+
+\begin{center}
+\renewcommand{\arraystretch}{1.65}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+规则 & 形式及含义 \\
+\midrule
+Modus Ponens（肯定前件） & $\displaystyle\frac{\alpha\Rightarrow\beta,\ \alpha}{\beta}$：规则的前件也必须已知。 \\
+And-Elimination（合取消去） & $\displaystyle\frac{\alpha\land\beta}{\alpha}$：也可取出 $\beta$。 \\
+And-Introduction（合取引入） & $\displaystyle\frac{\alpha,\ \beta}{\alpha\land\beta}$：合并分别成立的事实。 \\
+Or-Introduction（析取引入） & $\displaystyle\frac{\alpha}{\alpha\lor\beta}$：不代表已证明 $\beta$。 \\
+Double-Negation-Elimination & $\displaystyle\frac{\neg\neg\alpha}{\alpha}$：经典命题逻辑中的双重否定消去。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+课件天气例中，由 Cloudy、Humid 先合取得到 $Cloudy\land Humid$，再与 $(Cloudy\land Humid)\Rightarrow Rain$ 使用 MP，得到 Rain。由 $Cloudy\land Humid$ 也可取出 Cloudy，再与 $Cloudy\Rightarrow NoSunTan$ 推出 NoSunTan。
+
+\textbf{Literal 与 clause。}Literal（文字）是一个原子命题或其否定，如 $P,\neg P$。本讲归结所用的 clause（子句）按标准含义取若干 literal 的\emph{析取}，如 $P\lor Q\lor\neg R$；单个 literal 是 unit clause（单位子句）。课件 p.~40 对 clause 的泛化措辞不应理解为任意联结词组合都可直接按子句归结。
+
+\textbf{Resolution（归结）。}两个子句含一对互补 literal 时，得到其余部分的析取，称为 resolvent（归结式）：
+\[
+ \boxed{\frac{\alpha\lor\beta,\ \neg\beta\lor\gamma}{\alpha\lor\gamma}}.
+\]
+可靠性的分情况证明：若 $\beta$ 假，第一前提迫使 $\alpha$ 真；若 $\beta$ 真，第二前提迫使 $\gamma$ 真。因此全部前提真时，$\alpha\lor\gamma$ 必真。归结只给出逻辑后果，一般不能以归结式替换全部原前提并声称等价。
+
+Unit resolution（单位归结）是其中一个子句只有单个 literal 的情形：
+\[
+ \frac{\alpha\lor\beta,\ \neg\beta}{\alpha}.
+\]
+课件的 $Monday\lor Tuesday$ 与 $\neg Monday$ 因而推出 Tuesday。将 $P\Rightarrow Q$ 写为 $\neg P\lor Q$，再与 $P$ 归结得到 $Q$，也就实现了 MP。
+
+\lecturetopic{SC3000-L08-T04}{等价变换与推理记号}
+
+Logical equivalence（逻辑等价）$\alpha\equiv\beta$ 表示两式在\emph{所有}模型中真值一致，即 $\alpha\Leftrightarrow\beta$ 是永真式。仅在某一个模型中两式同真，并不足以证明等价。
+
+\begin{align*}
+ \text{结合律：}\quad
+ &\alpha\land(\beta\land\gamma)\equiv(\alpha\land\beta)\land\gamma,\\
+ &\alpha\lor(\beta\lor\gamma)\equiv(\alpha\lor\beta)\lor\gamma;\\[0.3em]
+ \text{分配律：}\quad
+ &\alpha\land(\beta\lor\gamma)\equiv(\alpha\land\beta)\lor(\alpha\land\gamma),\\
+ &\alpha\lor(\beta\land\gamma)\equiv(\alpha\lor\beta)\land(\alpha\lor\gamma);\\[0.3em]
+ \text{De Morgan：}\quad
+ &\neg(\alpha\lor\beta)\equiv\neg\alpha\land\neg\beta,\\
+ &\neg(\alpha\land\beta)\equiv\neg\alpha\lor\neg\beta.
+\end{align*}
+连续 AND 或连续 OR 可重新结合，但混合联结词不能任意移动括号。德摩根律把否定推进括号时，既要逐项取反，也要交换 AND／OR。另有 $\neg\neg\alpha\equiv\alpha$，以及
+\[
+ \alpha\Rightarrow\beta\equiv\neg\alpha\lor\beta,\qquad
+ \alpha\Leftrightarrow\beta\equiv
+ (\alpha\Rightarrow\beta)\land(\beta\Rightarrow\alpha).
+\]
+
+同一个 MP 模式可分别写成
+\[
+ \alpha\Rightarrow\beta,\alpha\vdash\beta,\qquad
+ \alpha\Rightarrow\beta,\alpha\models\beta,\qquad
+ \models\bigl(((\alpha\Rightarrow\beta)\land\alpha)\Rightarrow\beta\bigr).
+\]
+$\vdash$ 讨论形式推导，$\models$ 讨论所有模型中的保证，$\Rightarrow$ 则是公式\emph{内部}的联结词。三种表达在这里描述同一可靠模式，不意味着三个符号可随意互换；一般从推导到蕴含需 soundness，反向保证需 completeness。
+
+\lecturetopic{SC3000-L08-T05}{从知识到行动及表示的局限}
+
+Wumpus agent 将感知与规则 Tell 进 KB，通过 MP、And-Elimination 与 Unit resolution 排除候选位置，再加入行动约束。第 64--68 页例题按\textbf{行、列}下标读取：$W_{31}$ 对应第 3 行、第 1 列，即上一讲 $(x,y)$ 记法中的 $(1,3)$；不能混用两种顺序。完整题设、图示及位置证明见\relatedexercise{SC3000-L08-E03}{Wumpus 的归结证明}。
+
+在该例的行列约定下，agent 位于 $A_{21}$、面向北，若 $W_{31}$ 成立，则
+\[
+ A_{21}\land North\land W_{31}\Rightarrow\neg Forward.
+\]
+查询针对明确公式，例如 KB 是否蕴含 Forward；本讲的命题查询接口不直接返回一个含变量的“应该选哪个动作”的答案。知识不足时，Forward 与 $\neg Forward$ 都可能推不出。
+
+\textbf{两个局限。}首先，缺乏对象变量与通用量化，位置和方向往往要逐项展开。课件以 $16$ 格乘 $4$ 朝向，共 $64$ 种组合说明规则重复；边界情形可单独处理，但不能消除表示膨胀。其次，命题符号本身不携带时间，处理变化需要 $A_{11,0},A_{21,1},A_{11,2}$ 等不同符号，规则也要带相应时间。没有时间标记时，不能把先后发生的状态当成同时成立的事实。
+
+\subsection{一分钟回顾}
+
+命题逻辑以真假陈述和联结词表示知识；$P\Rightarrow Q$ 仅在前真后假时为假。Satisfiable 要求至少一个满足模型，valid 要求所有模型都满足。MP 应用规则，合取规则拆分或组合事实，resolution 利用互补 literal 推出新子句；等价变换则保留全部模型中的真值。Wumpus 的位置证明把这些步骤串联起来，但表达所有位置、方向和时间需要大量具体命题。
+\endgroup

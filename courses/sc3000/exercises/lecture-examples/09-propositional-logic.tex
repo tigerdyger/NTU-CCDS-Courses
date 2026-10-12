@@ -1,0 +1,134 @@
+% Based on templates/lecture-example.tex; actual lecture SC3000-L08.
+% Source: Week 9 - Propositional Logic.pptx, original slide numbers.
+% Lecture examples only; conversational checks and answer records excluded.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC3000-L08-EX}{第 08 讲：Propositional Logic}
+
+\textbf{日期与来源：}2026-10-12；Week 9 -- Propositional Logic，pp.~26--34、63--68。题意按原例整理，解答补全中间推导；以下页码均按 PPT 原始顺序。
+
+\exercisequestion{SC3000-L08-E01}{括号如何改变含义：John 与巧克力}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L08-T01}{命题表示与语法}；\relatedtopic{SC3000-L08-T02}{真值语义}。
+
+\textbf{题目。}课件 pp.~26--28 定义 $A$ 为“John 喜欢 Kate”，$B$ 为“John 喜欢巧克力”，$C$ 为“John 买巧克力”。解释 $(A\land B)\Rightarrow C$ 与 $A\land(B\Rightarrow C)$，并按 pp.~33--34 完成真值表、比较二者是否等价。
+
+\begin{workedsolution}
+第一式为“若 John 既喜欢 Kate 又喜欢巧克力，则买巧克力”；它没有单独断言 $A$。第二式则同时断言“John 喜欢 Kate”和“如果喜欢巧克力，就买巧克力”。
+
+先算合取 $A\land B$ 与条件命题 $B\Rightarrow C$，再算最外层运算：
+\begin{center}
+\small
+\begin{tabular}{@{}ccc|cccc@{}}
+\toprule
+$A$ & $B$ & $C$ & $A\land B$ & $B\Rightarrow C$ & $(A\land B)\Rightarrow C$ & $A\land(B\Rightarrow C)$ \\
+\midrule
+T & T & T & T & T & T & T \\
+T & T & F & T & F & F & F \\
+T & F & T & F & T & T & T \\
+T & F & F & F & T & T & T \\
+F & T & T & F & T & T & F \\
+F & T & F & F & F & T & F \\
+F & F & T & F & T & T & F \\
+F & F & F & F & T & T & F \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+当 $A=\mathrm F$ 时，第一式的前件必假，故整体为真；第二式最外层是与 $A$ 的合取，故必假。只需其中一行便可证明不等价。两式都可满足但都不是永真式；$A=B=\mathrm T,C=\mathrm F$ 使两式都为假。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L08-E02}{公式分解与有效性检验}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L08-T02}{模型、可满足性与有效性}；\relatedtopic{SC3000-L08-T03}{可靠推理}。
+
+\textbf{题目。}按 p.~30，在 $P=\mathrm F,Q=\mathrm T,R=\mathrm F,S=\mathrm T$ 下计算 $\neg P\land Q\lor R\Rightarrow S$。再按 p.~32，用真值表判断 $((P\lor Q)\land\neg Q)\Rightarrow P$ 是否 valid。
+
+\begin{workedsolution}
+优先级给出 $((\neg P\land Q)\lor R)\Rightarrow S$，逐层求值得
+\[
+ \neg P=\mathrm T,\qquad
+ \neg P\land Q=\mathrm T,\qquad
+ (\neg P\land Q)\lor R=\mathrm T,\qquad
+ \mathrm T\Rightarrow\mathrm T=\boxed{\mathrm T}.
+\]
+这只证明公式在\emph{指定赋值}中为真，并未检验全部模型。
+
+第二式需要枚举 $P,Q$ 的四种赋值。令 $H=(P\lor Q)\land\neg Q$：
+\begin{center}
+\begin{tabular}{@{}cc|cccc@{}}
+\toprule
+$P$ & $Q$ & $P\lor Q$ & $\neg Q$ & $H$ & $H\Rightarrow P$ \\
+\midrule
+T & T & T & F & F & T \\
+T & F & T & T & T & T \\
+F & T & T & F & F & T \\
+F & F & F & T & F & T \\
+\bottomrule
+\end{tabular}
+\end{center}
+最后一列全真，所以是 tautology。也即 $P\lor Q,\neg Q\models P$：唯一使全部前提为真的行，其结论亦真；其余行前提不成立，不构成对推理可靠性的反例。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L08-E03}{Wumpus：用 MP 与单位归结确定位置}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L08-T03}{推理规则}；\relatedtopic{SC3000-L08-T05}{从知识到行动}。
+
+\textbf{题目与坐标。}使用 pp.~63--68 的感知、规则与位置图。此处用 $(r,c)$ 表示\emph{行、列}，行从下向上递增；$S_{rc}$ 表示臭味，$W_{rc}$ 表示 Wumpus。与上一讲的横纵坐标对应关系为 $(x,y)=(c,r)$。已知
+\[
+ \neg S_{11},\qquad S_{21},\qquad\neg S_{12},
+\]
+以及课件给定规则
+\begin{align*}
+ R_1:\quad&\neg S_{11}\Rightarrow
+  (\neg W_{11}\land\neg W_{12}\land\neg W_{21}),\\
+ R_2:\quad&\neg S_{12}\Rightarrow
+  (\neg W_{11}\land\neg W_{12}\land\neg W_{22}\land\neg W_{13}),\\
+ R_3:\quad&\neg S_{21}\Rightarrow
+  (\neg W_{11}\land\neg W_{21}\land\neg W_{22}\land\neg W_{31}),\\
+ R_4:\quad&S_{21}\Rightarrow
+  (W_{11}\lor W_{21}\lor W_{22}\lor W_{31}).
+\end{align*}
+证明 Wumpus 的位置，并写出 agent 在 $(2,1)$ 面向北时不应前进的推理。
+
+\begin{center}
+\input{figures/propositional-wumpus-grid}
+
+\small 依据 pp.~63--68 重绘的左下 $3\times3$ 局部信息图；下标采用行、列。\par
+\small 起点上方有臭味，右方无臭味；$\neg W$ 是推导结果，空白格未确定。
+\end{center}
+
+\begin{workedsolution}
+\textbf{先由感知排除候选。}用 $\neg S_{11},R_1$ 做 MP，得到 $\neg W_{11}\land\neg W_{12}\land\neg W_{21}$；用 And-Elimination 拆出三条事实。再用 $\neg S_{12},R_2$ 做 MP 并拆分，合并得到
+\[
+ \neg W_{11},\quad\neg W_{12},\quad\neg W_{21},\quad
+ \neg W_{22},\quad\neg W_{13}.
+\]
+本题观察是 $S_{21}$，并没有 $\neg S_{21}$，所以不能仅因 KB 中存在 $R_3$ 就应用它。
+
+\textbf{再通过单位归结排除剩余选项。}由 $S_{21},R_4$ 做 MP，得
+\[
+ W_{11}\lor W_{21}\lor W_{22}\lor W_{31}.
+\]
+接着逐次归结：
+\begin{align*}
+ &(W_{11}\lor W_{21}\lor W_{22}\lor W_{31}),\ \neg W_{11}
+   &&\vdash W_{21}\lor W_{22}\lor W_{31},\\
+ &(W_{21}\lor W_{22}\lor W_{31}),\ \neg W_{22}
+   &&\vdash W_{21}\lor W_{31},\\
+ &(W_{21}\lor W_{31}),\ \neg W_{21}
+   &&\vdash\boxed{W_{31}}.
+\end{align*}
+位置是第 3 行、第 1 列，即横纵坐标 $(1,3)$，不是 $(3,1)$。
+
+\textbf{从位置到行动。}加入规则
+\[
+ A_{21}\land North\land W_{31}\Rightarrow\neg Forward.
+\]
+若已知 $A_{21}$ 和 North，结合刚推出的 $W_{31}$，先用合取引入组合前提，再用 MP 得到 $\neg Forward$。这是有前提支持的禁止结论，不是把“无法证明 Forward”误当成否定。
+
+\textbf{传感模型说明。}以上证明直接采用题设的 $R_1$--$R_4$。课件把当前格也列入无 Wumpus 的结论；若采用仅相邻格产生臭味的定义，则当前已访问格的安全性还需结合 agent 存活的信息。无臭味本身只排除邻格中的 Wumpus，也不能替代排除坑所需的无微风信息。
+\end{workedsolution}
+\endgroup
