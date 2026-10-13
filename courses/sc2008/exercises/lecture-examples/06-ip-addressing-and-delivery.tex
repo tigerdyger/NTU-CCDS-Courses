@@ -1,0 +1,306 @@
+% Based on templates/lecture-example.tex. Lecture examples only.
+% IP = SC2008_M2-L2_IP_2026.pdf; Week 9 = SC2008 Lecture Week_9(1).pdf.
+% Necessary conditions retained; solutions independently restated and checked.
+% Conversational checks, learner responses and visible record IDs are excluded.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC2008-L06-EX}{第 06 讲：IP Addressing 与 Packet Delivery}
+
+\textbf{日期与来源：}2026-10-13。下文 IP 指 M2-L2 IP（2026），Week 9 指现场讲义；页码均为 PDF 页码。例题保留必要条件并补全计算，重复的换数值题合并呈现。
+
+\exercisequestion{SC2008-L06-E01}{前缀、地址范围与本地性}
+
+\textbf{来源与关联：}IP pp.~18--28；\relatedtopic{SC2008-L06-T02}{IPv4 与子网}。
+
+\textbf{题目。}主机为 \texttt{192.168.10.77/26}。求 mask、network、broadcast、可用范围和数量，并判断目标 .126 与 .130 是否属于本地（两目标均以 \texttt{192.168.10.} 开头）。再求 \texttt{172.20.142.98/22} 的地址范围。
+
+\begin{workedsolution}
+/26 留下 6 个主机位，mask 为 \texttt{255.255.255.192}。最后一段的 AND 是
+\[
+ \underbrace{01001101}_{77}\ \mathrm{AND}\
+ \underbrace{11000000}_{192}=\underbrace{01000000}_{64}.
+\]
+因此 network 为 \texttt{192.168.10.64}；将 6 个主机位设为 1 得 broadcast \texttt{192.168.10.127}。可用范围为 \texttt{192.168.10.65}--\texttt{192.168.10.126}，共 $2^6-2=62$ 个。也可用块大小 $256-192=64$，判断 77 落在64--127。
+
+目标 .126 经同一掩码得到 network .64，属于本地；.130 得到 .128，不属于本地。该网络地址用于确定路由，\emph{不替换} packet 中具体目标主机的 IP。
+
+/22 的 mask 为 \texttt{255.255.252.0}，第三段每 $256-252=4$ 个值一块。142 落在140--143，所以
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+项目 & /22 结果 \\
+\midrule
+Network & \texttt{172.20.140.0/22} \\
+Broadcast & \texttt{172.20.143.255} \\
+Usable range & \texttt{172.20.140.1}--\texttt{172.20.143.254} \\
+Usable count & $2^{10}-2=1022$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+边界换算同样适用于 \texttt{10.0.5.94/27}：mask 为 \texttt{255.255.255.224}，块大小32，network .64、broadcast .95、可用 .65--.94；.96 已是下一块起点。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L06-E02}{六部门的等大小子网}
+
+\textbf{来源与关联：}IP pp.~36--38；\relatedtopic{SC2008-L06-T02}{子网规划}。
+
+\textbf{题目。}父块为 \texttt{10.20.0.0/20}。六个部门各需容纳最多300台电脑及一个网关接口；选相同的最小子网大小，检验父块能否容纳，并列出分配及预留块。
+
+\begin{workedsolution}
+每部门需301个接口地址，$2^8-2=254$ 不够、$2^9-2=510$ 足够，故用 /23。父块可分为 $2^{23-20}=8$ 个 /23，足够六部门并留两块。
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+用途 & 子网 & 完整范围（均以 \texttt{10.20.} 开头） \\
+\midrule
+部门1 & \texttt{10.20.0.0/23} & \texttt{0.0}--\texttt{1.255} \\
+部门2 & \texttt{10.20.2.0/23} & \texttt{2.0}--\texttt{3.255} \\
+部门3 & \texttt{10.20.4.0/23} & \texttt{4.0}--\texttt{5.255} \\
+部门4 & \texttt{10.20.6.0/23} & \texttt{6.0}--\texttt{7.255} \\
+部门5 & \texttt{10.20.8.0/23} & \texttt{8.0}--\texttt{9.255} \\
+部门6 & \texttt{10.20.10.0/23} & \texttt{10.0}--\texttt{11.255} \\
+预留 & \texttt{10.20.12.0/23} & \texttt{12.0}--\texttt{13.255} \\
+预留 & \texttt{10.20.14.0/23} & \texttt{14.0}--\texttt{15.255} \\
+\bottomrule
+\end{tabular}
+\end{center}
+每行首、尾分别为该子网的 network、broadcast，其余510个可用于接口。第三段步长为2，全部分配位于父块 \texttt{10.20.0.0}--\texttt{10.20.15.255} 内。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L06-E03}{VLSM 与每个路由器接口的分配}
+
+\textbf{来源与关联：}IP pp.~40--44；Week 9 pp.~27--29；\relatedtopic{SC2008-L06-T02}{VLSM}。
+
+\textbf{题目。}父块为 \texttt{192.168.50.0/24}，四个 LAN 分别需要100、50、20、10台电脑，\emph{另各需一个网关接口}。四台路由器按图连接，每条连接有两个接口。选择各子网大小，分配完整地址块和每个路由器接口。
+
+\begin{center}
+\input{figures/ip-vlsm-topology}
+
+\small 依据 IP pp.~40--43 重绘；链路旁标出下表采用的分配结果。
+\end{center}
+
+\begin{workedsolution}
+所需可用接口数依次为101、51、21、11，选择 /25、/26、/27、/28；每条路由器连接按 /30 提供两个可用地址。以下省略共同前缀 \texttt{192.168.50.}：
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+网络段 & 子网 & 完整范围 & 可用范围 \\
+\midrule
+LAN A & .0/25 & .0--.127 & .1--.126 \\
+LAN B & .128/26 & .128--.191 & .129--.190 \\
+LAN C & .192/27 & .192--.223 & .193--.222 \\
+LAN D & .224/28 & .224--.239 & .225--.238 \\
+R1--R2 & .240/30 & .240--.243 & .241--.242 \\
+R1--R3 & .244/30 & .244--.247 & .245--.246 \\
+R2--R4 & .248/30 & .248--.251 & .249--.250 \\
+R3--R4 & .252/30 & .252--.255 & .253--.254 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+LAN 网关分别为 R1=.1/25、R2=.129/26、R3=.193/27、R4=.225/28，电脑使用对应剩余可用地址。链路接口分别分配：R1--R2 为 R1=.241/30、R2=.242/30；R1--R3 为 .245/30、.246/30；R2--R4 为 .249/30、.250/30；R3--R4 为 .253/30、.254/30。同一链路两端使用相同前缀、不同可用地址。
+
+总块大小为 $128+64+32+16+4\times4=256$，刚好覆盖整个 /24，边界对齐且无重叠。若题目要求固定主机地址 .230，它落入 LAN D 的 .224/28，因而可被该方案容纳。
+
+\textbf{现场讲义的较小方案。}父块改为 \texttt{192.168.40.0/24}，Engineering、Sales、Support 分别需要50、25、12个接口地址，\emph{已含网关}，不再加1。结果为：
+\begin{center}
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+部门 & 子网 & 可用末段 & 广播末段 & 示例网关末段 \\
+\midrule
+Engineering & .0/26 & .1--.62 & .63 & .1 \\
+Sales & .64/27 & .65--.94 & .95 & .65 \\
+Support & .96/28 & .97--.110 & .111 & .97 \\
+\bottomrule
+\end{tabular}
+\end{center}
+mask 依次为 \texttt{255.255.255.192}、\texttt{255.255.255.224}、\texttt{255.255.255.240}。剩余 .112--.255 未分配；它不必恰好构成一个单独的 CIDR 块。每个工作站使用所在 LAN 上的路由器接口作为默认网关。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L06-E04}{ARP 与 ping 的完整交付过程}
+
+\textbf{来源与关联：}IP pp.~50、57--71；\relatedtopic{SC2008-L06-T03}{Forwarding 与 ARP}。
+
+\textbf{题目。}A、B 接在同一交换机上；一台路由器连接左、右两个 LAN，C 位于右侧。地址如下，A、C 各以本地路由器接口为网关。
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+LAN & 主机地址 & 路由器接口 \\
+\midrule
+左侧 /24 & A：\texttt{192.168.10.10}；B：\texttt{192.168.10.20} & \texttt{192.168.10.1} \\
+右侧 /24 & C：\texttt{192.168.20.20} & \texttt{192.168.20.1} \\
+\bottomrule
+\end{tabular}
+\end{center}
+用 A、B、C、R-left、R-right 表示 MAC 标签。假设初始 ARP caches 与交换机表为空，无 NAT、成功传输、IP 包等待 ARP 完成。分别分析一次 A--B 与一次 A--C ping；两次分析独立地从空缓存开始。
+
+\begin{workedsolution}
+\textbf{本地 A--B。}A 判断 B 在本地；ARP request 的 sender IP 是 .10.10、target IP 是 .10.20，共同前缀为 \texttt{192.168}。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}cllX@{}}
+\toprule
+帧 & 内容 & MAC source $\to$ destination & 交换机行为 \\
+\midrule
+1 & ARP request for B & A $\to$ broadcast & 学到 A 的入端口，向其他端口泛洪 \\
+2 & ARP reply & B $\to$ A & 学到 B 的入端口，向 A 转发 \\
+3 & ICMP Echo Request & A $\to$ B & 发往已知 B 端口 \\
+4 & ICMP Echo Reply & B $\to$ A & 发往已知 A 端口 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+A 从回复学到 B 的 IP--MAC 映射；B 可从请求学到 A 的映射，不必额外反向 ARP。若已有有效缓存，后续 ping 可省略前两帧。
+
+\textbf{跨网段 A--C。}A 选择 R-left 为下一跳，首次 ARP 的 target 是 \texttt{192.168.10.1}，而非 C。两边 LAN 的完整事件为：
+\begin{center}
+\small
+\begin{tabular}{@{}clll@{}}
+\toprule
+事件 & LAN & 内容 & MAC source $\to$ destination \\
+\midrule
+1 & 左 & A 查询网关 & A $\to$ broadcast \\
+2 & 左 & 网关 ARP reply & R-left $\to$ A \\
+3 & 左 & Echo Request 发往 C & A $\to$ R-left \\
+4 & 右 & 路由器查询 C & R-right $\to$ broadcast \\
+5 & 右 & C 的 ARP reply & C $\to$ R-right \\
+6 & 右 & Echo Request 到 C & R-right $\to$ C \\
+7 & 右 & C 返回 Echo Reply & C $\to$ R-right \\
+8 & 左 & Echo Reply 到 A & R-left $\to$ A \\
+\bottomrule
+\end{tabular}
+\end{center}
+事件3与6的 IP source/destination 都是 A/C；事件7与8都为 C/A。经路由器转发时，Ethernet 两端改变，TTL 例如64变63，header checksum 更新。A 处只观察到事件1、2、3、8，右侧的 ARP 不会出现在 A 的本地抓包中。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L06-E05}{两个故障：错误掩码与错误网关}
+
+\textbf{来源与关联：}Week 9 pp.~17--19、46--48；\relatedtopic{SC2008-L06-T03}{下一跳选择}。
+
+\textbf{题目。}以下地址均以 \texttt{192.168.40.} 开头；无额外 host routes。
+\begin{enumerate}[label=(\alph*)]
+ \item Engineering 的实际 LAN 为 .0/26，Laptop=.10 却误设 /24，网关=.1；本地打印机=.20/26。Sales 为独立 LAN .64/27，服务器=.70/27、网关=.65。路由器两接口为 .1/26、.65/27；路由正常、无过滤，且仅替自身地址回答 ARP。解释 Laptop 的本地性判断、访问服务器失败原因与修复。
+ \item Laptop=.10/26，却把默认网关设为无人使用的 .62，实际路由器为 .1；打印机=.20、远端服务器=.100。Ping .20 与 .1 成功，ARP cache 中有 .1，ping .62 与 .100 超时。解释现象、修复项，以及修复后仍失败应检查什么。
+\end{enumerate}
+
+\begin{workedsolution}
+(a) 错误的 /24 把 .10、.20、.70 都归为 network .0，Laptop 因而直接 ARP 查询 .70。广播留在 Engineering，Sales 服务器听不到，路由器也不代理回答，所以得不到下一跳 MAC。改回 /26 后，Laptop 对 .70 的判断变为远端，转而 ARP 网关 .1；数据包的目的 IP 仍为 .70。ARP 失败并不意味着主机会自动退回默认网关。
+
+(b) .20 和 .1 都属于本地 .0/26，因此本地 ping 不使用错误的默认网关，成功也无法验证 .62 的配置。访问远端 .100 才触发默认路由，对无人使用的 .62 进行 ARP 并失败。应把 gateway 改成 .1，保留 IP 与 /26 mask，再测试远端。
+
+若仍超时，检查路由器的 onward route、过滤规则、服务器 IP/mask/gateway 与返回路径、服务器是否在线或允许 ICMP。数字 IP 目标不需要 DNS；单次 timeout 不能唯一确定故障位置。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L06-E06}{IPv4 分片表、偏移与开销}
+
+\textbf{来源与关联：}IP pp.~79--87；Week 9 pp.~43--45；\relatedtopic{SC2008-L06-T04}{MTU 与分片}。
+
+\textbf{题目。}原始 IP Total Length 为2420 bytes，IHL=5、无 options，每片 header 为20 bytes；出口 MTU1000，DF=0、ID=77。求各片 data length、Total Length、Offset、MF 和 ID。再对总长2020、header20、MTU620、DF0、ID88计算。
+
+\begin{workedsolution}
+第一组的原始 payload 是 $2420-20=2400$ bytes；可装980 bytes data，但非末片须8-byte对齐，因此
+\[
+ D_{\max}=8\lfloor980/8\rfloor=976,\qquad
+ 2400=976+976+448.
+\]
+三个数据区间依次是0--975、976--1951、1952--2399，故
+\begin{center}
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+Fragment & Data bytes & Total Length & Offset & MF & ID \\
+\midrule
+1 & 976 & 996 & 0 & 1 & 77 \\
+2 & 976 & 996 & 122 & 1 & 77 \\
+3 & 448 & 468 & 244 & 0 & 77 \\
+\bottomrule
+\end{tabular}
+\end{center}
+这里 $122=976/8$、$244=(976+976)/8$；不加入新 header 长度。检查 payload 总和2400、各片总长不超过1000、MF仅末片为0。新增 header 使总 IP 字节数为 $2400+3\times20=2460$，比原包多40。
+
+第二组的 payload 为2000，每个非末片最多 $620-20=600$，恰为8的倍数：
+\begin{center}
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+Fragment & Data bytes & Total Length & Offset & MF & ID \\
+\midrule
+1 & 600 & 620 & 0 & 1 & 88 \\
+2 & 600 & 620 & 75 & 1 & 88 \\
+3 & 600 & 620 & 150 & 1 & 88 \\
+4 & 200 & 220 & 225 & 0 & 88 \\
+\bottomrule
+\end{tabular}
+\end{center}
+若题设改为 DF=1，则不能给出这些路由器分片：过大包被丢弃，通常产生相应 ICMP 错误。接收方缺任一片便不能完成重组，超时后丢弃不完整数据报，IP 不补发缺片。
+
+\textbf{现场包长比较。}传5600 bytes payload，每包另加20-byte header，忽略其他开销：4个1400-byte payload 的包总计5680 bytes，8个700-byte payload 的包总计5760 bytes。后者逐包开销更高，但单包丢失影响的数据较少；这里比较独立 packets 的大小，不要求它们是同一 datagram 的 fragments。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L06-E07}{正反向 traceroute 与可见接口}
+
+\textbf{来源与关联：}IP pp.~91--96；Week 9 pp.~49--50；\relatedtopic{SC2008-L06-T04}{ICMP 与 TTL}。
+
+\textbf{题目。}路径为 A--R1--R2--B，三段链路的地址配置为：
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+连接 & 子网 & 接口地址末段 \\
+\midrule
+A--R1 & \texttt{192.0.2.0/24} & A=.10，R1=.1 \\
+R1--R2 & \texttt{198.51.100.0/30} & R1=.1，R2=.2 \\
+R2--B & \texttt{203.0.113.0/24} & R2=.1，B=.10 \\
+\bottomrule
+\end{tabular}
+\end{center}
+假设各路由器用朝向探测源的接口回复，目的地回应 Echo Reply。写出正反向 trace，并解释不同 IP 是否表示不同路由器。
+
+\begin{workedsolution}
+初始 TTL=1 的 probe 在第一个路由器失效，TTL=2 在第二个失效，TTL=3到达目标。因此
+\begin{align*}
+ A\to B:\quad &\texttt{192.0.2.1}\to\texttt{198.51.100.2}\to\texttt{203.0.113.10},\\
+ B\to A:\quad &\texttt{203.0.113.1}\to\texttt{198.51.100.1}\to\texttt{192.0.2.10}.
+\end{align*}
+\texttt{192.0.2.1} 与 \texttt{198.51.100.1} 都属于 R1，\texttt{198.51.100.2} 与 \texttt{203.0.113.1} 都属于 R2。Trace 显示回应接口，不是路由器的唯一全局名称；本题依靠已知前缀、拓扑及回复接口假设消除歧义。一般 trace 若缺少这些条件，可能有多个拓扑解释。
+
+现场另一个 trace 示例为第1跳回复、第2跳全为星号、第3跳及目的地仍回复。能得出的结论只是第2跳没有及时回应这些 probe，不能认定它不能转发。每行的多个时间是不同 probe 的 RTT，不是该链路独立的单程延迟。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L06-E08}{NAT 与 CGNAT 的往返映射}
+
+\textbf{来源与关联：}IP pp.~100--102；Week 9 pp.~34--39；\relatedtopic{SC2008-L06-T05}{NAT/PAT}。
+
+\textbf{题目。}客户端 \texttt{192.168.1.10:50000} 通过 TCP 访问 \texttt{198.51.100.80:443}。先考虑家用路由器直接有公网地址 \texttt{203.0.113.8}、映射端口30001；再考虑家庭 NAT 先映射为 \texttt{100.64.1.5:40001}，ISP 再映射为 \texttt{203.0.113.8:30001}。列出请求与回复的端点变化；解释两家庭重复使用同一私有地址和端口是否冲突。假设映射有效、路由正常且策略允许回复。
+
+\begin{workedsolution}
+单层时，出站 source 从 \texttt{192.168.1.10:50000} 变为 \texttt{203.0.113.8:30001}，destination 仍为服务器；服务器回复该公网端点，NAT 再将 destination 改回私有端点。
+
+双层时，请求的 destination 始终是 \texttt{198.51.100.80:443}，source 依次为
+\[
+ \texttt{192.168.1.10:50000}\ \longrightarrow\
+ \texttt{100.64.1.5:40001}\ \longrightarrow\
+ \texttt{203.0.113.8:30001}.
+\]
+回复的 source 始终是服务器，destination 则按以上映射从右向左还原。服务器只看到最外层公网端点，不知道内部有几次地址转换；各 NAT 只需查自己的状态。
+
+对两个家庭，内部均可使用 \texttt{192.168.1.10:50000}，但外层分配不同映射：
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+家庭 & 家庭 NAT 后 & ISP NAT 后 \\
+\midrule
+A & \texttt{100.64.1.5:40001} & \texttt{203.0.113.8:30001} \\
+B & \texttt{100.64.1.6:40001} & \texttt{203.0.113.8:30002} \\
+\bottomrule
+\end{tabular}
+\end{center}
+回复端口30002按映射先到家庭B，再到B的内网主机；共享公网 IP 不意味着连接无法区分。若外部需要主动连接内网服务，还需相应入站映射、策略和返回路径；不能只依赖一次尚未建立的出站映射。
+\end{workedsolution}
+\endgroup

@@ -1,0 +1,14 @@
+% Original redraw based on SC2008 M2-L2 IP (2026), pp. 50, 67--68.
+\begin{tikzpicture}[>=Latex,font=\small,
+  device/.style={draw=noteBlue,rounded corners,align=center,minimum height=1.0cm,fill=noteBlue!4},
+  packet/.style={draw,align=left,font=\scriptsize,inner sep=5pt}]
+  \node[device,minimum width=2.4cm] (a) at (0,0) {A\\192.168.10.10/24};
+  \node[device,minimum width=4.0cm] (r) at (5.0,0) {Router\\R-left: 192.168.10.1\\R-right: 192.168.20.1};
+  \node[device,minimum width=2.4cm] (c) at (10,0) {C\\192.168.20.20/24};
+  \draw[->,thick] (a) -- node[above,font=\scriptsize]{left LAN} (r);
+  \draw[->,thick] (r) -- node[above,font=\scriptsize]{right LAN} (c);
+  \node[packet] at (2.5,-1.55) {MAC: A $\to$ R-left\\IP: A $\to$ C};
+  \node[packet] at (7.5,-1.55) {MAC: R-right $\to$ C\\IP: A $\to$ C};
+  \node[font=\scriptsize,text=noteBlue,align=center] at (5,-2.45)
+    {No NAT: IP endpoints unchanged; new link header, TTL $-1$.};
+\end{tikzpicture}

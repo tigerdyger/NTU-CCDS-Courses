@@ -1,0 +1,13 @@
+% Original redraw based on SC2008 Lecture Week 9 (2026), pp. 35--37.
+\begin{tikzpicture}[>=Latex,font=\scriptsize,
+  box/.style={draw=noteBlue,rounded corners,fill=noteBlue!4,align=center,minimum height=1.05cm,text width=2.65cm}]
+  \node[box] (pc) at (0,0) {PC\\192.168.1.10:50000};
+  \node[box] (home) at (3.6,0) {Home NAT\\100.64.1.5:40001};
+  \node[box] (isp) at (7.2,0) {ISP CGNAT\\203.0.113.8:30001};
+  \node[box] (web) at (10.8,0) {Web server\\198.51.100.80:443};
+  \draw[->,thick] (pc) -- (home);
+  \draw[->,thick] (home) -- (isp);
+  \draw[->,thick] (isp) -- (web);
+  \draw[->,noteBlue] (web.south) -- ++(0,-0.55) -| (pc.south);
+  \node[fill=white,text=noteBlue] at (5.4,-1.075) {reply: reverse destination mappings};
+\end{tikzpicture}

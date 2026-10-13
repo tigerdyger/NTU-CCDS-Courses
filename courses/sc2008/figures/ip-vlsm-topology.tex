@@ -1,0 +1,20 @@
+% Original redraw based on SC2008 M2-L2 IP (2026), pp. 40--43.
+\begin{tikzpicture}[font=\small,
+  router/.style={draw=noteBlue,fill=noteBlue!5,minimum size=0.75cm},
+  lan/.style={draw,rounded corners,align=center,text width=2.7cm,minimum height=0.9cm}]
+  \node[router] (r1) at (0,0) {R1};
+  \node[router] (r2) at (6,0) {R2};
+  \node[router] (r3) at (0,-2.4) {R3};
+  \node[router] (r4) at (6,-2.4) {R4};
+  \node[lan] (a) at (-2.4,0) {LAN A\\100 computers};
+  \node[lan] (b) at (8.4,0) {LAN B\\50 computers};
+  \node[lan] (c) at (-2.4,-2.4) {LAN C\\20 computers};
+  \node[lan] (d) at (8.4,-2.4) {LAN D\\10 computers};
+  \draw (a)--(r1) (b)--(r2) (c)--(r3) (d)--(r4);
+  \draw (r1)--node[above,font=\scriptsize]{.240/30}(r2);
+  \draw (r1)--node[left,font=\scriptsize]{.244/30}(r3);
+  \draw (r2)--node[right,font=\scriptsize]{.248/30}(r4);
+  \draw (r3)--node[below,font=\scriptsize]{.252/30}(r4);
+  \node[font=\scriptsize,align=center,text=noteBlue] at (3,-1.2)
+    {Parent: 192.168.50.0/24\\Each LAN also needs one gateway.};
+\end{tikzpicture}

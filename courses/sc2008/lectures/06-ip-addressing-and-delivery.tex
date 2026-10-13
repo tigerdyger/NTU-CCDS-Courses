@@ -1,0 +1,179 @@
+% Based on templates/lecture.tex. Actual notes lecture: 06; Week 9, 2026-10-13.
+% Sources: SC2008_M2-L1_Overview_2026.pdf pp. 1--23;
+% SC2008_M2-L2_IP_2026.pdf pp. 1--104;
+% SC2008 Lecture Week_9(1).pdf, substantive material pp. 7--50.
+% Transcripts 75144 / 75145 / 75146 verify Overview / IP pp. 1--47 / pp. 48--104.
+% This is the agreed combined study scope, not a claim about the live endpoint.
+% Source scope and conceptual checks discussed; finished notes await user review.
+% Stable labels retained, visible IDs and conversational checks excluded.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
+\section{第 06 节课：IP Addressing 与 Packet Delivery}
+\label{lecture:SC2008-L06}
+
+\textbf{日期与资料：}2026-10-13（Week 9）。M2-L1 Overview（2026），pp.~1--23；M2-L2 IP（2026），pp.~1--104；Week 9 现场讲义的知识内容，pp.~7--50。三份配套字幕分别对应 Overview、IP 前半与后半；术语和计算以讲义为准。
+
+本讲将录播基础与现场应用合并：从协议分工出发，依次建立地址与子网、下一跳与链路交付、分片与诊断、配置与地址转换之间的联系。同一原理不按文件重复展开；routing algorithms、TCP 和 DNS/HTTP 的完整机制留待后续课程。
+
+\lecturetopic{SC2008-L06-T01}{协议分工：从一条链路到端到端通信}
+
+Internet 是 network of networks（网络的网络）：本地网络通过 ISP（互联网服务提供商）与其他网络相连，整条路径不由一个主体统一拥有。接入链路标称 $1\,\mathrm{Gb/s}$ 并不保证下载达到该速率，Wi-Fi、其他链路与服务器都可能限制实际吞吐量。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXl@{}}
+\toprule
+层次 & 通信职责 & 常用标识 \\
+\midrule
+Data link（数据链路） & 将 frame 送过当前链路，交给下一节点 & Ethernet MAC：48 bit \\
+Network（网络） & 将 packet 经多个网络送向目标接口 & IPv4：32 bit \\
+Transport（传输） & 将数据交给主机上的通信端点 & TCP/UDP port：16 bit \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+IP address 标识 interface（网络接口），不等于一台设备永久只有一个地址；路由器有多个接口。对 TCP/UDP 数据，Ethernet frame 包含 IP packet，后者再包含 transport header 与应用数据，MAC、IP、port 分别回答“这一跳交给谁、最终去哪里、交给哪个通信端点”。
+
+以讲义的 HTTP-over-TCP 网页访问为例：DNS 将 hostname 解析为 IP（已有缓存可省查询）；地址与路由表决定下一跳；ARP 在需要时获得本地下一跳的 MAC；端口区分服务与客户端连接；TCP 处理丢失、乱序并提供可靠字节流；HTTP 规定请求和响应格式。这是职责关系，不是绝对时间顺序，DNS 查询本身也需要网络交付。
+
+\textbf{IP 的服务边界。}IP 采用 connectionless、best-effort delivery（无连接、尽力交付），不保证送达、按序或避免重复，也不负责重传。TCP 的可靠性由通信端点实现，中间路由器不替该连接执行 TCP 重传。Flow control（流量控制）避免压垮接收者；congestion control（拥塞控制）避免压垮网络。使用 UDP 的应用需自行决定如何处理丢失或迟到数据。
+
+\lecturetopic{SC2008-L06-T02}{IPv4 地址、CIDR 与子网规划}
+
+IPv4 的四个 decimal octets 各为 8 bit、范围 $0$--$255$。CIDR 的 \texttt{/n} 固定前 $n$ 个 network-prefix bits，留下 $h=32-n$ 个 host bits；subnet mask 前 $n$ 位为 1、后 $h$ 位为 0。地址本身不能唯一确定网络与主机部分的边界。
+
+\[
+ \boxed{\text{network address}=\text{IP address}\mathbin{\mathrm{AND}}\text{subnet mask}}.
+\]
+主机位全 0 得到 network address，全部设为 1 得到 subnet broadcast address。对本讲普通 IPv4 LAN：
+\[
+ \boxed{\text{总地址数}=2^h,\qquad\text{可用接口数}=2^h-2}.
+\]
+可用接口必须包括路由器的 LAN 接口。\textbf{适用范围补充：}特殊的 /31 点对点与 /32 情况不能机械套用减 2 的规则；本讲规划题的双接口链路按 /30 处理。
+
+在只有 connected route 与 default route 的简单主机配置下，用\emph{发送者的掩码}分别与本机和目标地址 AND；结果相同则按 on-link（本地链路）交付，否则使用适当路由。最终决定仍来自路由表。数值相近、前三个十进制数相同，或同为 private address，都不足以判断本地性。
+
+\textbf{地址块的边界。}例如 /26 的掩码为 \texttt{255.255.255.192}，最后一段按 $256-192=64$ 个地址分块，合法起点为 $0,64,128,192$。/22 的边界在第三段，掩码为 \texttt{255.255.252.0}，第三段每 4 个值一块。完整范围计算见\relatedexercise{SC2008-L06-E01}{前缀与地址范围}。
+
+\textbf{反向规划。}给定所需接口数 $N$，选择最小整数 $h$ 满足 $2^h-2\geq N$，再取前缀 $32-h$。父块 /$p$ 均分为 /$q$（$q\geq p$）时，可得 $2^{q-p}$ 个等大小子网，每块有 $32-q$ 个主机位。必须同时检验单块容量与子网数量；例如 62 台电脑加一个网关需要 63 个可用地址，/26 不够，至少 /25。
+
+VLSM（可变长子网掩码）允许按需求分配不同大小的子网。通常先放大块，再放小块，逐项检查：边界对齐、全部位于父块内、互不重叠、接口地址可用且不重复、固定地址和增长需求得到满足。每条路由器连接也需要独立统计，不能只数接有电脑的 LAN。见\relatedexercise{SC2008-L06-E02}{六部门等大小划分}与\relatedexercise{SC2008-L06-E03}{VLSM 与路由器接口分配}。
+
+\textbf{地址规划不是访问控制。}不同 LAN 限制各自的本地广播，subnetting 提供地址规划；若路由与策略允许，不同子网仍能通信。禁止某部门访问服务器，需要 router/firewall 上的 access-control rules。操作系统接受配置亦不证明地址合法：可能与现有接口冲突、误用广播地址、选错子网或网关。
+
+\lecturetopic{SC2008-L06-T03}{Forwarding、ARP 与逐跳交付}
+
+Forwarding（转发）对当前 packet 查表，选择 outgoing interface 与 next hop；routing（路由计算）负责形成和更新这些信息。下一跳可能就是目标，也可能是路由器。Default route \texttt{0.0.0.0/0} 是没有更具体匹配时的后备，default gateway 是该路径使用的本地路由器接口。
+
+\textbf{Longest-prefix matching（最长前缀匹配）。}先筛出匹配目标的条目，再选择前缀最长者；其他条件或 cost 才用于进一步区分同等候选。目标 \texttt{10.20.18.7} 同时匹配 /0、\texttt{10.0.0.0/8}、\texttt{10.20.0.0/16} 和 \texttt{10.20.18.0/24} 时，选最后的 /24。
+
+ARP（Address Resolution Protocol，地址解析协议）查询的是\textbf{选定的本地下一跳 IPv4 对应的 MAC}，而非总是查询最终目标。请求通常发往 Ethernet broadcast \texttt{FF:FF:FF:FF:FF:FF}，拥有该 IP 的接口通常单播回复；有效 cache 可省略新一轮查询。ARP 本身直接由 Ethernet 承载，不含普通 IP header，其本地广播不由路由器原样转发到其他 LAN。
+
+\begin{center}
+\input{figures/ip-next-hop-encapsulation}
+
+\small 依据 IP 讲义 pp.~50、67--68 重绘：最终目标 C 与本地下一跳 R-left 是两个层次。
+\end{center}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+表 & 映射 & 使用者与用途 \\
+\midrule
+Routing table & destination prefix $\to$ next hop / interface & 主机或路由器选择 IP 路径 \\
+ARP cache & next-hop IPv4 $\to$ MAC & 主机或路由器构造本地 frame \\
+Switch table & MAC $\to$ switch port & 交换机选择帧的出口 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+交换机根据\textbf{源 MAC 与入端口学习}，根据\textbf{目的 MAC 转发}；已知单播定向转发，若目的仍在入端口则无需向其他端口转发；广播与未知单播向同一 LAN 的其他端口泛洪。
+
+路由器转发时移除旧的链路封装，并为下一链路构造新 frame。\emph{没有 NAT 时}源、目的 IP 保持不变，但 TTL 减 1，IPv4 header checksum 随之更新，不能说整个 IP header 不变。ARP 广播局限于各自 LAN，因此在某主机处抓包不等于观察全网。完整四帧本地 ping、八事件跨网段 ping 及观察位置见\relatedexercise{SC2008-L06-E04}{ARP 与 ping 的完整交付过程}。
+
+\textbf{故障定位的因果链。}Wrong mask 可能令主机误把远端当本地、对远端直接 ARP，而不会因无人回复就自动改走默认网关；wrong gateway 则可保留正常本地通信，却阻断远端交付。ARP cache 存在某网关的 MAC，也不能证明实际配置的 default route 正确。见\relatedexercise{SC2008-L06-E05}{错误掩码与错误网关}。
+
+\lecturetopic{SC2008-L06-T04}{MTU、IPv4 分片与 ICMP 诊断}
+
+MTU（最大传输单元）在本讲限制完整 IP packet 的大小：IP header 加 IP payload；Ethernet header/trailer 不计入。超过下一链路 MTU 时，IPv4 是否可以 fragmentation（分片）取决于 DF。每个 fragment 都是带 IP header 的 packet。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+字段 & 含义与单位 \\
+\midrule
+Total Length & 当前包的总字节数，包含本片 header 与 data \\
+IHL & header 长度，单位为 32-bit word；IHL=5 对应 20 bytes \\
+Identification & 同一原始 datagram 各片保留相同值；结合源/目的 IP 与 protocol 识别分组 \\
+Fragment Offset & 本片 data 在原始 payload 中的起点，单位为 8 bytes \\
+MF / DF & MF=1 表示后面还有原始数据，最后一片为 0；DF=1 禁止分片 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+若无 options、各片 header 固定为 $H$ bytes，原始 Total Length 为 $L$、MTU 为 $M$，且 DF=0，则
+\[
+ D=L-H,\qquad
+ D_{\max}=8\left\lfloor\frac{M-H}{8}\right\rfloor,\qquad
+ \boxed{\mathrm{Offset}_i=\frac{\sum_{j<i}D_j}{8}}.
+\]
+$D_{\max}$ 是最大\emph{非末片} data；非末片 data 必须为 8 的倍数，最后一片不必。Offset 只累计原始 data，不累计新增 header。目的地依靠 offsets 重组，中间路由器一般不重组 transit traffic。若缺片直至重组超时，整个未完成数据报被丢弃，IP 不负责请求补片。完整计算见\relatedexercise{SC2008-L06-E06}{分片表与开销}。
+
+\textbf{MTU 的实际影响。}现场讲义假设 tunnel 增加 100-byte 封装、外层 MTU1500，则内层完整 IP 包应不超过1400；1500-byte 内层包加封装后变成1600，无法原样通过。该开销取决于具体隧道，不是通用常数。对于大于路径 MTU 的包，DF=1 时路由器丢弃并通常返回 ICMP ``fragmentation needed''。Path MTU Discovery 利用反馈调整大小；缺少反馈时可能出现小 ping 成功、大包失败的现象。
+
+\textbf{ICMP（互联网控制消息协议）。}它承载在 IP 内，报告或探测网络状态，不提供可靠重传。Echo Request/Reply 用于 ping，Destination Unreachable 报告不可达或某些无法转发情形，Time Exceeded 可报告 TTL 超限。Ping 的 time 是 RTT（往返时间），显示的 TTL 是\emph{回复包的剩余值}。成功仅证明相应 ICMP 探测往返成功，不保证 DNS、应用服务或大包都正常；超时亦不能独自定位故障。
+
+\textbf{TTL 与 traceroute。}本讲每经过一个转发路由器 TTL 减 1，减到 0 时丢弃，并通常返回 ICMP Time Exceeded，避免包无限循环。Traceroute/tracert 发送\emph{不同}探测包，初始 TTL 依次为 1、2、3 等；不是同一个包沿途不断汇报。每跳显示的多个 RTT 来自多个 probe；星号只表示未及时收到回复，后续跳仍可到达。正反 trace 还可能显示同一路由器的不同接口，必须结合掩码和路径条件判断拓扑，见\relatedexercise{SC2008-L06-E07}{正反向 traceroute}。
+
+\lecturetopic{SC2008-L06-T05}{DHCP、Private Addresses 与 NAT}
+
+\textbf{配置项的分工。}IP 标识自身接口，mask 确定前缀，gateway 是默认下一跳，DNS server 回答或转发名字解析查询。DHCP server 可通过 lease（租约）自动提供这些配置；同一家用路由器可以同时承担多种角色，但角色不可混同。
+
+Windows 的 \texttt{ipconfig /all} 查看配置，\texttt{route print} 查看路由，\texttt{arp -a} 查看 IP--MAC cache。macOS 可用 \texttt{ifconfig en0} 查看所选接口地址和 mask，用 \texttt{route -n get default} 查看网关；实际接口未必是 \texttt{en0}。十六进制 mask \texttt{0xffffffc0} 即 \texttt{255.255.255.192}（/26）。
+
+\textbf{DHCP 初次申请。}Dynamic Host Configuration Protocol 的典型 DORA 顺序是 Discover（发现服务器）、Offer（提供方案）、Request（请求采用）、Acknowledge（确认租约）。尚无地址时，初次 Discover 可使用源 \texttt{0.0.0.0}、目的 \texttt{255.255.255.255} 的本地广播。跨 LAN 的 DHCP server 可由 relay 转交消息，并非路由器直接转发该本地广播。租约可以续租，不是租期一到就必然断线。
+
+DHCP pool 只是子网中允许动态分配的子集。例如 \texttt{192.168.40.0/26} 的全范围为 .0--.63、普通可用范围 .1--.62，而 pool 可只选 .30--.50。管理员可在池外分配合法静态地址，只要符合地址计划并避免冲突；禁用 DHCP 不会使错误子网地址变得有效。
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Private IPv4 block & 完整范围 \\
+\midrule
+\texttt{10.0.0.0/8} & \texttt{10.0.0.0}--\texttt{10.255.255.255} \\
+\texttt{172.16.0.0/12} & \texttt{172.16.0.0}--\texttt{172.31.255.255} \\
+\texttt{192.168.0.0/16} & \texttt{192.168.0.0}--\texttt{192.168.255.255} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+私有地址可在不同网络重复使用、在私网内部被路由，但不作为公共 Internet 上全局唯一的目标。私有保留块的大小不等于实际 LAN mask。IPv6 使用128-bit 地址，提供远大于 IPv4 的地址空间。
+
+NAT（网络地址转换）改变 IP 地址信息；家庭常用的 NAPT/PAT 同时改写 TCP/UDP port，让多个内网端点共享一个外部 IPv4 地址。转换表保存内部与外部端点关系：本讲出站连接改写 source，回复查表后改写 destination。同一公网 IP 下的端口及相应状态区分不同连接，不能仅靠公网 IP 决定回复接收者。
+
+\begin{center}
+\begin{minipage}{\linewidth}
+\centering
+\input{figures/ip-cgnat-flow}
+
+\small 依据 Week 9 pp.~35--37 重绘；每层保存自己的映射，返回时逐层逆向查表。
+\end{minipage}
+\end{center}
+
+CGNAT（运营商级 NAT）让多个客户共享公网出口。家用路由器 WAN 地址因此未必是公网地址；\texttt{100.64.0.0/10} 是这类运营商部署使用的 shared address space，既不是普通公网地址块，也不是上述三个 private blocks。单层、双层和两家庭同端点的完整转换见\relatedexercise{SC2008-L06-E08}{NAT 与 CGNAT 映射}。
+
+外部主动建立新连接需适当的 incoming mapping。例如 port forwarding（端口转发）可将公网端点映射到内网服务：
+\[
+ \texttt{203.0.113.5:443}\ \longrightarrow\ \texttt{192.168.40.25:443}.
+\]
+还要求公网入口可达、访问策略放行、服务监听和正确返回路径。在 CGNAT 后，仅设置家庭端口转发不足，ISP 那层也必须允许相应入站访问。NAT 不应与完整的防火墙访问策略画等号。讲义的公网端点均为示例值，不作为实际服务器使用。
+
+\subsection{一分钟回顾}
+
+地址与掩码决定前缀和子网容量，规划时要计入网关并保证地址块对齐、不重叠。转发先选下一跳，ARP 再找其 MAC；最终目标 IP 与本地 frame 目的 MAC 可以不同。MTU 限制完整 IP 包，分片 Offset 以原始 payload 的 8 bytes 为单位，目的地才重组。ICMP 用于诊断，ping 成功或 trace 星号都不能代替完整故障判断。DHCP 供应配置，NAT/PAT 保存地址与端口映射，CGNAT 则把转换延伸到运营商一层。
+\endgroup
