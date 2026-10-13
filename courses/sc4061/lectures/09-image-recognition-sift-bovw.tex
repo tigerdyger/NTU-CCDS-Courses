@@ -1,0 +1,164 @@
+% Actual class: 09, 2026-10-13 (Week 9).
+% Source: LEC06 Image Recognition - 2026, PDF pp. 1--23.
+% Videos: 70343 (Introduction), 70345 (Bag-of-Visual-Word Model).
+% The agreed study boundary is not a teacher-labelled weekly video boundary.
+
+\section{第 09 节课：Image Recognition：SIFT 与 BoVW}
+\label{lecture:SC4061-L09}
+
+\lecturemeta
+  {SC4061-L09}
+  {2026-10-13}
+  {LEC06 Image Recognition -- 2026}
+  {pp.~1--23：Introduction；Bag-of-Visual-Word Model}
+  {字幕 70343、70345；p.~24 起的 SVM 识别与 CNN 留待下一讲}
+  {已确认本次学习范围（2026-10-13）}
+
+\subsection{本讲主线}
+
+图像识别要把变化很大的像素转成适合比较的表示。本讲先用 SIFT 在不同尺度寻找稳定局部结构，再描述这些结构；随后用 Bag of Visual Words（BoVW，视觉词袋）把数量不定的局部特征汇总成固定长度向量，供分类器使用。\textbf{关键点数量、局部描述子维数、视觉词典大小和最终类别数是四个不同的量。}
+
+\lecturetopic{SC4061-L09-T01}{识别任务、图像变化与数据}
+
+\subsubsection*{先分清系统需要输出什么}
+
+讲义 pp.~4--5 区分多种识别任务：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.1cm}X@{}}
+  \toprule
+  任务 & 要回答的问题 \\
+  \midrule
+  Categorization（类别识别） & 属于哪一类，例如“这是一辆汽车”。\\
+  Instance recognition（实例识别） & 是哪一个具体对象，例如“这是同一辆汽车”。\\
+  Localization（定位） & 目标在图像中的什么位置。\\
+  Detection（检测） & 图中有哪些目标、各自在什么位置。\\
+  Re-identification（重识别） & 不同时间或视角中出现的，是否为同一个实例；不一定需要知道其真实姓名或身份。\\
+  \bottomrule
+\end{tabularx}
+\end{center}
+与上一讲 semantic segmentation 的逐像素类别图相比，整图分类只需输出图像类别；检测还要定位目标，不能混为一谈。
+
+\subsubsection*{为什么直接比较像素不可靠}
+
+讲义 pp.~6--8 展示七类变化：viewpoint（视角）、illumination（光照）、occlusion（遮挡）、scale（尺度）、deformation（形变）、background clutter（背景杂乱）和 intra-class variation（类内差异）。同一物体换一个角度，像素可能大幅变化；同为“椅子”的不同实例，外观也不必相似。
+
+好的表示应减少这些与任务无关的变化，同时保留区分类别所需的信息。\textbf{Invariance（不变性）不是无限保证：}尺度适应不能找回低分辨率中已经丢失的细节，局部特征也不能保证处理所有遮挡、强透视或光照变化。
+
+讲义以 ImageNet、SUN 等数据集说明识别研究的数据基础。视频还提醒注意标注噪声、预处理及类别不平衡；长尾数据中只看总体正确率可能掩盖少数类别的问题。训练集用于学习模型，验证集用于选择设置，测试集用于最终评估；后面学习视觉词典时也要遵守这个边界。
+
+\lecturetopic{SC4061-L09-T02}{SIFT 检测：Gaussian scale-space 与 DoG 极值}
+
+\keyidea{SIFT（Scale-Invariant Feature Transform）不仅描述局部外观，还要找到该结构适合观察的尺度。它包含关键点检测和特征描述两个环节。}
+
+\subsubsection*{Gaussian pyramid：同时改变平滑程度与采样分辨率}
+
+令 $I(x,y)$ 为图像，$G_\sigma$ 为标准差为 $\sigma$ 的 Gaussian kernel。尺度空间图像为
+\[
+  L(x,y,\sigma)=(G_\sigma*I)(x,y).
+\]
+$\sigma$ 越大，平滑越强，小尺度细节越容易被滤去。一个 octave（倍频程）内，图像宽高相同，依次增大 $\sigma$；进入下一个 octave 时再进行下采样，使宽、高分别减半，像素总数变为原来的四分之一。\textbf{同一 octave 内的“尺度变化”并不意味着每一层都缩小宽高。}
+
+\subsubsection*{Difference of Gaussians：相邻平滑结果相减}
+
+对 $k>1$，定义
+\[
+  \boxed{D(x,y,\sigma)=L(x,y,k\sigma)-L(x,y,\sigma)}.
+\]
+DoG 突出随平滑程度改变而明显变化的局部结构；均匀区域在两张图中基本不变，差值接近零。同一 octave 有五张连续 Gaussian 图，就得到四张相邻差分图，不能把五张图误认为五张 DoG。
+
+\subsubsection*{跨空间、跨尺度寻找极值}
+
+一个候选点不仅要与同层周围像素比较，还要与相邻两个 DoG 尺度的对应邻域比较：
+\[
+  \boxed{8\ \text{（同层）}+9\ \text{（上一层）}+9\ \text{（下一层）}=26}.
+\]
+局部最大值应大于这 26 个邻居；局部最小值则应小于它们。三个 $3\times3$ 邻域共有 27 个位置，但中心候选点不能和自己比较。这些比较在\emph{同一 octave、相同采样网格}的相邻 DoG 层之间进行。
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/sift-scale-neighbours}
+  \caption{DoG 极值检测的原创示意：三个 $3\times3$ 邻域覆盖空间与尺度方向；候选点之外共有 26 个比较值。}
+  \label{fig:sc4061-l09-dog}
+\end{figure}
+
+只在一张图中找极值，只比较了空间位置；增加尺度方向的比较，才能寻找结构的 characteristic scale（特征尺度）。图像放大后，对应结构可能出现在另一位置和尺度上，而不是要求所有坐标都不变。见\relatedexercise{SC4061-L09-E02}{为何跨尺度比较}与\relatedexercise{SC4061-L09-E03}{26 个邻居}。
+
+\textbf{标准 SIFT 补充。}DoG 可近似 scale-normalized Laplacian of Gaussian，而不是简单等同于任意 LoG；极值只是候选点，标准算法还剔除低对比度和不稳定的边缘响应。因而 SIFT keypoint 不能简单理解为“所有几何角点”。\footnote{标准算法细节核对：D.~G. Lowe, \emph{Distinctive Image Features from Scale-Invariant Keypoints} (2004)，Sections 3--6，\href{https://www.cs.ubc.ca/~lowe/papers/ijcv04.pdf}{原论文}。下文的主方向对齐、梯度加权投票与描述子归一化也属于这一补充。}
+
+\lecturetopic{SC4061-L09-T03}{SIFT 描述：从局部梯度到 128 维向量}
+
+检测回答“在哪里、以什么尺度观察”；descriptor（描述子）回答“这个局部结构长什么样”。讲义 p.~17 用一个 $16\times16$ 的局部 patch 解释描述子的组织方式：
+\begin{enumerate}
+  \item 计算局部像素的 image gradient（图像梯度），得到方向与幅值。
+  \item 把 patch 分为 $4\times4=16$ 个空间 cell，每个 cell 覆盖 $4\times4$ 个采样位置。
+  \item 每个 cell 建立一个有 8 个方向 bin 的梯度方向直方图。
+  \item 按固定空间顺序拼接 16 个直方图，得到
+  \[
+    \boxed{\bm d\in\mathbb R^{4\times4\times8}=\mathbb R^{128}}.
+  \]
+\end{enumerate}
+这里 128 既不是关键点个数，也不是类别数。若某图像检测出 $N$ 个关键点，就有 $N$ 个 128 维描述子，可组织成 $N\times128$ 矩阵；不同图像的 $N$ 通常不同。
+
+保留 16 个空间 cell，意味着描述子还保留\emph{局部粗略布局}：左侧的边缘和右侧的边缘进入不同部分。若把整个 patch 只统计为一个 8 维方向直方图，就会丢失更多局部位置关系。
+
+\subsubsection*{为什么用梯度，而不是直接拼接灰度}
+
+梯度描述局部亮暗如何变化，比直接比较绝对灰度更稳健。作为解释性推导，若整幅局部区域发生均匀的亮度偏移 $I'=I+b$，则 $\nabla I'=\nabla I$；若 $I'=aI+b$ 且 $a>0$ 为常数，则 $\nabla I'=a\nabla I$，方向不变、幅值整体缩放。适当归一化能减弱这种缩放影响，但这不代表对阴影、饱和、非均匀照明等所有变化都严格不变。
+
+\textbf{标准 SIFT 补充。}方向直方图主要按梯度幅值加权投票，并结合空间 Gaussian 权重，不只是简单数“有几个像素朝向某方向”。标准描述还包括主方向对齐和向量归一化；局部支持区域随检测尺度变化。因此讲义的 $16\times16$ 应理解为描述布局的示意，不是任何大小的目标都固定裁同样大小的原始像素块。
+
+\lecturetopic{SC4061-L09-T04}{BoVW：共享视觉词典与固定长度的整图表示}
+
+\subsubsection*{从局部描述子到视觉词}
+
+图像产生的 $N\times128$ 描述子集合大小不一，不能直接作为固定长度分类器输入。BoVW 借鉴文本词频：先学习共享词典，再统计各“视觉词”出现的次数。讲义 pp.~12--13 用 patch 示意和早期识别结果说明其用途，并非证明它优于所有后来的方法。
+
+\begin{enumerate}
+  \item \textbf{提取特征。}从训练图像收集 SIFT 描述子 $\bm d_i\in\mathbb R^{128}$。
+  \item \textbf{学习词典。}对这些向量进行 K-means，得到 $K$ 个中心
+  $\mathcal V=\{\bm v_1,\ldots,\bm v_K\}$，每个 $\bm v_j\in\mathbb R^{128}$ 称为一个 visual word / codeword。
+  \item \textbf{Quantization（量化）。}将待表示图像的每个描述子分配给最近的词典中心：
+  \[
+    q_i\in\operatorname*{arg\,min}_{1\le j\le K}\|\bm d_i-\bm v_j\|_2^2.
+  \]
+  \item \textbf{统计直方图。}按共享词典顺序统计出现次数：
+  \[
+    \boxed{h_j=\sum_{i=1}^{N}\mathbf1(q_i=j),\qquad
+    \bm h=[h_1,\ldots,h_K]^T\in\mathbb R^K}.
+  \]
+\end{enumerate}
+
+视觉词是\emph{描述子空间}中的代表模式，不必对应“眼睛”“车轮”等语义部件。中心是 128 维向量，不是可直接还原的原始 patch；可以用附近的 patch 帮助展示。$K$ 是词典大小，\textbf{不是类别数}。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{0.98\textwidth}{!}{\input{figures/bovw-representation-pipeline}}
+  \caption{BoVW 原创流程示意：训练集学习一次词典，各图像用同一词典编码；局部特征数量 $N$ 可变，整图向量长度 $K$ 固定。}
+  \label{fig:sc4061-l09-bovw}
+\end{figure}
+
+\subsubsection*{长度固定，不代表数值相同}
+
+采用上述 hard assignment（硬分配），且每个描述子恰好计入一个词时，
+\[
+  \boxed{\dim(\bm h)=K,\qquad \sum_{j=1}^{K}h_j=N}.
+\]
+不同图像都得到 $K$ 维向量，但各维计数可以不同。为减弱关键点数量的影响，可用 $\widehat{\bm h}=\bm h/N$ 做 $L^1$ 归一化（$N>0$）；维数不变。题目中的 raw / unnormalized histogram 指\emph{未归一化计数}，不能擅自改成频率。
+
+对应\relatedexercise{SC4061-L09-E01}{词典与维数}、\relatedexercise{SC4061-L09-E04}{直方图计算}。
+
+\subsubsection*{共享词典、分类器与数据边界}
+
+\begin{itemize}
+  \item 所有图像须用同一词典、相同 bin 顺序，否则第 $j$ 维代表的模式不同，不能直接比较。词典还应匹配目标数据领域，不保证跨任务通用。
+  \item K-means 学词典是\emph{无监督聚类}；用图像标签训练分类器是\emph{监督分类}。讲义 p.~22 将 BoVW 接入 SVM，其具体原理留待下一讲。
+  \item 训练集学习词典和分类器，验证集选择词典大小等设置；测试时固定词典，不重新拟合中心，也不将测试描述子混入训练词典。
+\end{itemize}
+
+\subsubsection*{主要局限：丢失全局空间布局}
+
+词袋只统计模式及其数量，不记录位置。\emph{描述子集合不变而仅改变顺序}时，直方图不变；实际移动图像区域可能改变边界处的描述子，不能保证结果完全相同。SIFT 保留 patch 内部粗略几何，BoVW 则丢失 patch 之间的全局布局。问题来自\emph{无位置信息的汇总}，不是“一维向量无法表示空间关系”。
+
+\subsection{一分钟回顾}
+
+SIFT 用 26 邻域 DoG 极值寻找特征尺度，再将 $4\times4$ 个 cell 的 8 方向梯度直方图拼成 128 维描述子。BoVW 用训练集学习共享词典，把 $N$ 个描述子量化、计数成 $K$ 维整图向量，原始计数总和为 $N$。它丢失全局空间布局，词典学习也不能使用测试数据。

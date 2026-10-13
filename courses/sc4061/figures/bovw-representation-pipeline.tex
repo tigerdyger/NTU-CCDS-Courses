@@ -1,0 +1,20 @@
+% Original schematic: training-only codebook and per-image encoding.
+\begin{tikzpicture}[font=\small,>=Latex]
+  \tikzset{
+    box/.style={draw=noteBlue,fill=blue!4,rounded corners=2pt,
+      minimum height=1.0cm,text width=2.65cm,align=center},
+    flow/.style={->,thick,noteBlue}
+  }
+  \node[box] (local) at (0,0) {某图像的 SIFT\\$N\times128$};
+  \node[box] (quant) at (3.7,0) {最近词量化\\$N$ 个词编号};
+  \node[box] (hist) at (7.4,0) {汇总词频\\$\bm h\in\mathbb R^K$};
+  \node[box,draw=ntuRed,fill=red!3] (class) at (11.1,0) {分类器\\输出类别};
+  \node[box] (train) at (0,2.25) {训练集描述子\\K-means 聚类};
+  \node[box] (dict) at (3.7,2.25) {共享视觉词典\\$K\times128$};
+  \draw[flow] (train) -- (dict);
+  \draw[flow] (dict) -- node[right,font=\footnotesize]{固定中心} (quant);
+  \draw[flow] (local) -- (quant);
+  \draw[flow] (quant) -- (hist);
+  \draw[flow] (hist) -- (class);
+  \node[noteBlue,align=left] at (9.1,2.25) {每个词是一个 128 维中心\\$K$ 与最终类别数无必然关系};
+\end{tikzpicture}

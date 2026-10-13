@@ -1,0 +1,101 @@
+% Related lecture: SC4061-L09.
+% Source: LEC06 Image Recognition - 2026, p. 23, Questions 1--4.
+% Original slide questions, not conversational learning checks.
+
+\exercisegroup{SC4061-L09-EX}{第 09 讲：SIFT 与 BoVW}
+
+\exercisemeta
+  {SC4061-L09-EX}
+  {2026-10-13}
+  {LEC06 p.~23，Questions 1--4；字幕 70345}
+  {题干、选项与解析已按讲义和视频核对}
+  {已确认本次学习范围（2026-10-13）}
+
+\exercisequestion{SC4061-L09-E01}{词典大小与直方图维数}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~23 第 1 题。
+\textbf{对应知识点：}\relatedtopic{SC4061-L09-T04}{BoVW 的固定长度表示}。
+
+\subsubsection*{题目}
+
+视觉词典包含 500 个视觉词。图像 A 产生 100 个 SIFT 描述子，图像 B 产生 2000 个。量化后，两幅图的原始视觉词直方图各是多少维？
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}XX@{}}
+  A.~A 为 100 维，B 为 2000 维。 & B.~两者都是 500 维。\\
+  C.~A 为 50000 维，B 为 1000000 维。 & D.~两者都是 128 维。
+\end{tabularx}
+\end{center}
+
+\begin{checkedsolution}
+选 \textbf{B}。每个视觉词对应一个 bin，维数由词典大小 $K=500$ 决定，与本图产生多少个描述子无关。采用一次硬分配时，两图原始直方图的计数总和分别为 100 和 2000，但向量长度同为 500。128 是\emph{每个局部 SIFT 描述子}的维数，不是整图直方图的维数。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L09-E02}{为何同时搜索空间与尺度极值}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~23 第 2 题。
+\textbf{对应知识点：}\relatedtopic{SC4061-L09-T02}{跨尺度 DoG 极值}。
+
+\subsubsection*{题目}
+
+为什么 SIFT 不仅在一张 DoG 图中搜索极值，还要比较相邻 DoG 尺度？
+\begin{enumerate}[label=\Alph*.,nosep]
+  \item 使描述子变成二进制而非连续数值。
+  \item 在特征尺度上识别结构，从而有助于实现尺度不变性。
+  \item 保证所有图像具有相同数量的关键点。
+  \item 消除 Gaussian smoothing 的需要。
+\end{enumerate}
+
+\begin{checkedsolution}
+选 \textbf{B}。单层极值只说明响应在空间邻域中突出；跨尺度比较还检验它在哪种平滑尺度上突出。对应物体缩放后，可在不同尺度上找到相关结构。该过程不保证关键点数量相同，也不会把描述子变成二进制；DoG 本身正是通过相邻 Gaussian 平滑结果相减构造的。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L09-E03}{DoG 局部最大值需要比较多少邻居}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~23 第 3 题。
+\textbf{对应知识点：}\relatedtopic{SC4061-L09-T02}{26 邻域比较}。
+
+\subsubsection*{题目}
+
+一个 DoG 候选点要成为局部最大值，必须比多少个邻近值都大？
+\begin{center}
+  A.~8\qquad B.~17\qquad C.~18\qquad D.~26
+\end{center}
+
+\begin{checkedsolution}
+选 \textbf{D}：同层 $3\times3$ 邻域去掉中心自身有 8 个值，上、下两个相邻尺度各有 9 个值，合计
+\[
+  8+9+9=\boxed{26}.
+\]
+不能只数同层的 8 个，也不能把候选点自身算进去得到 27。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L09-E04}{按视觉词编号统计原始直方图}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~23 第 4 题。
+\textbf{对应知识点：}\relatedtopic{SC4061-L09-T04}{量化与计数}。
+
+\subsubsection*{题目}
+
+词典含 $V_1,V_2,V_3,V_4$。八个局部描述子的量化结果依次为
+\[
+  V_1,\ V_3,\ V_1,\ V_2,\ V_3,\ V_3,\ V_4,\ V_3.
+\]
+按 $V_1,V_2,V_3,V_4$ 顺序排列的\emph{未归一化} BoVW 表示是什么？
+\begin{enumerate}[label=\Alph*.,nosep]
+  \item $[2,1,4,1]$。
+  \item $[2,1,3,2]$。
+  \item $[1,2,4,1]$。
+  \item $[0.25,0.125,0.5,0.125]$。
+\end{enumerate}
+
+\begin{checkedsolution}
+选 \textbf{A}。四个视觉词分别出现 2、1、4、1 次，所以
+\[
+  \boxed{\bm h=[2,1,4,1]},\qquad \sum_j h_j=8.
+\]
+D 是将该向量除以 8 后得到的 $L^1$ 归一化结果，虽可用于其他场景，却不符合本题的 unnormalized 要求。描述子出现的先后顺序不影响这些计数。
+\end{checkedsolution}
