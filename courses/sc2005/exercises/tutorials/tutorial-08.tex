@@ -1,0 +1,183 @@
+% Based on templates/tutorial.tex; finished notes omit conversational checks.
+% Source: tut8.pdf, Tutorial Eight, p. 8-1 (PDF p. 1), Questions 1--4.
+% No official solutions supplied. Allocation and compaction conventions below
+% make the memory layouts reproducible; all ranges are half-open.
+% Session date: 2026-10-13 (teaching Week 9).
+
+\exercisegroup{SC2005-TUT08}{Tutorial 08：Memory Organization（Part 1）}
+\label{tutorial:SC2005-TUT08}
+
+\exercisemeta
+  {SC2005-TUT08}
+  {2026-10-13（第九教学周）}
+  {tut8.pdf，p.~8-1（PDF p.~1），Questions 1--4；原文件无参考答案}
+  {内存布局、搬移量、访存时间与地址位数已核对；解题约定见各题}
+  {已完成本次学习并确认整理}
+
+\exercisequestion{SC2005-TUT08-Q01}{Best-fit、First-fit 与部分紧缩}
+\nopagebreak[4]
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L15-T02}{连续分配与空洞选择}；
+\relatedtopic{SC2005-L15-T03}{外部碎片与紧凑}。
+
+\subsubsection*{题目}
+
+系统向用户提供 $4800$ words 内存，采用多分区多道程序设计。四个已有进程的起始地址和长度如下；$P_1$--$P_4$ 为解答中的命名。
+\begin{center}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+进程 & 起始地址 & 长度（words） \\
+\midrule
+$P_1$ & 1000 & 1200 \\
+$P_2$ & 3100 & 700 \\
+$P_3$ & 4000 & 400 \\
+$P_4$ & 4400 & 200 \\
+\bottomrule
+\end{tabular}
+\end{center}
+新请求依次为 $600,250,1050$ words。先用 Best-fit 分配；只有不存在足够大的空洞时，才将占用分区向低地址搬移，执行 compaction（紧缩）。\textbf{一旦形成足够大的空洞立即停止}；全部紧缩后若仍不足，阻塞请求进程。
+\begin{enumerate}[label=(\alph*)]
+  \item 给出三个请求完成后的布局。
+  \item 从相同初始布局重新开始，将 Best-fit 换成 First-fit，给出最终布局。
+  \item 比较本题两种策略搬移占用分区的总开销。
+\end{enumerate}
+
+\begin{checkedsolution}
+\nopagebreak[4]
+\textbf{约定与初始空洞。}用户内存按 $[0,4800)$ 编号，$[a,b)$ 包含 $a$ 而不包含 $b$，长度为 $b-a$。从选中空洞的低地址端分配；First-fit 按地址递增查找；紧缩按占用分区原有顺序从低到高处理，保持顺序不变。用 $N_{600},N_{250},N_{1050}$ 表示三个新分区。初始空洞为
+\[
+  [0,1000),\quad[2200,3100),\quad[3800,4000),\quad[4600,4800),
+\]
+长度依次为 $1000,900,200,200$ words。
+
+\textbf{(a) Best-fit。}选择\emph{足够大的空洞中最小者}：$N_{600}$ 放入 $[2200,2800)$；余下的 $300$ words 再容纳 $N_{250}$，放入 $[2800,3050)$。此时最大空洞仅 $1000$ words，无法直接分配 $1050$，故依次搬移：
+\[
+\begin{aligned}
+  P_1 &: [1000,2200)\longrightarrow[0,1200),\\
+  N_{600} &: [2200,2800)\longrightarrow[1200,1800),\\
+  N_{250} &: [2800,3050)\longrightarrow[1800,2050).
+\end{aligned}
+\]
+前两次搬移后，向后形成的连续空洞均为 $1000$ words；第三次连接原来的 $50$ words 余量，形成 $[2050,3100)$，恰好容纳 $N_{1050}$。立即停止，$P_2,P_3,P_4$ 均不搬动。
+
+\textbf{(b) First-fit。}从初始布局重新分配：$N_{600}$ 占用 $[0,600)$，$N_{250}$ 占用 $[600,850)$。余下空洞大小为 $150$、$900$、$200$、$200$ words，均不足 $1050$。前两个新分区已靠在低地址端，无需搬动；只需
+\[
+  P_1:[1000,2200)\longrightarrow[850,2050).
+\]
+原来的 $150$ 与 $900$ words 空洞连成 $[2050,3100)$，放入 $N_{1050}$ 后停止。两种策略的\textbf{最终布局}如下：
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Best-fit 地址区间 & 内容 & First-fit 地址区间 & 内容 \\
+\midrule
+$[0,1200)$ & $P_1$ & $[0,600)$ & $N_{600}$ \\
+$[1200,1800)$ & $N_{600}$ & $[600,850)$ & $N_{250}$ \\
+$[1800,2050)$ & $N_{250}$ & $[850,2050)$ & $P_1$ \\
+$[2050,3100)$ & $N_{1050}$ & $[2050,3100)$ & $N_{1050}$ \\
+$[3100,3800)$ & $P_2$ & $[3100,3800)$ & $P_2$ \\
+$[3800,4000)$ & 空闲 & $[3800,4000)$ & 空闲 \\
+$[4000,4400)$ & $P_3$ & $[4000,4400)$ & $P_3$ \\
+$[4400,4600)$ & $P_4$ & $[4400,4600)$ & $P_4$ \\
+$[4600,4800)$ & 空闲 & $[4600,4800)$ & 空闲 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{(c) 搬移开销。}按实际复制的占用数据量计算，Best-fit 搬 $3$ 个分区，共 $1200+600+250=2050$ words；First-fit 只搬 $P_1$，共 $1200$ words。因此\textbf{本题 First-fit 少搬 $850$ words，开销较低}，并非说它在所有请求序列中都更优。搬移量不乘以地址移动距离。两种布局最后均占用 $4400$ words、空闲 $400$ words；紧缩改变空洞分布，不增加空闲总量。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT08-Q02}{内部碎片与绝对地址的搬迁限制}
+\nopagebreak[4]
+
+\textbf{对应讲义：}
+\relatedtopic{SC2005-L15-T01}{地址绑定}；
+\relatedtopic{SC2005-L15-T03}{内存碎片与紧凑}。
+
+\subsubsection*{题目}
+
+\begin{enumerate}[label=(\alph*)]
+  \item 指出会产生 internal fragmentation（内部碎片）的内存分配方式。
+  \item 若代码使用 absolute addresses（绝对地址），为什么不能直接进行内存紧缩？
+\end{enumerate}
+
+\begin{checkedsolution}
+\nopagebreak[4]
+\textbf{(a) 固定分区与分页。}固定分区的分配量可能大于进程需求，未使用空间留在该进程的分区内部。Paging（分页）按固定大小的 page/frame（页／页框）分配，最后一页可能用不满；例如 $4$ KB 页下，$6$ KB 需求占两个页框，产生 $2$ KB 内部碎片。基本模型中，按需精确切分的可变分区主要产生的是\emph{外部碎片}。
+
+\textbf{(b) 搬动内容不会自动修改写死的地址。}若某引用原来指向物理地址 $1200$，进程搬移后正确目标可能变成 $1050$，但代码仍访问 $1200$，因而出错。课堂模型中的紧缩需要\textbf{运行时重定位}：保留逻辑偏移，搬移后更新基址或地址映射。仅能在装入时重定位，仍不足以让正在运行的映像不作处理就任意搬移；题目排除的是不修正地址引用的直接搬迁。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT08-Q03}{页表访存与 TLB 的有效访问时间}
+\nopagebreak[4]
+
+\subsubsection*{题目}
+
+某分页系统的页表存放在内存中，一次内存访问需 $200$ ns。
+\begin{enumerate}[label=(\alph*)]
+  \item 不使用快表时，一次分页后的内存访问需要多长时间？
+  \item 加入 associative registers（关联寄存器，即 TLB），$75\%$ 的页表查询能在其中找到。题目规定命中时查找页表项耗时为零，求 effective access time（有效访问时间）。
+\end{enumerate}
+
+\begin{checkedsolution}
+\nopagebreak[4]
+采用\textbf{单级页表、目标页已在内存、忽略快表查询开销}的题目简化模型，不计缺页处理。
+
+\textbf{(a)} 先访问内存中的页表取得页框号，再访问目标数据，需两次主存访问：
+\[
+  T_{\rm no\ TLB}=200+200=\boxed{400\text{ ns}}.
+\]
+\textbf{(b)} 命中与未命中的时间分别为：
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+情况 & 读内存页表 & 读目标数据 & 总时间（ns） \\
+\midrule
+TLB hit（命中） & 0 & 200 & 200 \\
+TLB miss（未命中） & 200 & 200 & 400 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\[
+  T_{\rm effective}=0.75\times200+0.25\times400=\boxed{250\text{ ns}}.
+\]
+\textbf{命中是在查询 TLB 时判定的}，而非先访问目标数据再判定。未命中表示快表没有所需映射，尚不能据此访问目标数据，不应额外加一次 $200$ ns；它也不等于 page fault（缺页）。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT08-Q04}{分页地址格式与两种页表的条目数}
+\nopagebreak[4]
+
+\subsubsection*{题目}
+
+计算机采用 $32$ 位逻辑地址，页大小为 $1$ KB，物理内存为 $1$ GB。
+\begin{enumerate}[label=(\alph*)]
+  \item 给出逻辑地址与物理地址的格式。
+  \item 普通页表有多少项？
+  \item 若使用 inverted page table（倒排页表），有多少项？
+\end{enumerate}
+
+\begin{checkedsolution}
+\nopagebreak[4]
+按字节编址，并采用题目的二进制单位：$1\text{ KB}=2^{10}$ bytes，$1\text{ GB}=2^{30}$ bytes。页内有 $2^{10}$ 个字节位置，因此 offset（页内偏移）占 $10$ 位；逻辑页与物理页框等大，地址转换时偏移不变。
+
+\textbf{(a) 地址格式。}逻辑地址共 $32$ 位；物理内存有 $2^{30}$ 个可编址字节，因此物理地址需 $30$ 位：
+\[
+\begin{aligned}
+  \text{逻辑地址：}&\quad\boxed{22\text{ 位页号}}\;\boxed{10\text{ 位偏移}},\\
+  \text{物理地址：}&\quad\boxed{20\text{ 位页框号}}\;\boxed{10\text{ 位偏移}}.
+\end{aligned}
+\]
+\textbf{(b) 普通页表。}完整页表按\emph{逻辑页}索引，每个逻辑页一项；每个进程的条目数为
+\[
+  \frac{2^{32}}{2^{10}}=\boxed{2^{22}\text{ 项}}.
+\]
+\textbf{(c) 倒排页表。}按\emph{物理页框}建表，每个页框一项，记录占用该页框的进程及逻辑页；系统条目数为
+\[
+  \frac{2^{30}}{2^{10}}=\boxed{2^{20}\text{ 项}}.
+\]
+条目数不同，是因为前者按逻辑地址空间计数、后者按物理内存计数；题目未给每项的字节数，不据此推断页表总字节数。
+\end{checkedsolution}
+
+\subsubsection*{一分钟回顾}
+
+连续分配要求单个空洞足够大；本题紧缩一旦形成可用空洞便停止，Best-fit 与 First-fit 分别搬移 $2050$、$1200$ words。固定分区和分页可能有内部碎片，搬迁需正确处理地址重定位。单级页表未命中 TLB 时需读页表和目标数据，命中只需读目标数据。页大小决定偏移位数；普通页表数逻辑页，倒排页表数物理页框。
