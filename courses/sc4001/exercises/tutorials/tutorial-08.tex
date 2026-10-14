@@ -1,0 +1,215 @@
+% Tutorial set: 08; actual session: 2026-10-14 (Week 9).
+% Source: tute8.pdf, PDF pp. 1--2, Questions 1--4.
+% Q1 activations follow 8_rnn.pdf pp. 18--19 as an explicit assumption.
+% Q1 forward values independently recomputed; Q2--Q4 training not executed.
+
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4001-TUT08}{Tutorial 08：Recurrent Neural Networks}
+\label{tutorial:SC4001-TUT08}
+\textbf{日期：}2026-10-14（第 9 周）。
+\textbf{来源：}\texttt{tute8.pdf} pp.~1--2，Q1--Q4；Q1 激活函数参考 \texttt{8\_rnn.pdf} pp.~18--19。
+
+Q1 给出前向计算；Q2--Q4 整理建模与训练方案，未运行训练实验。
+
+\exercisequestion{SC4001-TUT08-Q01}{Elman 与 Jordan：四步前向计算}
+\nopagebreak[4]
+\textbf{题目（p.~1）。}RNN 每步输入三维向量，有两个隐藏单元、一个输出单元。给定
+\[
+ U=\begin{pmatrix}-1&0.5\\0.5&0.1\\0.2&-2\end{pmatrix},\quad
+ V=\begin{pmatrix}2\\-1.5\end{pmatrix},\quad
+ b=\begin{pmatrix}0.2\\0.2\end{pmatrix},\quad c=0.5,
+\]
+\[
+ x_1=(1,2,-1)^\top,\quad x_2=(-1,1,-2)^\top,\quad
+ x_3=(0,3,1)^\top,\quad x_4=(2,-1,0)^\top.
+\]
+分别求两种网络的四步输出：(a) Elman 型反馈上一隐藏状态，$W_E=\begin{pmatrix}2&1.3\\1.5&0\end{pmatrix}$，$h_0=0$；(b) Jordan 型反馈上一输出，$W_J=(2,1.3)$，$y_0=0$。
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L08-T01}{RNN 前向计算、参数共享与反馈结构}。
+
+\textbf{解答。}
+\textbf{激活函数约定。}\verify{本题未指定激活函数；以下沿用 Lecture 08 的 Example 1：隐藏层为 $\tanh$，输出层为 sigmoid。}
+按讲义的列向量与矩阵排布，有
+\[
+\begin{aligned}
+ \text{Elman:}\quad &h_t=\tanh(U^\top x_t+W_E^\top h_{t-1}+b),\\
+ \text{Jordan:}\quad &h_t=\tanh(U^\top x_t+W_J^\top y_{t-1}+b),\\
+ \text{共同输出:}\quad &y_t=\sigma(V^\top h_t+c)
+   =\sigma(2h_{t,1}-1.5h_{t,2}+0.5).
+\end{aligned}
+\]
+$U^\top x_t$ 的形状为 $(2\times3)(3\times1)=2\times1$；Jordan 的反馈为 $(2\times1)$ 向量乘标量。Elman 的 $W_E$ 虽是方阵，仍须遵循同一转置约定。
+
+\begin{center}
+\input{figures/tutorial-08-recurrence-types}
+
+{\small 按 Q1 原创绘制；区别在跨时间步反馈的是 $h_{t-1}$ 还是 $y_{t-1}$。}
+\end{center}
+
+\textbf{前两步。}第一步两种反馈都为零：
+\[
+ z_1=U^\top x_1+b=(0,2.9)^\top,\qquad
+ h_1=(0,0.993963)^\top,\qquad y_1\approx0.270726.
+\]
+第二步当前输入的贡献为 $U^\top x_2+b=(1.3,3.8)^\top$，而历史贡献分别为
+\[
+ W_E^\top h_1\approx(1.490945,0)^\top,\qquad
+ W_J^\top y_1\approx(0.541451,0.351943)^\top.
+\]
+因此 Elman 的 $h_2\approx(0.992497,0.999000)^\top$，Jordan 的 $h_2\approx(0.950934,0.999505)^\top$。继续以未舍入状态递推，结果为：
+\begin{center}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}crrrr@{}}
+\toprule
+$t$ & Elman $h_t^\top$ & Elman $y_t$ & Jordan $h_t^\top$ & Jordan $y_t$ \\
+\midrule
+1 & $(0,\ 0.9940)$ & $0.270726$ & $(0,\ 0.9940)$ & $0.270726$ \\
+2 & $(0.9925,\ 0.9990)$ & $0.728395$ & $(0.9509,\ 0.9995)$ & $0.711486$ \\
+3 & $(1.0000,\ {-0.2067})$ & $0.943214$ & $(0.9974,\ {-0.5191})$ & $0.963506$ \\
+4 & $({-0.5443},\ 0.9837)$ & $0.112644$ & $({-0.3566},\ 0.9821)$ & $0.156263$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+表中的 $1.0000$ 为舍入值。第一步相同源于零初始反馈；以后即使当前输入相同，历史贡献也会不同。各步共享权重，前向计算只更新状态；Elman 留下 $h_t$，Jordan 留下 $y_t$ 供下一步使用。
+
+\exercisequestion{SC4001-TUT08-Q02}{普通 RNN：带时间延迟的序列回归}
+\nopagebreak[4]
+\textbf{题目（p.~1）。}生成 8 条长度为 100 的三维输入序列，各输入值从 $[0,1]$ 均匀采样。每步输出两个数：
+\[
+ y_1(t)=5x_1(t)-0.2x_3(t-1)+0.1\epsilon,\qquad
+ y_2(t)=25x_2(t-1)x_3(t-3)+0.1\epsilon,
+\]
+其中 $\epsilon\sim\mathcal N(0,1)$。用有 5 个隐藏单元的 RNN 学习映射，采用 Adam，学习率 $\alpha=0.01$。
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L08-T01}{状态与维度}、\relatedtopic{SC4001-L08-T02}{BPTT}、\relatedtopic{SC4001-L08-T05}{序列输入输出形式}。
+
+\textbf{依赖结构。}下标表示特征，括号表示时间。例如 $y_2(4)=25x_2(3)x_3(1)+0.1\epsilon$，需要保留历史并学习乘法交互。5 个隐藏单元表示状态有 5 维，不是固定只能记住 5 步。
+
+\textbf{数据边界。}\verify{题目未规定非正时间索引的历史值，也未明确两输出噪声的相关性。}一个可复现约定是令 $x(t)=0$（$t\le0$），并对各样本、时间步、输出分量独立采样噪声。先生成固定数据，再在各 epoch 重用；延迟项不能采用首尾相接的循环移位。
+
+\textbf{参考结构。}使用 batch-first（批次维在前）排列：
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+对象 & 形状 & 说明 \\
+\midrule
+输入 $X$ & $8\times100\times3$ & 序列条数、时间步、输入特征 \\
+隐藏序列 $H$ & $8\times100\times5$ & 每步保存 5 维状态 \\
+目标与预测 $Y,\hat Y$ & $8\times100\times2$ & 每步输出两个连续值 \\
+\bottomrule
+\end{tabular}
+\end{center}
+可取 $h_t=\tanh(U^\top x_t+W^\top h_{t-1}+b)$，每步使用同一个线性输出层 $\hat y_t=V^\top h_t+c$。这是 many-to-many（多对多）回归，应保留全部时间步；$y_2$ 的无噪声部分可接近 25，输出不应被 sigmoid 限制在 $(0,1)$。
+
+\textbf{训练。}最小化全部输出元素的 MSE（均方误差）：
+\[
+ L=\frac1{8\cdot100\cdot2}\sum_{n=1}^{8}\sum_{t=1}^{100}\sum_{k=1}^{2}
+   (\hat y_{n,k}(t)-y_{n,k}(t))^2.
+\]
+每轮前向得到完整序列，计算损失，清除旧梯度，经 BPTT 计算梯度，再由 Adam 更新共享参数。每条独立序列从零状态开始，序列内部持续传递状态。题目未指定训练轮数；可另生成独立序列检验泛化，训练误差低不代表已学到稳定规律。输入无法精确预测独立噪声，新数据上的误差不必为零。
+
+\exercisequestion{SC4001-TUT08-Q03}{LSTM：学习相邻两步求和}
+\nopagebreak[4]
+\textbf{题目（p.~2）。}设计有 10 个单元的 LSTM 学习下表，学习率 $\alpha=0.001$；绘制学习曲线，并预测新输入 $(1,2,3,4)$ 与 $(4,5,6,7)$ 的输出序列。
+\begin{center}
+\begin{tabular}{@{}cc@{}}
+\toprule
+输入序列 $x$ & 目标序列 $y$ \\
+\midrule
+$(1,2,5,6)$ & $(1,3,7,11)$ \\
+$(5,7,7,8)$ & $(5,12,14,15)$ \\
+$(3,4,5,7)$ & $(3,7,9,12)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{对应讲义：}\relatedtopic{SC4001-L08-T04}{LSTM 状态与门控}、\relatedtopic{SC4001-L08-T05}{多对多序列映射}。
+
+\textbf{规律与预测。}与三组数据一致的简单规律是
+\[
+ \boxed{y_t=x_t+x_{t-1},\qquad x_0=0.}
+\]
+例如第一组为 $1+0,\ 2+1,\ 5+2,\ 6+5$。按此规律，两条新序列的理想目标为
+\[
+ (1,2,3,4)\longmapsto\boxed{(1,3,5,7)},\qquad
+ (4,5,6,7)\longmapsto\boxed{(4,9,11,13)}.
+\]
+有限样例不能唯一确定任意输入上的映射；以上是规律推断，不是实测模型输出。训练后的网络应另行预测并与这些目标比较。
+
+\textbf{参考结构与训练。}输入、隐藏序列和输出的形状依次为
+\[
+ (3,4,1)\xrightarrow{\mathrm{LSTM}(10)}(3,4,10)
+ \xrightarrow{\mathrm{Linear}(10\to1)}(3,4,1).
+\]
+每步 $h_t,c_t\in\mathbb R^{10}$；10 是状态宽度，4 是时间长度。取全部隐藏输出，经共享线性层得到 $\hat y_t=w^\top h_t+b$，最小化
+\[
+ L=\frac1{12}\sum_{n=1}^{3}\sum_{t=1}^{4}(\hat y_{n,t}-y_{n,t})^2.
+\]
+每条序列以 $h_0=c_0=0$ 开始，沿 4 步反向传播。题目只规定学习率，未指定优化器与训练轮数；参考方案可用 Adam，记录 epoch--MSE 曲线。LSTM 可用状态保留前一步输入，但具体存储坐标由训练决定；只有三条训练序列时，低训练误差不足以说明泛化成功。
+
+\exercisequestion{SC4001-TUT08-Q04}{字符级 GRU：电影评价的情感分类}
+\nopagebreak[4]
+\textbf{题目（p.~2，Table 1）。}将下列文本转为 character IDs（字符编号），最大长度设为 40；用 10 个 GRU 单元学习整句情感，采用 Adam、学习率 $\alpha=0.001$，隐藏层 dropout 概率 $p=0.7$。绘制 cost 和 accuracy 随 epoch 的曲线，并求两条新句子的情感概率。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}Xl@{}}
+\toprule
+训练文本 & 标签 \\
+\midrule
+I did not like the movie & negative \\
+The movie was not good & negative \\
+I watched the movie with great interest & positive \\
+I have seen better movies & negative \\
+Good to see that movie & positive \\
+I am not a fan of movies & negative \\
+I liked the movie great & positive \\
+The movie was of interest to me & positive \\
+I thought they could show interesting scenes & negative \\
+The movie did not have good scenes & negative \\
+Family did not like the movie at all & negative \\
+\bottomrule
+\end{tabularx}
+\end{center}
+待预测句子为 \emph{The movie was not interesting to me} 和 \emph{I liked the movie with great interest}。
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L08-T01}{序列状态}、\relatedtopic{SC4001-L08-T03}{GRU 概览}、\relatedtopic{SC4001-L08-T05}{多对一分类}。
+
+\textbf{1. 编码与长度。}可统一小写，按训练文本建立字符表，保留空格，另设 \texttt{PAD}、\texttt{UNK}。每个字符占一个时间步：\texttt{movie} 占 5 步。超过 40 字符时截断，不足时末尾补齐；例如表中的 \emph{I thought they could show interesting scenes} 含空格共 44 字符，需截断。记录有效长度 $\ell=\min(\text{原长度},40)$，训练和预测保持同一规则。
+
+ID 仅作索引，可用 embedding（嵌入）映射为向量，也可用 one-hot。下列参考方案选嵌入维数 $d=8$，这是实现选择，题目未指定：
+\[
+ \underbrace{(B,40)}_{\text{字符 ID}}
+ \xrightarrow{\mathrm{Embedding}(d)}(B,40,d)
+ \xrightarrow{\mathrm{GRU}(10)}(B,40,10).
+\]
+GRU 的 update/reset gates（更新／重置门）控制状态保留及候选状态计算，只有隐藏状态，没有 LSTM 式独立 cell state。用 mask 或变长序列处理补齐位置，并取最后一个有效字符对应的 $h_\ell\in\mathbb R^{10}$，作为整句表示。
+
+\textbf{2. 分类头与 dropout。}一种明确的实现是对 $h_\ell$ 做 dropout 后接线性分类头；这将题目的 hidden-layer dropout 落实在用于分类的隐藏表示上。按丢弃概率解释 $p=0.7$，每个分量训练时有 70\% 的概率被置零，平均保留 3 个分量，并非每次恰好保留 3 个。预测时关闭 dropout。令 positive 为 $y=1$，negative 为 $y=0$，则
+\[
+ z=w^\top\operatorname{Dropout}(h_\ell)+b,\qquad
+ q=\sigma(z)=P(\text{positive}\mid\text{文本}),\qquad
+ P(\text{negative}\mid\text{文本})=1-q.
+\]
+采用 binary cross-entropy（二元交叉熵），通过 BPTT 和 Adam 训练：
+\[
+ L=-\frac1B\sum_{n=1}^{B}\left[y_n\ln q_n+(1-y_n)\ln(1-q_n)\right].
+\]
+融合 sigmoid 的损失接口应直接接收 logit。训练标签沿用原表，出现单个正面词并不足以确定整句情感。
+
+\textbf{3. 曲线与预测。}按 $q\ge0.5$ 判为正类，记录每轮损失与准确率。对同一个正面样本，$q$ 从 $0.6$ 提升到 $0.9$ 时分类结果不变，但交叉熵会下降。可在每轮后暂时关闭 dropout，对固定数据计算可比的曲线指标，再恢复训练模式。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}Xl@{}}
+\toprule
+新文本 & 人类语义判断 \\
+\midrule
+The movie was not interesting to me & negative \\
+I liked the movie with great interest & positive \\
+\bottomrule
+\end{tabularx}
+\end{center}
+第一句需要利用 \texttt{not} 对后文的否定作用。上述判断是解释模型应学习的语义，实际情感概率须由训练后模型计算。训练集仅 11 句（4 正、7 负），即使训练准确率很高，也不能据此认定已掌握一般否定规则或具有可靠泛化能力。
+\endgroup

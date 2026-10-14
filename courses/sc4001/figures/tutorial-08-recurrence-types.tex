@@ -1,0 +1,29 @@
+% Original comparison, based on tute8.pdf Q1 and the Lecture 08 notation.
+\begin{tikzpicture}[
+ font=\small,>=Stealth,
+ state/.style={draw=noteBlue,fill=noteBlue!7,rounded corners,
+               minimum width=16mm,minimum height=8mm},
+ flow/.style={->,thick,noteBlue}
+]
+\foreach \shift/\kind in {0/Elman,6.7/Jordan} {
+ \begin{scope}[xshift=\shift cm]
+  \node[font=\bfseries] at (1.5,1.9) {\kind};
+  \node[state] (old) at (0,0) {$h_{t-1}$};
+  \node[state] (new) at (3,0) {$h_t$};
+  \node (xo) at (0,-0.9) {$x_{t-1}$};
+  \node (xn) at (3,-0.9) {$x_t$};
+  \node (yo) at (0,1) {$y_{t-1}$};
+  \node (yn) at (3,1) {$y_t$};
+  \draw[flow] (xo) -- (old);
+  \draw[flow] (xn) -- (new);
+  \draw[flow] (old) -- (yo);
+  \draw[flow] (new) -- (yn);
+  \ifdim\shift pt=0pt
+   \draw[flow] (old) -- node[above] {$W_E^\top$} (new);
+  \else
+   \draw[flow] (yo.east) -- (1.5,1) -- (1.5,0)
+                -- node[above] {$W_J^\top$} (new.west);
+  \fi
+ \end{scope}
+}
+\end{tikzpicture}
