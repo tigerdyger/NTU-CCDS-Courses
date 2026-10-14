@@ -1,0 +1,5 @@
+# Publish only reviewed learning notes. Keep assessed answers and data local.
+*
+!.gitignore
+!README.md
+!traffic-analysis-notes.md
