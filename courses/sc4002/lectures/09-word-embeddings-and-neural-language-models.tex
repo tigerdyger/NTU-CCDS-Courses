@@ -1,0 +1,268 @@
+% Actual class: 09, 2026-10-14 (Week 9).
+% Sources: Lec2_week9.pdf pp. 4--50; Lec2_recorded.pdf pp. 4--56.
+% Transcript: 79336 - 0_0hv1ww8w - PID 117.txt; no timestamps supplied.
+% Overlapping topics are merged; recording-only FastText and perplexity retained.
+
+\section{第 09 节课：Word Embeddings 与 Neural Language Models}
+\label{lecture:SC4002-L09}
+
+\lecturemeta
+  {SC4002-L09}
+  {2026-10-14}
+  {Lec2\_week9；Lec2\_recorded}
+  {现场讲义 PDF / slide pp.~4--50；录播讲义 pp.~4--56；末页均为总结}
+  {本地字幕 79336，无时间戳；两版内容合并，原始材料不收入仓库}
+  {讲解后请求整理（2026-10-14）；笔记成稿待审阅}
+
+\subsection{本讲主线与范围}
+
+本讲讨论如何从文本中学习词的向量表示，再将它们用于实体识别和下一词预测。现场版补充了 Skip-gram 的矩阵计算、负采样与 BIO 标签例子；录播版另含 WordNet、FastText、传统 n-gram 的局限与 perplexity。讲义的 Lec2 指后半学期教学单元第二讲，本笔记延续实际课次 L09。前半学期的 n-gram 与 NER 只复习衔接所需内容；RNN、Transformer 属于后续课程。
+
+\lecturetopic{SC4002-L09-T01}{从离散词符号到分布式词表示}
+\nopagebreak[4]
+
+\textbf{来源：}录播版 pp.~4--15；现场版 pp.~4--11。
+\nopagebreak[4]
+
+WordNet（词汇语义网络）通过同义词集合、上下位关系等表达词义，但依赖人工维护，难以及时覆盖新词义和语境差异。例如 \texttt{good} 与 \texttt{proficient} 仅在部分语境中可互换。
+
+设词表为 $\mathcal V$，大小为 $N$。One-hot representation（独热表示）用 $N$ 维向量中的一个 1 标识词，其余位置为 0。不同词的独热向量正交，即使 \texttt{hotel} 与 \texttt{motel} 语义接近，内积仍为 0。它能明确词的身份，但本身没有编码词义相似性。
+
+Word embedding（词嵌入）用可学习的稠密向量 $\mathbf e_w\in\mathbb R^d$ 表示词，通常 $d\ll N$。Distributed representation（分布式表示）意味着多个维度共同承载信息。讲义用王室属性、年龄等假想维度帮助理解；实际训练一般不预先给每个维度指定语义。向量分量可正可负，也无须和为 1。
+
+对于非零向量，cosine similarity（余弦相似度）为
+\[
+  \cos(\mathbf u,\mathbf v)
+  =\frac{\mathbf u^T\mathbf v}{\|\mathbf u\|\,\|\mathbf v\|}\in[-1,1].
+\]
+它衡量方向的一致程度；正数缩放不改变余弦值。向量接近反映所学的语言关联，不能直接视为严格的同义关系。
+
+\keyidea{Distributional semantics（分布语义）利用词的上下文学习表示：常在相似语境出现的词，可能具有相似的用法或含义。训练目标可由原始文本中的邻近关系自动构造。}
+
+\lecturetopic{SC4002-L09-T02}{Word2vec：CBOW 与完整 Softmax Skip-gram}
+\nopagebreak[4]
+
+\textbf{来源：}录播版 pp.~16--23；现场版 pp.~12--25。
+\nopagebreak[4]
+
+\subsubsection{预测方向与训练样本}
+
+讲义取句子 \texttt{the small red car stopped near home}。设窗口半径 $m=2$，即左右各看两个词。CBOW（Continuous Bag of Words）聚合 \texttt{small, red, stopped, near} 的向量来预测中心词 \texttt{car}；基本版本的求和或平均不保留邻居的排列顺序。Skip-gram 则以 \texttt{car} 为输入，分别预测这四个上下文词，形成四个有方向的训练对。
+
+中心移到 \texttt{stopped} 后，目标变为 \texttt{red, car, near, home}。窗口随语料位置移动，因此同一个词会在许多上下文中提供训练信号；句子边界处只使用有效位置。
+
+\subsubsection{两套向量、概率与损失}
+
+每个词 $w$ 有两种角色：中心向量 $\mathbf v_w$ 和上下文向量 $\mathbf u_w$，均为 $d$ 维。基本模型无偏置时，两张表共含 $2Nd$ 个可训练标量。给定中心词 $c$，对候选上下文词 $o$ 的打分与概率为
+\[
+  s(o,c)=\mathbf u_o^T\mathbf v_c,
+  \qquad
+  P(o\mid c)=\frac{\exp(\mathbf u_o^T\mathbf v_c)}
+  {\sum_{w\in\mathcal V}\exp(\mathbf u_w^T\mathbf v_c)}.
+\]
+Softmax 在整个词表上归一化。训练一个真实词对的损失为
+\[
+  \ell(c,o)=-\log P(o\mid c)
+  =-\mathbf u_o^T\mathbf v_c+
+    \log\sum_{w\in\mathcal V}\exp(\mathbf u_w^T\mathbf v_c).
+\]
+对长度为 $T$ 的语料，典型的 Skip-gram 目标写作
+\[
+  J(\theta)=-\frac1T\sum_{t=1}^{T}
+  \sum_{\substack{-m\leq j\leq m,\ j\neq0\\1\leq t+j\leq T}}
+  \log P(w_{t+j}\mid w_t).
+\]
+这里把一个窗口的多个邻居作为多个预测项；词向量通过最小化预测损失得到，无须事先提供“正确向量”。
+
+\textbf{补充推导：}记 $p_w=P(w\mid c)$，对单个词对有
+\[
+  \frac{\partial\ell}{\partial\mathbf v_c}
+  =\sum_{w\in\mathcal V}p_w\mathbf u_w-\mathbf u_o,
+  \qquad
+  \frac{\partial\ell}{\partial\mathbf u_w}
+  =\bigl(p_w-\mathbf1[w=o]\bigr)\mathbf v_c.
+\]
+梯度下降用 $\theta\leftarrow\theta-\alpha\nabla_\theta\ell$ 更新两张表。完整 Softmax 的分母使所有输出向量参与本次梯度计算，输入侧只查到当前中心词。
+
+\subsubsection{查表层的含义}
+
+现场版采用行向量记法：$\mathbf x\in\mathbb R^{1\times N}$ 为独热输入，$V\in\mathbb R^{N\times d}$ 保存中心词向量，$U\in\mathbb R^{d\times N}$ 的列保存上下文词向量，则
+\[
+  \mathbf h=\mathbf xV,\qquad
+  \mathbf z=\mathbf hU,\qquad
+  \hat{\mathbf y}=\operatorname{softmax}(\mathbf z).
+\]
+独热向量乘 $V$ 等价于取出对应的一行，实现时直接查表即可。这个中间表示是线性 embedding lookup，没有额外的非线性隐藏变换；这解释了录播版“无 hidden layer”与现场版画出查表层的用语差别。真实目标只用于损失计算。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L09-E01}{四词词表的 Skip-gram 完整前向计算}。
+
+\lecturetopic{SC4002-L09-T03}{Negative Sampling：将预测改为词对判别}
+\nopagebreak[4]
+
+\textbf{来源：}现场版 pp.~26--36。
+\nopagebreak[4]
+
+完整 Softmax 每个词对都要计算全词表分母，词表大时开销高。Skip-gram with negative sampling（SGNS，负采样 Skip-gram）为真实词对 $(c,o)$ 配上 $K$ 个随机抽取的上下文词 $n_1,\ldots,n_K$，构造标签：真实共现为 $y=1$，采样噪声为 $y=0$。负样本是训练构造，不代表该词在所有语境中都绝不可能出现。
+
+对任一待判别词对，令 $s=\mathbf u^T\mathbf v_c$，则
+\[
+  p(y=1\mid c,w)=\sigma(s)=\frac{1}{1+e^{-s}},
+  \qquad
+  \ell=-y\log\sigma(s)-(1-y)\log\bigl(1-\sigma(s)\bigr).
+\]
+把一个正例和 $K$ 个负例合起来，需\textbf{最小化}的损失为
+\[
+  \mathcal L_{\mathrm{SGNS}}
+  =-\log\sigma(\mathbf u_o^T\mathbf v_c)
+   -\sum_{i=1}^{K}\log\sigma(-\mathbf u_{n_i}^T\mathbf v_c).
+\]
+讲义 pp.~30--31 给的是相反符号的对数目标，应\textbf{最大化}；两种写法等价，因为 $1-\sigma(s)=\sigma(-s)$。
+
+\begin{center}
+\input{figures/word2vec-training-objectives}
+\end{center}
+{\small\textit{原创示意，依据现场版 pp.~18、26--35：二分类概率与全词表条件概率属于不同训练目标。}}
+
+\textbf{补充推导：}二分类交叉熵对分数的导数为
+\[
+  \frac{\partial\ell}{\partial s}=p-y,
+  \quad
+  \frac{\partial\ell}{\partial\mathbf v_c}=(p-y)\mathbf u,
+  \quad
+  \frac{\partial\ell}{\partial\mathbf u}=(p-y)\mathbf v_c.
+\]
+因此正例推动分数增大，负例推动分数减小。讲义表格的 Error 为 $y-p$，对应更新方向，不能将它当作交叉熵损失。计算一组样本的梯度时，中心向量汇总该组所有项。
+
+SGNS 只涉及中心向量、正例上下文向量和被采到的负例向量；忽略采样等额外开销，每对的打分计算从 $O(Nd)$ 降为 $O((K+1)d)$。两张完整参数表仍然保留。各词对的 sigmoid 输出无需在词表上和为 1，不能直接替代下一词概率分布。
+
+训练后常取中心向量用于下游任务，也可采用两套向量的组合；必须固定所用表示才能作一致比较。窗口半径与负样本数是不同的超参数。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L09-E02}{负采样的误差信号与参数更新}。
+
+\lecturetopic{SC4002-L09-T04}{静态词向量的边界与 FastText}
+\nopagebreak[4]
+
+\textbf{来源：}录播版 pp.~24--25。
+\nopagebreak[4]
+
+普通 Word2vec 为每个词分配独立查表项，主要限制包括：
+\begin{itemize}
+  \item \textbf{OOV（out-of-vocabulary，词表外词）：}词表中没有的新词缺少自己的向量。
+  \item \textbf{Morphology（词形结构）：}\texttt{eat}、\texttt{eaten} 等词不会仅因共享拼写片段而共享参数。
+  \item \textbf{Static embeddings（静态词嵌入）：}同一词在不同句子中的基础查表向量相同，多义词的不同含义混合在一个表示中。
+\end{itemize}
+
+FastText 学习字符级 $n$-gram（子词片段）的向量，讲义使用长度 3--6。例如给 \texttt{eating} 加上边界标记后，\texttt{<eating>} 的三字符片段为
+\[
+  \texttt{<ea},\quad\texttt{eat},\quad\texttt{ati},\quad
+  \texttt{tin},\quad\texttt{ing},\quad\texttt{ng>}.
+\]
+将子词向量与已知词的整词向量组合，可使相近词形共享子词参数，并为未见过的整词构造表示。这里的字符片段与语言模型中的连续多个\textbf{词}要区分。子词组合缓解词表外词问题，但不保证陌生词的语义准确，也不会自动产生随句子变化的上下文化词向量。
+
+\lecturetopic{SC4002-L09-T05}{词向量评估与窗口式 NER}
+\nopagebreak[4]
+
+\textbf{来源：}录播版 pp.~27--37；现场版 pp.~38--44。
+\nopagebreak[4]
+
+\subsubsection{内在评估与外在评估}
+
+Intrinsic evaluation（内在评估）直接检验表示空间中的相似或类比关系。例如对 $a:b::a^*:b^*$ 构造
+\[
+  \mathbf q=\mathbf e_b-\mathbf e_a+\mathbf e_{a^*},
+  \qquad
+  \hat b^*=\underset{w\in\mathcal C}{\arg\max}\;
+  \cos(\mathbf e_w,\mathbf q),
+\]
+其中 $\mathcal C$ 为评估协议指定的候选词集合，通常排除输入的三个词。讲义示例包括国家与首都、形容词与最高级，以及
+\[
+  \mathbf e_{\mathrm{king}}-\mathbf e_{\mathrm{man}}
+  +\mathbf e_{\mathrm{woman}}\approx\mathbf e_{\mathrm{queen}}.
+\]
+实际操作是最近邻检索，近似关系是经验现象，不保证每套词向量都成立。
+
+Extrinsic evaluation（外在评估）把词向量放进 NER、词性标注等实际系统，检验下游任务表现。内在测试较便于诊断，但不保证下游收益；外在测试更贴近用途，却也受模型、训练过程和数据影响。比较词向量时应尽量控制这些条件。
+
+\subsubsection{上下文如何影响实体标签}
+
+NER 需要同时识别实体边界与类型。这里的 BIO 约定以 B 表示实体开头，I 表示同一实体的后续词，O 表示非实体。例如
+\[
+\begin{array}{ccccc}
+ \text{John}&\text{Smith}&\text{met}&\text{Mary}&\text{Jones}\\
+ \text{B-PER}&\text{I-PER}&\text{O}&\text{B-PER}&\text{I-PER}
+\end{array}
+\]
+能区分两个独立人名。实体不能在 O 之后直接以 I-PER 开始。同一表面词 \texttt{Washington} 在旅行、签署文件、宣布政策的句子中，可能分别表示地点、人物或政府机构；精确类别取决于标注规范。
+
+窗口式模型取中心词及左右各 $r$ 个词的向量，按位置拼接：
+\[
+  \mathbf x_t=[\mathbf e_{t-r};\ldots;\mathbf e_t;\ldots;\mathbf e_{t+r}]
+   \in\mathbb R^{(2r+1)d},\qquad
+  \mathbf h_t=f(W\mathbf x_t+\mathbf b).
+\]
+判断“是否地点”可用 sigmoid；预测多个 BIO 标签可用 $\operatorname{softmax}(A\mathbf h_t+\mathbf b_2)$。标签来自人工标注，损失更新分类网络，并可继续微调词向量。
+
+讲义以 \texttt{museums in Paris are amazing} 为窗口说明：即使 \texttt{Paris} 的查表向量固定，周围词仍会改变拼接输入、隐藏表示及预测。独立的逐词 Softmax 不会自动保证整句 BIO 转移合法；这与前半学期利用序列结构的模型有所区别。
+
+\lecturetopic{SC4002-L09-T06}{固定窗口神经语言模型与困惑度}
+\nopagebreak[4]
+
+\textbf{来源：}录播版 pp.~39--56；现场版 pp.~46--50。
+\nopagebreak[4]
+
+\subsubsection{从计数模型到共享参数}
+
+语言模型给出历史条件下的下一词分布，并由链式法则为文本赋予概率：
+\[
+  P(w_1,\ldots,w_T)=\prod_{t=1}^{T}P(w_t\mid w_{<t}).
+\]
+生成时可以逐步选择高概率词或按分布采样；句首、句尾的处理需要约定边界标记。传统 $n$-gram 将历史截断为前 $n-1$ 个词，以计数比估计条件概率。窗口增大会加重稀疏性与存储开销，未见组合还可能出现零计数；平滑、回退能缓解这些问题，但无法恢复窗口外的信息。
+
+固定窗口 neural language model（神经语言模型）先查历史词向量，再用共享网络预测。设历史长度为 $k$，词向量维度为 $d$，隐藏维度为 $H$，词表大小为 $N$，则
+\begin{align*}
+  \mathbf x_t&=[\mathbf e_{t-k};\ldots;\mathbf e_{t-1}]
+     \in\mathbb R^{kd},\\
+  \mathbf h_t&=f(W\mathbf x_t+\mathbf b_1),
+     && W\in\mathbb R^{H\times kd},\\
+  \hat{\mathbf y}_t&=\operatorname{softmax}(U\mathbf h_t+\mathbf b_2),
+     && U\in\mathbb R^{N\times H}.
+\end{align*}
+模型输出 $N$ 个候选词的概率。实际下一词自动提供目标，单步交叉熵为 $-\log \hat y_{t,w_t}$；词向量与预测网络一起训练。
+
+拼接保留窗口内的位置顺序，简单求和或平均会失去顺序信息。共享词向量与网络参数使模型可以在相似上下文间泛化，不必为每个完整 $n$-gram 分配独立参数；不过固定窗口仍看不到更远的历史，窗口加长也会增加输入层参数。
+
+\textbf{对应例题：}\relatedexercise{SC4002-L09-E03}{计数预测与神经语言模型样本构造}。
+
+\subsubsection{与 Word2vec、NER 的比较}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+模型 & 输入与训练目标 & 直接用途 \\
+\midrule
+Skip-gram / SGNS & 中心词预测邻词；或判别真实与噪声词对 & 学习静态词向量 \\
+窗口式 NER & 中心词及左右邻居，预测人工实体标签 & 为词标注实体类型与边界 \\
+神经语言模型 & 已有历史词，预测真实下一词 & 下一词分布、文本评分与生成 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+三者均可学习或使用词向量，但目标不同。录播版 p.~55 的 Word2vec 对比公式具体是 CBOW（左右上下文预测中心词）。标准 Word2vec 训练目标未定义自回归文本概率，不能直接当作这里的语言模型；训练所得向量仍可用于语言模型的输入层。
+
+\subsubsection{Perplexity 与交叉熵}
+
+对同一测试语料的 $T$ 个待预测词，记 $p_t=P(w_t\mid w_{<t})$，perplexity（困惑度）为
+\[
+  \operatorname{PPL}
+   =\left(\prod_{t=1}^{T}\frac1{p_t}\right)^{1/T}
+   =\exp\left(-\frac1T\sum_{t=1}^{T}\ln p_t\right)
+   =\exp(J_{\mathrm{CE}}).
+\]
+这里 $J_{\mathrm{CE}}$ 是按词平均、使用自然对数的交叉熵；若使用以 2 为底的对数，则取 $2^{J_{\mathrm{CE}}}$。困惑度越低，模型给真实词序列的几何平均概率越高。它可理解为平均有效选择数量，但无需是整数。
+
+比较必须保持测试语料、分词单位、词表及边界处理等评估条件一致；直接比较不同 tokenization 的原始困惑度没有同等含义。使用测试数据选择模型会影响评估可信度。
+
+\subsection{一分钟回顾}
+
+词嵌入通过上下文预测学习稠密表示，基础 Word2vec 为中心与上下文两种角色保留两张表。完整 Softmax 给出词表分布，负采样以少量词对二分类降低训练开销。FastText 通过子词共享缓解词形与 OOV 问题，静态查表表示仍不会随句子自动改变。词向量可直接做类比测试，也可进入 NER 或神经语言模型；后者预测下一词，平均交叉熵的指数就是困惑度。

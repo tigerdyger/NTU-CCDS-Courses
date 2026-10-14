@@ -1,0 +1,17 @@
+% Original comparison based on Lec2_week9.pdf pp. 18, 26--35.
+\begin{tikzpicture}[
+  >=Latex,font=\small,
+  box/.style={draw=noteBlue,rounded corners,fill=blue!4,
+    align=center,minimum height=1.1cm,text width=3.35cm},
+  flow/.style={->,thick,noteBlue}
+]
+  \node[box,text width=2.25cm] (c) at (0,0) {中心词 $c$\\查表 $\mathbf v_c$};
+  \node[box] (all) at (4.3,1.05) {全部 $N$ 个词\\点积 $\mathbf u_w^T\mathbf v_c$};
+  \node[box] (neg) at (4.3,-1.05) {正例与 $K$ 个负例\\共 $K+1$ 次点积};
+  \node[box,text width=3.2cm] (sm) at (9.25,1.05) {Softmax 多分类\\$\sum_w P(w\mid c)=1$};
+  \node[box,text width=3.2cm] (sg) at (9.25,-1.05) {Sigmoid 二分类\\真实 / 噪声词对};
+  \draw[flow] (c.east) -- (all.west);
+  \draw[flow] (c.east) -- (neg.west);
+  \draw[flow] (all.east) -- (sm.west);
+  \draw[flow] (neg.east) -- (sg.west);
+\end{tikzpicture}

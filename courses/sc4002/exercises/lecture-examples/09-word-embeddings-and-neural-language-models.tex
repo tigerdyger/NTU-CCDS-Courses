@@ -1,0 +1,100 @@
+% Source examples from Lec2_week9.pdf and Lec2_recorded.pdf.
+\exercisegroup{SC4002-L09-EX}{第 09 讲：Word Embeddings 与 Neural Language Models}
+
+\exercisemeta
+  {SC4002-L09-EX}
+  {2026-10-14}
+  {现场版 pp.~19--25、32--35、47；录播版 p.~46}
+  {三组讲义原例；补全计算与更新解释}
+  {讲解后请求整理；笔记成稿待审阅}
+
+\exercisequestion{SC4002-L09-E01}{四词词表：从查表到交叉熵}
+
+\textbf{来源与题意：}现场版 pp.~19--25。词表依次为 \texttt{a, cat, sat, mat}，向量维度为 2。窗口半径为 1，选取句子 \texttt{a cat sat} 中的训练对 $\texttt{a}\to\texttt{cat}$，给定
+\[
+ V=\begin{bmatrix}1&0\\0&1\\1&1\\-1&0\end{bmatrix},
+ \qquad
+ U=\begin{bmatrix}0&1&0&-1\\0&0&1&0\end{bmatrix}.
+\]
+计算中心表示、各候选词分数、Softmax 概率及损失。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L09-T02}{完整 Softmax Skip-gram}。
+
+\begin{workedsolution}
+独热输入和训练目标分别为 $\mathbf x=[1,0,0,0]$、$\mathbf y=[0,1,0,0]$。查表与打分得到
+\[
+ \mathbf h=\mathbf xV=[1,0],\qquad
+ \mathbf z=\mathbf hU=[0,1,0,-1].
+\]
+归一化分母为 $Z=1+e+1+e^{-1}\approx5.0862$，因此
+\[
+ \hat{\mathbf y}\approx[0.1966,\;0.5344,\;0.1966,\;0.0723],
+ \qquad
+ \ell=-\ln\hat y_{\mathrm{cat}}\approx0.6265.
+\]
+\texttt{cat} 当前概率最高，但尚非 1，仍有训练损失。目标 $\mathbf y$ 只在计算损失时使用。概率舍入后相加可能略偏离 1，实际计算应保留精度。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L09-E02}{负采样：误差信号怎样改变词对分数}
+
+\textbf{来源与题意：}现场版 pp.~32--35，以 \texttt{not} 为中心词。\texttt{thou} 是正例，\texttt{aaron} 与 \texttt{taco} 是采样负例。讲义给出下列近似值，说明更新方向和涉及的参数。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L09-T03}{负采样与二分类梯度}。
+
+\begin{center}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+上下文词 & $y$ & $s=\mathbf u^T\mathbf v_{\mathrm{not}}$ & $p=\sigma(s)$ & $y-p$ \\
+\midrule
+\texttt{thou} & 1 & 0.20 & 0.55 & 0.45 \\
+\texttt{aaron} & 0 & $-1.11$ & 0.25 & $-0.25$ \\
+\texttt{taco} & 0 & 0.74 & 0.68 & $-0.68$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{workedsolution}
+对二分类交叉熵，$\partial\ell/\partial s=p-y$。因此对 \texttt{thou} 的梯度约为 $-0.45$，梯度下降推动其分数上升；两个负例的梯度约为 $0.25$、$0.68$，推动其分数下降。表中 Error 是反方向的 $y-p$，可以为负；交叉熵损失则非负。
+
+对单个词对，用更新前向量计算梯度，更新可写为
+\[
+ \mathbf v_c\leftarrow\mathbf v_c+\alpha(y-p)\mathbf u_w,
+ \qquad
+ \mathbf u_w\leftarrow\mathbf u_w+\alpha(y-p)\mathbf v_c.
+\]
+对这组三个样本共同求梯度时，中心向量接收三项之和。只需更新输入表中的 \texttt{not}，以及输出表中的 \texttt{thou}、\texttt{aaron}、\texttt{taco}。这不等于更新输入表里这三个上下文词的向量。
+
+讲义只给出点积与概率，没有提供完整向量和学习率，无法据此唯一算出更新后的每个向量分量。若以 $\alpha$ 为给定学习率，各更新方向如上；表内数值本身经过舍入。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L09-E03}{从计数预测到神经语言模型样本}
+
+\textbf{来源与题意：}录播版 p.~46 的 4-gram 例子、现场版 p.~47 的下一词预测例子。分别解释短窗口计数的预测结果，以及神经模型如何从文本自动构造训练对。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L09-T06}{神经语言模型与历史窗口}。
+
+\begin{workedsolution}
+录播版在监考人员启动计时的语境中预测 \texttt{the students opened their} 后的词。4-gram 只保留 \texttt{students opened their} 这三个历史词。若该历史出现 1000 次，后接 \texttt{books} 为 400 次，后接 \texttt{exams} 为 100 次，则未平滑的计数估计为
+\[
+ P(\texttt{books}\mid\texttt{students opened their})=0.4,
+ \qquad
+ P(\texttt{exams}\mid\texttt{students opened their})=0.1.
+\]
+\texttt{proctor} 提供的更远考试语境已被截掉，所以模型不能据此改变这两个概率。固定短窗口神经模型也存在同样的可见范围限制。
+
+现场版使用 \texttt{cats eat fish every day}，保留前两个词，句首以 \texttt{<s>} 填充，得到：
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+历史输入 & 真实下一词 \\
+\midrule
+\texttt{<s>, <s>} & \texttt{cats} \\
+\texttt{<s>, cats} & \texttt{eat} \\
+\texttt{cats, eat} & \texttt{fish} \\
+\texttt{eat, fish} & \texttt{every} \\
+\texttt{fish, every} & \texttt{day} \\
+\bottomrule
+\end{tabular}
+\end{center}
+以第三行为例，拼接后的输入为 $[\mathbf e_{\mathrm{cats}};\mathbf e_{\mathrm{eat}}]\in\mathbb R^{2d}$，损失为 $-\ln P(\texttt{fish}\mid\texttt{cats,eat})$。训练标签来自后续文本，不需要人工另行标注；\texttt{fish} 的真实身份不能提前进入该行的历史输入。讲义此表只列到 \texttt{day}；若任务显式建模句尾，还应按既定协议增加预测句尾标记的样本。
+\end{workedsolution}
