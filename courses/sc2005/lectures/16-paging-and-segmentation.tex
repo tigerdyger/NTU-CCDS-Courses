@@ -1,0 +1,158 @@
+% Based on templates/lecture.tex; actual session 16, 2026-10-15 (Week 9).
+% Memory Organization.pdf: slides 7.23--7.44, summary 7.45--7.52.
+% Video titles only; recordings/transcripts and official daily boundary unavailable.
+
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 16 节课：分页、页表组织与分段}
+\label{lecture:SC2005-L16}
+
+\lecturemeta
+  {SC2005-L16}
+  {2026-10-15（第九教学周）}
+  {Memory Organization，Part 7}
+  {7.23--7.44；7.45--7.52 为总结（PDF 页码同讲义尾号）}
+  {Paging、Two-level Paging、Segmentation，仅按已提供标题对应；视频与字幕不可用}
+  {已完成学习并要求整理；讲义文字、关键图示与数值已核对；两节划分为学习安排}
+
+\keyidea{非连续分配允许一个进程分散存放。分页按固定大小拆分地址空间，用页表找到每页的物理位置；分段按程序的逻辑组成拆分，每段分别保存基址与长度。TLB、两级页表和倒排页表分别处理转换速度、页表分配与表规模问题。}
+
+\lecturetopic{SC2005-L16-T01}{Paging：页、页框与地址转换}
+
+\textbf{来源：7.23--7.28。}Page（页）是逻辑地址空间中的固定大小块，frame（页框）是物理内存中的同样大小块。一个进程需要 $n$ 页时，基本装入模型只需找到 $n$ 个空闲页框，不要求它们相邻。OS 跟踪空闲页框，并用 page table（页表）保存映射。
+
+Page-table entry（页表条目，PTE）就是\textbf{页表中的一行记录}；普通页表第 $p$ 行记录逻辑页 $p$ 对应的物理页框号 $f$。下文的“条目数”均指表有多少行，与一行里存储的页号、页框号不同。
+
+设系统按字节寻址，页大小为 $S=2^n$ bytes，逻辑地址为 $a$：
+\[
+ p=\left\lfloor\frac{a}{S}\right\rfloor,\qquad
+ d=a\bmod S,\qquad f=\mathrm{PageTable}[p],\qquad
+ \boxed{PA=fS+d}.
+\]
+$p$ 是 page number（逻辑页号），$d$ 是 page offset（页内偏移），满足 $0\le d<S$。地址转换把 $\langle p,d\rangle$ 变成 $\langle f,d\rangle$，\textbf{偏移保持不变}。
+
+若逻辑地址空间为 $2^m$ bytes，则地址共 $m$ 位，页内偏移占 $n$ 位，页号占 $m-n$ 位，可表示 $2^{m-n}$ 个逻辑页。物理地址中的页框号位数由物理内存容量决定，不必等于逻辑页号位数。讲义的 $7\mapsto27$ 转换见\relatedexercise{SC2005-L16-E01}{4-byte 页的地址映射}。
+
+\textbf{与上一讲的联系。}连续分配对整个进程使用同一个 $B$，所以 $PA=B+a$。分页中，每页有自己的物理基址 $fS$；不同页可以被放到任意空闲页框，不能再用一个全局基址加上完整逻辑地址。式子 $fS+d$ 仍是“找到所在块的起点，再加块内偏移”。
+
+\textbf{碎片。}固定大小页框消除了基本分页分配中的 external fragmentation（外部碎片），但最后一页可能用不满，仍有 internal fragmentation（内部碎片）。若连续逻辑区域需要 $L>0$ bytes，则分配量为 $\lceil L/S\rceil S$，内部浪费为 $\lceil L/S\rceil S-L<S$；整页用满时可以为零。此式是对讲义结论的补充推导。
+
+\lecturetopic{SC2005-L16-T02}{页表访问、TLB 与共享页}
+
+\textbf{来源：7.29--7.32。}讲义将每个进程的普通页表放在物理内存中。Page-table base register（页表基址寄存器，PTBR）指向页表，page-table length register（页表长度寄存器，PTLR）记录表长。\textbf{PTBR 是表的地址，不是整个进程数据区的基址。}
+
+单级页表下，访问一个已驻留内存的数据或指令，需要先读页表取得页框号，再读目标内容。如果每次主存访问耗时 $\mu$，且忽略其他开销，总时间为 $2\mu$。
+
+Translation look-aside buffer（地址转换后备缓冲，TLB）是快速缓存地址映射的硬件。它采用 associative lookup（关联查找），命中时直接得到页框号。
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}Xc@{}}
+\toprule
+情况 & 查找路径 & 耗时 \\
+\midrule
+TLB hit（命中） & 查 TLB，得到页框号；访问目标内存 & $\varepsilon+\mu$ \\
+TLB miss（未命中） & 查 TLB；读内存页表；访问目标内存 & $\varepsilon+2\mu$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+设 TLB 查找耗时 $\varepsilon$，hit ratio（命中率）为 $\alpha$，则 effective access time（有效访问时间）为
+\[
+ \boxed{EAT=\alpha(\varepsilon+\mu)+(1-\alpha)(\varepsilon+2\mu)
+             =\varepsilon+(2-\alpha)\mu}.
+\]
+\textbf{适用条件：}单级页表、页面已驻留、串行查找，未计其他缓存与缺页处理。TLB 未命中表示映射不在这个缓存中；此时尚未根据映射访问目标数据，不存在额外一次“先访问数据失败”的主存开销。TLB miss 也不等同于 page fault（缺页异常）。相关计算见 \hyperref[exercise:SC2005-TUT08-Q03]{Tutorial 08 的页表与 TLB 计算}。
+
+\textbf{Shared pages（共享页）。}不同进程的页表可以指向相同物理页框，因而多个逻辑映射可以共享一份内容。讲义以三个进程共享编辑器代码、各自保留私有数据为例，见\relatedexercise{SC2005-L16-E02}{共享代码与私有数据图示}。补充说明：只读代码容易安全共享；若共享可写数据，仍须处理并发同步。
+
+\lecturetopic{SC2005-L16-T03}{Two-level paging：把大页表拆成页}
+
+\textbf{来源：7.33--7.36。}普通平坦页表按逻辑页号直接索引，逻辑地址空间很大时，页表本身也很大。Two-level page table（两级页表）将内层页表拆成若干页，再用一张 outer page table（外层页表）定位所需的 inner page table（内层页表）页。
+
+讲义采用 $32$ 位逻辑地址、$4\,\mathrm{KiB}=2^{12}$ bytes 页和 $4$ bytes 条目，地址划分为
+\[
+ \boxed{\underbrace{p_1}_{10\ \mathrm{bits}}\;\big|\;
+        \underbrace{p_2}_{10\ \mathrm{bits}}\;\big|\;
+        \underbrace{d}_{12\ \mathrm{bits}}}.
+\]
+$p_1$ 选择外层表的一行，该行定位一页内层页表；$p_2$ 选择这一页中的一行，取得目标页框号；$d$ 定位目标页框内的字节。各位数与表大小的推导见\relatedexercise{SC2005-L16-E03}{32 位地址的两级页表计算}。
+
+\begin{center}
+\input{figures/two-level-page-walk}
+
+{\small 根据讲义 7.36 原创重绘；$S$ 为页大小，$F_1,F_2$ 均为物理页框号。}
+\end{center}
+
+用讲义参数补全每一步的物理地址计算：
+\[
+\begin{aligned}
+ \text{外层条目地址}&=\mathrm{PTBR}+4p_1
+                   &&\longrightarrow F_1,\\
+ \text{内层条目地址}&=F_1S+4p_2
+                   &&\longrightarrow F_2,\\
+ \text{目标物理地址}&=F_2S+d,
+                   &&S=4096.
+\end{aligned}
+\]
+这里 $F_1$ 对应\emph{保存内层页表的页框}，$F_2$ 才对应\emph{目标数据的页框}；条目大小 $4$ bytes 与页大小 $4096$ bytes 不可混用。
+
+\textbf{收益与代价。}大页表可按页分散分配，无须占用一个巨大的连续区域。在不计 TLB 和其他缓存、各页均驻留时，查外层、查内层、读数据共需三次主存访问。若 TLB 命中缓存的最终映射，可跳过两级页表访问。
+
+\textbf{空间补充。}稀疏地址空间可以只建立需要的内层表页，减少实际页表存储；这取决于实现和映射分布。若所有内层表页都建立，两级结构还会多出外层表，不能笼统断言“两级页表一定更省空间”。
+
+\lecturetopic{SC2005-L16-T04}{Inverted page table：按物理页框建表}
+
+\textbf{来源：7.37--7.38。}Inverted page table（倒排页表）在讲义模型中由全系统共用：\textbf{每个物理页框对应一行}，第 $i$ 行记录占用该页框的 $\langle\mathrm{PID},p\rangle$，即进程标识和逻辑页号。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+比较 & 普通完整单级页表 & 倒排页表 \\
+\midrule
+组织方式 & 通常每个进程一张表 & 讲义模型中全系统一张表 \\
+一行对应什么 & 该进程的一个逻辑页 & 一个物理页框 \\
+一行记录什么 & 对应的物理页框号等 & 占用者的 PID 和逻辑页号等 \\
+表有多少行 & 所覆盖的逻辑页数 & 物理页框数 \\
+查找方向 & 用逻辑页号索引，读出页框号 & 匹配 $(\mathrm{PID},p)$，找到所在行号 $i$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+设物理内存容量为 $M$ bytes、页大小为 $S$ bytes，则倒排页表的条目数为 $M/S$，不随某个进程的逻辑地址空间大小变化。\textbf{条目数是行数；条目内容中的 $p$ 是页号。}若第 $5$ 行存着 $(P_2,17)$，表示进程 $P_2$ 的逻辑页 $17$ 位于物理页框 $5$，不是说这张表有 $17$ 行。
+
+访存时按 $(\mathrm{PID},p)$ 搜索，若匹配到第 $i$ 行，则
+\[
+ \langle\mathrm{PID},p,d\rangle\longrightarrow\langle i,d\rangle,
+ \qquad PA=iS+d.
+\]
+讲义把 PID 写入查找信息，是为了区分不同进程中的同号逻辑页；不意味着应用程序的每个普通指针都必须显式包含 PID。表按物理页框组织，而请求按逻辑页查找，因此不能直接用逻辑页号索引它；讲义指出其代价是查找时间增加。
+
+\lecturetopic{SC2005-L16-T05}{Segmentation：按逻辑组成分段}
+
+\textbf{来源：7.39--7.44；7.45--7.52 总结。}Segmentation（分段）将程序按逻辑组成划为若干 segment（段），例如主程序、子程序、栈、符号表。段长可变；一个进程的不同段可分散放置，但\textbf{基本分段模型中，每个段内部仍占据连续物理区域}。
+
+逻辑地址写成 $\langle s,d\rangle$：$s$ 为 segment number（段号），$d$ 为段内偏移。Segment table（段表）的每行包含 base（起始物理地址）和 limit（段长）；STBR 指向段表，STLR 记录程序的段数。
+
+\textbf{先检查，再转换。}对单字节访问，先检查段号 $0\le s<\mathrm{STLR}$，再检查
+\[
+ 0\le d<\mathrm{limit}[s].
+\]
+检查通过后，$\boxed{PA=\mathrm{base}[s]+d}$；否则产生越界异常。合法偏移的上界不包含 limit，不能先把越界偏移与 base 相加后，再因结果落在某处物理内存中就判合法。讲义的 $\langle3,128\rangle\mapsto3328$ 例题见\relatedexercise{SC2005-L16-E04}{分段地址转换}。
+
+段的长度不同，分配问题与动态分区相似，可以采用 First-fit 或 Best-fit。段释放后留下大小不同的空洞，因而分段仍可能产生\textbf{外部碎片}。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+基本模型 & 动态连续分配 & 分页 & 分段 \\
+\midrule
+分配单位 & 整个进程的连续区域 & 固定大小的页／页框 & 可变长度的逻辑段 \\
+物理连续性 & 整个进程连续 & 每页连续，页间可分散 & 每段连续，段间可分散 \\
+转换形式 & $B+a$ & $f(p)S+d$ & $\mathrm{base}[s]+d$ \\
+典型碎片 & 外部碎片 & 内部碎片 & 外部碎片 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+表中连续分配特指按需切分的动态分区；上一讲的固定分区还可能有内部碎片。
+
+\textbf{一分钟回顾。}分页转换页号、保留页内偏移；逻辑页号与物理页框号的位数可以不同。TLB 缓存映射，单级页表未命中时才去内存读页表。两级页表把大表拆成页，用两次索引找到数据页框；倒排页表每个物理页框一行，按 PID 与逻辑页号匹配。分段按逻辑组成建立 base 与 limit，必须先确认偏移严格小于段长。至此完成本次 Memory Organization 讲义范围。
+\endgroup

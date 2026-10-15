@@ -1,0 +1,110 @@
+% Based on templates/lecture-example.tex. Source diagrams and worked examples;
+% no conversational check questions or learner-answer records included.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2005-L16-EX}{第 16 讲：分页与分段的地址转换}
+
+\textbf{日期：}2026-10-15（第九教学周）。
+\textbf{来源：}Memory Organization，7.25--7.28、7.32--7.36、7.43。
+图示、数值与分段原题已核对；补全计算单独说明。
+
+\exercisequestion{SC2005-L16-E01}{4-byte 页：逻辑地址 7 如何映射到物理地址}
+\nopagebreak[4]
+\textbf{来源与条件。}7.25--7.28 的图示：逻辑空间为 $16$ bytes、物理内存为 $32$ bytes，页和页框大小均为 $4$ bytes。逻辑字节按顺序存储 a--p；映射为
+\begin{center}
+\begin{tabular}{@{}crl@{}}
+\toprule
+逻辑页号 & 物理页框号 & 页内容 \\
+\midrule
+0 & 5 & a, b, c, d \\
+1 & 6 & e, f, g, h \\
+2 & 1 & i, j, k, l \\
+3 & 2 & m, n, o, p \\
+\bottomrule
+\end{tabular}
+\end{center}
+解释图中访问字符 h（逻辑地址 $7$）的转换。对应\relatedtopic{SC2005-L16-T01}{分页地址转换}。
+
+\begin{checkedsolution}
+$S=4$，页内偏移占 $2$ 位；$4$ 个逻辑页的页号占 $2$ 位，$8$ 个物理页框的页框号占 $3$ 位。
+\[
+ p=\lfloor7/4\rfloor=1,\qquad d=7\bmod4=3,\qquad
+ f=\mathrm{PageTable}[1]=6.
+\]
+于是 $PA=6\times4+3=27$。二进制形式是
+\[
+  \underbrace{01}_{p=1}\,\big|\,\underbrace{11}_{d=3}
+  \quad\longrightarrow\quad
+  \underbrace{110}_{f=6}\,\big|\,\underbrace{11}_{d=3}.
+\]
+页框 $6$ 占用地址 $24$--$27$，h 位于末字节。偏移不变；逻辑地址 $4$ 位、物理地址 $5$ 位。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L16-E02}{三份逻辑映射，共享一份编辑器代码}
+\nopagebreak[4]
+\textbf{来源与条件。}7.32 的三个进程 $P_1,P_2,P_3$，各自逻辑空间都含三页编辑器代码 ed1、ed2、ed3 和一页私有数据。图中页表如下，表内数字都是物理页框号。对应\relatedtopic{SC2005-L16-T02}{共享页}。
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+逻辑页内容 & $P_1$ 的映射 & $P_2$ 的映射 & $P_3$ 的映射 \\
+\midrule
+ed1 & 3 & 3 & 3 \\
+ed2 & 4 & 4 & 4 \\
+ed3 & 6 & 6 & 6 \\
+私有数据 & 1 & 7 & 2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{checkedsolution}
+三张页表的代码映射相同，所以三个进程分别看到自己的逻辑代码页，但物理内存中每页代码只有一份。数据映射分别指向页框 $1,7,2$，相互独立。
+
+\textbf{由原图补全的容量计算：}不含页表等管理开销，代码占 $3$ 个页框，私有数据占 $3$ 个页框，总共 $6$ 个页框；若三份代码均各自复制，则需 $3\times4=12$ 个页框。映射数与物理副本数并不相同。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L16-E03}{32 位地址、4 KiB 页与两级页表}
+\nopagebreak[4]
+\textbf{来源与条件。}7.33--7.36：按字节寻址，逻辑地址为 $32$ 位，页大小 $4\,\mathrm{KiB}$，每个页表条目 $4$ bytes。求完整单级页表的条目数和大小，再把页表按页划分，解释 $p_1,p_2,d$ 的位数。对应\relatedtopic{SC2005-L16-T03}{两级页表}。
+
+\begin{checkedsolution}
+页大小 $S=4096=2^{12}$ bytes，所以 $d$ 占 $12$ 位，剩余页号占 $32-12=20$ 位。完整单级页表为
+\[
+ N_{\rm PTE}=2^{20},\qquad
+ \mathrm{size}=2^{20}\times4=2^{22}\ \mathrm{bytes}=4\,\mathrm{MiB}.
+\]
+每页内层页表可容纳 $4096/4=1024=2^{10}$ 个条目，故内层索引 $p_2$ 占 $10$ 位。覆盖全部逻辑页需要 $2^{20}/2^{10}=2^{10}$ 页内层页表，外层表有 $2^{10}$ 个条目，故 $p_1$ 也占 $10$ 位。于是
+\[
+  p_1:p_2:d=10:10:12,\qquad
+  \mathrm{outer\ size}=2^{10}\times4=4\,\mathrm{KiB}.
+\]
+一次转换先用 $p_1$ 查外层表，得到内层表页位置；再用 $p_2$ 查内层表，得到数据页框；最后加偏移 $d$。没有 TLB 命中或其他缓存帮助时，需要两次页表读取和一次数据读取。
+
+\textbf{稀疏分配的补充推导。}若仅需 $k$ 页内层页表，表存储为
+\[
+  4\,\mathrm{KiB}+k\times4\,\mathrm{KiB}.
+\]
+一页内层表覆盖 $4\,\mathrm{MiB}$ 连续逻辑地址。所需映射若都落在同一个外层条目覆盖的区域，$k=1$，表共 $8\,\mathrm{KiB}$；全部内层页存在时，$k=1024$，表共 $4\,\mathrm{MiB}+4\,\mathrm{KiB}$，均不含数据页。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L16-E04}{分段：转换地址并检查段长边界}
+\nopagebreak[4]
+\textbf{原题与条件。}7.43（7.52 重述）：给定以下段表，将逻辑地址 $\langle3,128\rangle$ 转为物理地址。Base 和 limit 均按字节计。对应\relatedtopic{SC2005-L16-T05}{分段地址转换}。
+\begin{center}
+\begin{tabular}{@{}crr@{}}
+\toprule
+段号 & Limit（长度） & Base（起点） \\
+\midrule
+0 & 1000 & 1400 \\
+1 & 400 & 6300 \\
+2 & 400 & 4300 \\
+3 & 1100 & 3200 \\
+4 & 1000 & 4700 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{checkedsolution}
+段号 $3$ 有效，base $=3200$、limit $=1100$；$0\le128<1100$，故 $PA=3200+128=\boxed{3328}$。
+
+\textbf{边界说明。}段 $3$ 占据 $[3200,4300)$，最后一个合法字节在 $4299$。偏移 $1100$ 越界，即使相加得到的 $4300$ 是段 $2$ 的起点，也不能作为段 $3$ 的合法访问。
+\end{checkedsolution}
+\endgroup

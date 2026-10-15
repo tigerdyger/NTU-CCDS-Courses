@@ -1,0 +1,15 @@
+% Original schematic based on Memory Organization.pdf, slide 7.36.
+\begin{tikzpicture}[font=\small,>=Latex,
+  block/.style={draw=noteBlue,fill=blue!5,minimum width=3.0cm,
+                minimum height=1.05cm,align=center},
+  hint/.style={align=center,font=\footnotesize,text width=4.2cm}]
+  \node[block] (outer) at (1.7,0) {外层页表\\读出 $F_1$};
+  \node[block] (inner) at (6.6,0) {一页内层页表\\读出 $F_2$};
+  \node[block,fill=orange!12] (data) at (11.5,0) {目标页框\\读取数据／指令};
+  \node[hint] at (1.7,1.15) {PTBR 定位表\\$p_1$ 选择条目};
+  \node[hint] at (6.6,1.15) {$F_1S$ 定位表页\\$p_2$ 选择条目};
+  \node[hint] at (11.5,1.15) {$F_2S$ 定位页框\\$d$ 选择字节};
+  \draw[->,thick,noteBlue] (outer) -- node[above] {$F_1$} (inner);
+  \draw[->,thick,noteBlue] (inner) -- node[above] {$F_2$} (data);
+  \node[font=\footnotesize] at (6.6,-1) {未命中 TLB 且各页驻留：两次页表读取，加一次目标内容访问};
+\end{tikzpicture}
