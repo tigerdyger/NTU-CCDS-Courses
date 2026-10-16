@@ -1,0 +1,90 @@
+% Based on templates/lecture.tex; actual session 17, 2026-10-16 (Week 9).
+% Virtual Memory.pdf: slides 8.1--8.16 (PDF pp. 1--16).
+% Video title only; the three-session division is a study plan, not a verified timetable.
+
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 17 节课：虚拟内存与按需调页}
+\label{lecture:SC2005-L17}
+
+\lecturemeta
+  {SC2005-L17}
+  {2026-10-16（第九教学周）}
+  {Virtual Memory，Part 8}
+  {8.1--8.16（PDF pp.~1--16）；含页面置换机制，不含具体置换算法}
+  {Intro \& Demand Paging，仅按提供的标题对应；视频与字幕不可用}
+  {已完成学习并要求整理；讲义文字与关键图示已核对；三节划分为学习安排}
+
+\keyidea{分页建立逻辑页到物理页框的映射；虚拟内存进一步允许部分页面暂不驻留。访问尚未驻留的合法页面时，由操作系统调入；没有空闲页框时先置换旧页，再恢复原指令。容量收益伴随调页开销，因此需要控制缺页率。}
+
+\lecturetopic{SC2005-L17-T01}{Virtual memory 与按需调页}
+
+\textbf{来源：8.2--8.8。}Swapping（交换）把进程的内存映像暂时移到 backing store（后备存储），需要时换回。讲义以磁盘作为后备存储；交换主要开销来自数据传输，搬运量越大，传输时间通常越长。它可以腾出内存，并支持更多进程交替运行。
+
+Virtual memory（虚拟内存）允许\textbf{进程只有部分页面在物理内存中时就执行}。逻辑地址空间可以大于实际可用 RAM；8.5 中的 $n>m$ 表示逻辑页数可超过物理页框数。虚拟地址范围受寻址能力限制；实际可支持的数据量还受内存、后备存储等资源约束。提高 multiprogramming（多道程序并发程度）可能提高 CPU 利用率，但并非越多越好，过量调页导致的 thrashing（抖动）留待后续讨论。
+
+Demand paging（按需调页）以页为单位，在实际访问时调入未驻留页面。逻辑地址仍为 $\langle p,d\rangle$；page-table entry（页表项，记录某个逻辑页的一行）除页框号外，还需要反映驻留状态。
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+讲义中的标记 & 含义 & 访问时的处理 \\
+\midrule
+Valid：\texttt{v} & 页面已驻留，页表记录物理页框号 $f$ & 转换为 $PA=fS+d$，$S$ 为页大小 \\
+Invalid：\texttt{i} & 页面未驻留，需要定位后备存储 & 触发 page fault（缺页异常），由 OS 处理 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{模型边界。}讲义将初始页面全部标为 \texttt{i}，对应纯按需装入；第一次取指也可能缺页。这里的 \texttt{i} 表示未驻留，不能单凭它断定地址非法。补充说明：OS 仍须核查映射与访问权限；非法访问不能靠调页修复。讲义还把磁盘定位信息简化到页表中，并画出完整进程映像的后备副本；实际系统可另用数据结构管理这些信息。
+
+\textbf{与 TLB 的区别。}TLB miss（快表未命中）表示没有缓存到映射，继续查页表即可判断驻留状态。若页已在 RAM 中，则无需从磁盘调入；\textbf{TLB miss 不等于 page fault}。8.8 的指令页与数据页示例见\relatedexercise{SC2005-L17-E01}{\texttt{load G} 的缺页处理}。
+
+\lecturetopic{SC2005-L17-T02}{Page fault：调入页面并重试原指令}
+
+\textbf{来源：8.9--8.10。}检测到页面未驻留后，处理器通过 trap（陷入）把控制权交给 OS，保存执行状态。对合法访问，OS 定位后备页、取得可用页框并安排磁盘读取。只有页面准备好，才能建立有效映射并恢复执行。
+
+\begin{center}
+\input{figures/demand-paging-flow}
+
+{\small 根据讲义 8.9--8.10 原创重绘；图示限于合法、可由后备存储调入的页面。}
+\end{center}
+
+页面装入页框 $f$ 后，需要把页表中的页框号更新为 $f$，同时将驻留标记改为 \texttt{v}。随后\textbf{重新执行引发缺页的那条指令}，完成此前未完成的访问。它既不跳过该指令，也不从程序开头重跑。
+
+\textbf{调度补充。}等待磁盘 I/O 时，该进程通常阻塞，CPU 可以运行其他就绪进程；读入完成后，原进程变为可继续执行，并在再次得到 CPU 时恢复。并非整个系统都必须空等磁盘。
+
+\lecturetopic{SC2005-L17-T03}{Effective access time：缺页率与平均开销}
+
+\textbf{来源：8.11--8.12。}缺页包含异常处理、状态保存与恢复，以及磁盘 I/O；其耗时通常远大于一次正常内存访问。令 $p\in[0,1]$ 为每次访问的缺页概率，$t_m$ 为无缺页时的访问时间，$t_f$ 为发生缺页时该次访问的\textbf{总时间}，则
+\[
+ \boxed{\mathrm{EAT}=(1-p)t_m+pt_f
+                    =t_m+p(t_f-t_m)}.
+\]
+两种互斥情况按概率加权：$p=0$ 时为 $t_m$，$p=1$ 时为 $t_f$。$t_m$ 是否包含地址转换，应按题目条件确定。若题目给的是正常访问之外的\emph{额外}缺页处理开销 $T$，则 $t_f=t_m+T$，代入后为 $\mathrm{EAT}=t_m+pT$，不可重复加计。
+
+即使 $p$ 很小，也应比较 $pt_f$ 与 $t_m$，而不能直接忽略缺页项。采用 $t_m=100$ ns、$t_f=10$ ms 的补充算例见\relatedexercise{SC2005-L17-E03}{低缺页率下的平均访问时间}；该数值例为自编，不是讲义原题。
+
+\lecturetopic{SC2005-L17-T04}{Page replacement 与 Dirty bit}
+
+\textbf{来源：8.13--8.16。}发生缺页且没有可用空闲页框时，需要 page replacement（页面置换）。置换算法选择 victim page（被置换页），释放其页框给需要的页面。旧页将来仍可能被访问，必须保留可恢复的内容。\textbf{内存已满本身不会让已驻留页面的访问发生缺页。}
+
+若旧页占用页框 $f$，按讲义流程：必要时写回旧页，将其页表项标为 \texttt{i}；把新页读入页框 $f$，再将新页映射设为 $(f,\texttt{v})$。页框没有改变，改变的是占用它的逻辑页；旧映射必须失效，避免把新页内容误当成旧页。
+
+Dirty bit／Modify bit（脏位／修改位）表示页面自装入后是否被修改。在讲义的后备副本模型中：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+状态 & 内容与后备副本的关系 & 置换时的数据传输 \\
+\midrule
+有空闲页框 & 不需要移出旧页 & 读入新页 \\
+旧页 dirty $=0$ & 未修改，后备副本仍可恢复内容 & 丢弃内存副本，读入新页 \\
+旧页 dirty $=1$ & 已修改，需保留新内容 & 写回旧页，再读入新页 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+只读访问不会使页面变脏；写入修改才会。\textbf{驻留标记回答“是否在内存”，脏位回答“是否修改”}。省去干净页写回，可以减少缺页服务时间；dirty victim 则可能增加一次写盘。讲义的 \texttt{load M} 情境见\relatedexercise{SC2005-L17-E02}{内存已满时的页面置换}。具体选择哪页留到下一讲的置换算法。
+
+\textbf{一分钟回顾。}虚拟内存允许部分页面驻留，按需调页在访问未驻留的合法页时将其装入。缺页处理要保存状态、取得页框、读入页面、更新映射，并重试原指令；TLB 未命中只代表缺少缓存映射。平均访问时间取决于缺页概率与缺页代价的乘积。没有空闲页框时置换旧页，干净页可省去写回，脏页需要先保存修改。
+\endgroup

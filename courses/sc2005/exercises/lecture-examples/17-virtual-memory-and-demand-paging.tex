@@ -1,0 +1,47 @@
+% Based on templates/lecture-example.tex. E01--E02 interpret source diagrams;
+% E03 is an explicitly self-composed numerical illustration, not a source problem.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2005-L17-EX}{第 17 讲：缺页处理与访问时间}
+
+\textbf{日期：}2026-10-16（第九教学周）。
+\textbf{来源：}Virtual Memory 8.8--8.16。前两例据讲义图示整理；第三例为自编数值说明。图示、公式与计算已核对。
+
+\exercisequestion{SC2005-L17-E01}{指令已在内存，数据页仍可能缺页}
+\nopagebreak[4]
+\textbf{图示与条件。}8.8--8.10：逻辑页 $0,2,5$ 分别位于物理页框 $4,6,9$。页 $2$ 中的 \texttt{load G} 访问逻辑页 $6$ 中的 G，页 $6$ 标记为 \texttt{i}。说明缺页原因，以及把 G 所在页读入空闲页框 $k$ 后如何继续。对应\relatedtopic{SC2005-L17-T02}{缺页处理流程}。
+
+\begin{checkedsolution}
+逻辑页 $2$（物理页框 $6$）中的指令已驻留，但数据 G 位于未驻留的\emph{逻辑页 $6$}。页号与页框号是两种编号；指令可取出不能推出数据也已在内存。
+
+访问 G 时触发缺页，OS 保存状态、定位后备页，将它读入空闲页框 $k$。读入完成后，修改逻辑页 $6$ 对应的页表项：页框号设为 $k$、标记设为 \texttt{v}。恢复时重新执行 \texttt{load G}。若 G 的页内偏移为 $d_G$、页大小为 $S$，此次地址转换得到 $kS+d_G$；无需重启整个程序。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L17-E02}{内存已满时，如何完成 \texttt{load M}}
+\nopagebreak[4]
+\textbf{图示与条件。}8.13--8.16：User 1 的逻辑页 $0,1,2$ 分别位于物理页框 $3,4,5$；页 $1$ 的 \texttt{load M} 访问尚未驻留的页 $3$。内存已满，设算法选中页框 $f$ 中的旧页（原图未指定具体 victim）。说明映射更新与脏位的作用。对应\relatedtopic{SC2005-L17-T04}{页面置换与脏位}。
+
+\begin{checkedsolution}
+访问 M 引发缺页。若旧页 dirty $=0$，后备副本仍然有效，无需写盘；若 dirty $=1$，则先把需要保留的修改写回。旧页的驻留标记改为 \texttt{i}，之后将 M 所在的整页读入腾出的页框 $f$，把 User 1 的逻辑页 $3$ 映射为 $(f,\texttt{v})$，再重试 \texttt{load M}。
+
+在讲义的简化模型下，只计这次置换所需的页面数据传输：干净旧页对应一次读入；脏旧页对应一次写回加一次读入。置换释放的是物理页框，旧页面的逻辑身份仍可保留，未来访问时可再调入。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L17-E03}{低缺页率也可能使平均访问时间翻倍}
+\nopagebreak[4]
+\textbf{自编算例，依据 8.11 的公式。}无缺页访问耗时 $t_m=100$ ns，缺页分支完成该次访问的\emph{总时间}为 $t_f=10$ ms，缺页概率 $p=10^{-5}$。计算 EAT 并与无缺页情况比较。对应\relatedtopic{SC2005-L17-T03}{平均访问时间}。
+
+\begin{checkedsolution}
+先统一单位：$10\ \mathrm{ms}=10^7\ \mathrm{ns}$。因此
+\[
+\begin{aligned}
+ \mathrm{EAT}
+   &=(1-10^{-5})\times100+10^{-5}\times10^7\\
+   &=99.999+100=199.999\ \mathrm{ns},\\
+ \frac{\mathrm{EAT}}{t_m}&=1.99999\approx2.
+\end{aligned}
+\]
+平均每十万次访问缺页一次，平均访问时间仍接近翻倍，因为单次缺页代价是普通访问的十万倍。判断缺页项是否可忽略，应比较其加权耗时，而不能仅根据概率很小作结论。
+\end{checkedsolution}
+\endgroup

@@ -1,0 +1,17 @@
+% Original schematic based on Virtual Memory.pdf, slides 8.9--8.10.
+\begin{tikzpicture}[font=\small,>=Latex,
+  stage/.style={draw=noteBlue,fill=blue!5,text width=3.3cm,
+                minimum height=1.05cm,align=center},
+  flow/.style={->,thick,noteBlue}]
+  \node[stage] (fault) at (0,0) {1. 访问页 $p$\\发现未驻留};
+  \node[stage] (os) at (4.7,0) {2. 保存状态并核查\\定位后备存储};
+  \node[stage] (frame) at (9.4,0) {3. 取得页框 $f$\\必要时先置换};
+  \node[stage,fill=orange!12] (read) at (9.4,-1.8) {4. 磁盘 I/O\\将所需页读入 $f$};
+  \node[stage] (pte) at (4.7,-1.8) {5. 更新页表\\页框 $f$，标记 \texttt{v}};
+  \node[stage] (retry) at (0,-1.8) {6. 恢复执行\\重试原指令};
+  \draw[flow] (fault) -- (os);
+  \draw[flow] (os) -- (frame);
+  \draw[flow] (frame) -- (read);
+  \draw[flow] (read) -- (pte);
+  \draw[flow] (pte) -- (retry);
+\end{tikzpicture}
