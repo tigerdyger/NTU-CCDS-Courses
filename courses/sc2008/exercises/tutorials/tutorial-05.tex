@@ -1,0 +1,150 @@
+% Tutorial set: 05
+% Source: Part 2-Tutorial 1-Questions.pdf, printed p. 1 (PDF p. 1), Questions 1--4
+% Session date: 2026-10-16 (Week 9)
+% Verification: source, Q3 clarification and calculations checked; no official solution supplied
+
+\exercisegroup{SC2008-TUT05}{Tutorial 05：IP 地址规划与分片}
+\label{tutorial:SC2008-TUT05}
+
+\exercisemeta
+  {SC2008-TUT05}
+  {2026-10-16（Week 9）}
+  {Part 2-Tutorial 1-Questions，Tutorial 2-1: Network Layer -- IP Addressing and Fragmentation；p.~1（PDF p.~1），Questions 1--4}
+  {已核对原题、Q3 补充说明与计算；未提供官方参考答案}
+  {已完成讨论；以下为整理后的解答}
+
+\exercisequestion{SC2008-TUT05-Q01}{学校网络的等大小子网划分}
+
+\textbf{对应讲义：}\relatedtopic{SC2008-L06-T02}{IPv4 地址、CIDR 与子网规划}
+
+\textbf{题目。}大学获得 \texttt{155.69.0.0/16} 地址块。现有 10 所学院，未来可能增加到 15 所；每所目前最多 2000 台主机，其中 3 所未来可能增长到 4000 台。为各学院分配 subnet address（子网地址）与 subnet mask（子网掩码），满足增长需求。
+
+\begin{checkedsolution}
+采用 FLSM（固定长度子网掩码），让每个学院的子网均可容纳至少 4000 台主机。这是一套满足条件的方案，题目不要求地址利用率最高。
+\[
+  2^{11}-2=2046<4000,\qquad 2^{12}-2=4094\geq4000.
+\]
+因此保留 12 个 host bits（主机位），使用 \texttt{/20}，掩码为 \texttt{255.255.240.0}。从原 \texttt{/16} 借用 4 位划分子网，共有 $2^4=16$ 块，足够分配给 15 所学院，并留出 1 块。
+
+第三个 octet（八位组）以 $256-240=16$ 为步长。第 $i$ 所学院可分配
+\[
+  \boxed{\texttt{155.69.}\bigl[16(i-1)\bigr]\texttt{.0/20}},\qquad i=1,\ldots,15.
+\]
+\begin{center}
+\small
+\begin{tabular}{@{}clcl@{}}
+\toprule
+学院 & 子网地址 & 学院 & 子网地址 \\
+\midrule
+1 & \texttt{155.69.0.0/20} & 9 & \texttt{155.69.128.0/20} \\
+2 & \texttt{155.69.16.0/20} & 10 & \texttt{155.69.144.0/20} \\
+3 & \texttt{155.69.32.0/20} & 11 & \texttt{155.69.160.0/20} \\
+4 & \texttt{155.69.48.0/20} & 12 & \texttt{155.69.176.0/20} \\
+5 & \texttt{155.69.64.0/20} & 13 & \texttt{155.69.192.0/20} \\
+6 & \texttt{155.69.80.0/20} & 14 & \texttt{155.69.208.0/20} \\
+7 & \texttt{155.69.96.0/20} & 15 & \texttt{155.69.224.0/20} \\
+8 & \texttt{155.69.112.0/20} & 备用 & \texttt{155.69.240.0/20} \\
+\bottomrule
+\end{tabular}
+\end{center}
+各块均有 4094 个可用地址。例如第一块覆盖 \texttt{155.69.0.0} 至 \texttt{155.69.15.255}；两端分别为网络地址与广播地址。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT05-Q02}{由子网地址与掩码确定广播地址}
+
+\textbf{对应讲义：}\relatedtopic{SC2008-L06-T02}{IPv4 地址、CIDR 与子网规划}
+
+\textbf{题目。}某机构获分配一个 \texttt{/16} 地址块，并将其划分为多个子网。其中一个子网为 \texttt{145.32.128.0}，掩码为 \texttt{255.255.224.0}。求该子网的 broadcast address（广播地址）。
+
+\begin{checkedsolution}
+掩码对应 \texttt{/19}，第三段步长为 $256-224=32$。该块覆盖第三段 $128$ 至 $159$，第四段覆盖 $0$ 至 $255$，因此
+\[
+  \boxed{\text{广播地址}=\texttt{145.32.159.255}}.
+\]
+可用主机范围为 \texttt{145.32.128.1} 至 \texttt{145.32.159.254}。广播地址的全部主机位均为 1；下一块从 \texttt{145.32.160.0} 开始。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT05-Q03}{带固定主机地址的 VLSM 与路由器接口分配}
+
+\textbf{对应讲义：}\relatedtopic{SC2008-L06-T02}{IPv4 地址、CIDR 与子网规划}
+
+\textbf{题目。}在 \texttt{193.169.1.0/24} 中为下图网络分配地址。LAN A、B、C、D 分别需要 30、100、60、10 个可用地址；A 中已有主机 \texttt{193.169.1.129}，D 中已有主机 \texttt{193.169.1.190}。为每台路由器的每个接口分配合适的 IP 地址与掩码。图中链路数字表示 cost（代价）。
+
+\textbf{原题补充说明。}本题的 hosts 数量\emph{已经包含该 LAN 的路由器接口}。例如 A 的 30 个地址供 29 台终端与 1 个路由器接口使用，无须再加 1。
+
+\begin{center}
+  \input{figures/tutorial05-subnet-topology}
+
+  {\footnotesize 根据原题 Figure Q3 重绘；数字保留原图链路代价。}
+\end{center}
+
+\begin{checkedsolution}
+\textbf{先确定容量，再确定位置。}选择最小 $h$ 使 $2^h-2$ 不小于所需地址数，可得 A 用 \texttt{/27}、B 用 \texttt{/25}、C 用 \texttt{/26}、D 用 \texttt{/28}。已知主机 IP 限制地址块的位置：
+\begin{itemize}
+  \item A 的块大小为 32；包含 \texttt{.129} 的块是 \texttt{.128--.159}。
+  \item D 的块大小为 16；包含 \texttt{.190} 的块是 \texttt{.176--.191}。
+  \item B 的 \texttt{/25} 只能取下半块 \texttt{.0--.127}，上半块会与 A、D 重叠。
+  \item C 的 \texttt{/26} 放在 \texttt{.192--.255}，满足 60 个可用地址的需求。
+\end{itemize}
+
+\textbf{再分配路由器互连链路。}剩余 \texttt{.160--.175} 共 16 个地址。四条点对点链路各需两个可用接口地址；按本讲的传统子网划分，每条使用 \texttt{/30}，恰好各占 4 个地址。
+
+下面给出一套完整分配。表内 \texttt{.x} 均表示 \texttt{193.169.1.x}，各接口使用所在行的掩码。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l l X@{}}
+\toprule
+网络/链路 & 子网地址 & 子网掩码 & 路由器接口 IP \\
+\midrule
+LAN A & \texttt{.128/27} & \texttt{255.255.255.224} & R1：\texttt{.130} \\
+LAN B & \texttt{.0/25} & \texttt{255.255.255.128} & R3：\texttt{.1} \\
+LAN C & \texttt{.192/26} & \texttt{255.255.255.192} & R2：\texttt{.193} \\
+LAN D & \texttt{.176/28} & \texttt{255.255.255.240} & R4：\texttt{.188} \\
+R1--R2 & \texttt{.160/30} & \texttt{255.255.255.252} & R1：\texttt{.161}；R2：\texttt{.162} \\
+R1--R3 & \texttt{.164/30} & \texttt{255.255.255.252} & R1：\texttt{.165}；R3：\texttt{.166} \\
+R2--R4 & \texttt{.168/30} & \texttt{255.255.255.252} & R2：\texttt{.169}；R4：\texttt{.170} \\
+R3--R4 & \texttt{.172/30} & \texttt{255.255.255.252} & R3：\texttt{.173}；R4：\texttt{.174} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{核验。}各地址块边界对齐、互不重叠，共占 $128+64+32+16+4\times4=256$ 个地址。全部 12 个路由器接口均使用可用地址，且避开既有主机 \texttt{.129} 与 \texttt{.190}。
+
+\textbf{网络地址与接口地址。}\texttt{193.169.1.188/28} 是合法的接口配置，其主机位清零后得到网络地址 \texttt{193.169.1.176}，广播地址为 \texttt{193.169.1.191}。给出子网时应写 \texttt{193.169.1.176/28}；块的起点须按块大小对齐。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT05-Q04}{MTU 为 500 字节时的 IPv4 分片}
+
+\textbf{对应讲义：}\relatedtopic{SC2008-L06-T04}{MTU、IPv4 分片与 ICMP 诊断}
+
+\textbf{题目。}一个总长度为 3000 bytes 的 IP datagram（IP 数据报）经过 MTU 为 500 bytes 的链路，原始 Identification（标识）为 422。求分片数量及各片特征。
+
+\textbf{计算假设。}采用无 options（选项）的 20-byte IPv4 首部，允许分片（DF=0）；原数据报尚未分片。原题未单独给出首部长度，以下结果基于这一标准假设。
+
+\begin{checkedsolution}
+原始数据长度为 $D=3000-20=2980$ bytes。每片均有独立首部，且非末片数据长度须为 8 的倍数，因此最大非末片数据长度为
+\[
+  D_{\max}=8\left\lfloor\frac{500-20}{8}\right\rfloor=480\ \mathrm{bytes}.
+\]
+由于 $2980=6\times480+100$，共需 \textbf{7 片}。Fragment Offset（分片偏移）以 8 bytes 为单位，只累计前面各片的数据长度，不累计首部。
+
+\begin{center}
+\small
+\begin{tabular}{@{}crrrrr@{}}
+\toprule
+分片 & 数据 / bytes & 总长度 / bytes & Offset & MF & Identification \\
+\midrule
+1 & 480 & 500 & 0 & 1 & 422 \\
+2 & 480 & 500 & 60 & 1 & 422 \\
+3 & 480 & 500 & 120 & 1 & 422 \\
+4 & 480 & 500 & 180 & 1 & 422 \\
+5 & 480 & 500 & 240 & 1 & 422 \\
+6 & 480 & 500 & 300 & 1 & 422 \\
+7 & 100 & 120 & 360 & 0 & 422 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+所有片保留同一个 Identification。MF（More Fragments，后续仍有分片）在前六片为 1，最后一片为 0。最后一片从原数据的第 $360\times8=2880$ 字节偏移处开始，剩下 100 bytes；其数据长度不要求是 8 的倍数。
+\end{checkedsolution}

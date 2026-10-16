@@ -1,0 +1,25 @@
+% Original redraw of Part 2-Tutorial 1-Questions.pdf, Figure Q3, p. 1.
+\begin{tikzpicture}[
+  router/.style={draw=noteBlue,thick,circle,fill=blue!5,minimum size=0.85cm},
+  lan/.style={draw=noteBlue,rounded corners=2pt,fill=blue!3,
+    text width=3.0cm,minimum height=1.25cm,align=center,font=\small},
+  link/.style={thick,draw=noteBlue},
+  cost/.style={font=\small,fill=white,inner sep=2pt}
+]
+  \node[lan] (a) at (0,1.3) {LAN A：30 个地址\\主机 \texttt{193.169.1.129}};
+  \node[lan] (b) at (0,-1.3) {LAN B：100 个地址};
+  \node[router] (r1) at (3.3,1.3) {R1};
+  \node[router] (r3) at (3.3,-1.3) {R3};
+  \node[router] (r2) at (6.1,1.3) {R2};
+  \node[router] (r4) at (6.1,-1.3) {R4};
+  \node[lan] (c) at (9.4,1.3) {LAN C：60 个地址};
+  \node[lan] (d) at (9.4,-1.3) {LAN D：10 个地址\\主机 \texttt{193.169.1.190}};
+  \draw[link] (a) -- node[cost,above] {1} (r1);
+  \draw[link] (b) -- node[cost,above] {1} (r3);
+  \draw[link] (r2) -- node[cost,above] {1} (c);
+  \draw[link] (r4) -- node[cost,above] {1} (d);
+  \draw[link] (r1) -- node[cost,above] {5} (r2);
+  \draw[link] (r3) -- node[cost,above] {7} (r4);
+  \draw[link] (r1) -- node[cost,left] {2} (r3);
+  \draw[link] (r2) -- node[cost,right] {1} (r4);
+\end{tikzpicture}
