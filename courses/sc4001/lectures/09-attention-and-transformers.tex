@@ -1,0 +1,207 @@
+% Actual class: 09, Week 9, 2026-10-16.
+% Source: 9_attention.pdf, pp. 1--75; five video parts.
+% Prepared from templates/lecture.tex; organized around the translation task.
+
+\section{第 09 节课：Attention 与 Transformer}
+\label{lecture:SC4001-L09}
+
+\lecturemeta
+  {SC4001-L09}
+  {2026-10-16（第九周）}
+  {9\_attention：Attention Mechanisms and Transformer Fundamentals}
+  {pp.~1--75；正文与例题至 p.~70，末尾为总结、检查题与参考资料}
+  {9\_attention\_part1--5，共约 63 分钟；画面抽查及完整本地自动转写核对，转写不作为逐字准确原文}
+  {已整理；公式、维度与三道数值例题已核对，待审阅}
+
+\lecturetopic{SC4001-L09-T01}{先看任务：把输入句子变成输出句子}
+
+\textbf{来源：}pp.~3--8、57--66。
+
+上一讲的 encoder--decoder 用 RNN 处理序列，再用 attention 读取输入信息。本讲的 Transformer 用 attention 构造序列表示，不再依靠 RNN 的逐步隐藏状态递推。以讲义的翻译任务为主线：输入 \emph{I love cats}，输出 \emph{J' aime les chats}。
+
+\begin{center}
+\input{figures/transformer-information-flow}
+\end{center}
+{\small 原创信息流示意，依据 pp.~42、57、61--66；省略各子层的 residual connection（残差连接）与 LayerNorm。}
+
+Encoder（编码器）把源句编码为带上下文的表示；decoder（解码器）结合这些表示和已经生成的目标前缀，形成用于预测下一个词的表示。两个模块\textbf{内部都使用 attention}。最终由 Linear（线性层）与 softmax 将 decoder 的表示转换为词表上的概率。
+
+序列先表示成 token embeddings（词元嵌入）矩阵 $X\in\mathbb R^{N\times D}$：一行是一个 token，$N$ 为 token 数，$D$ 为特征维数。Token 可以是词／子词、图像块或氨基酸；映射到共同的嵌入空间后，可由相同的 Transformer 主干处理。讲义还概览 encoder-only 的 BERT、decoder-only 的 GPT 及视觉应用；以下集中于原始 encoder--decoder 架构。
+
+\Needspace{9\baselineskip}
+\lecturetopic{SC4001-L09-T02}{Attention：按当前需要汇总 token 表示}
+
+\textbf{来源：}pp.~8--40。
+
+\subsubsection{从相关性到加权汇总}
+
+同一个 \emph{bank} 在 \emph{river} 和 \emph{cash} 的上下文中意义不同。Attention（注意力）的作用是让当前位置按相关性读取其他位置的信息，从而更新自己的表示。Hard attention 选择特定位置；本讲的 soft attention 对各位置赋权后加权汇总。
+
+对 self-attention（自注意力），由同一个输入 $X$ 产生三组表示：
+\[
+ Q=XW_Q,\qquad K=XW_K,\qquad V=XW_V.
+\]
+Query（查询）$q_i$ 表示当前位置要找什么，key（键）$k_j$ 用于匹配，value（值）$v_j$ 是被读取的内容。各位置共享同一组投影矩阵；$W_Q,W_K,W_V$ 则分别学习。
+
+令 $W_Q,W_K\in\mathbb R^{D\times d_k}$、$W_V\in\mathbb R^{D\times d_v}$，则
+\[
+ \underbrace{Q}_{N\times d_k},\quad
+ \underbrace{K}_{N\times d_k},\quad
+ \underbrace{V}_{N\times d_v},\qquad
+ \boxed{A=\operatorname{softmax}_{\rm row}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right),
+ \quad Y=AV}.
+\]
+$QK^\top$ 是 $N\times N$ 的匹配分数矩阵，$A$ 是同形状的权重矩阵；softmax 固定一个 query，沿所有 key 位置归一化。因此
+\[
+ a_{ij}=\frac{\exp(q_i\cdot k_j/\sqrt{d_k})}
+ {\sum_{\ell=1}^{N}\exp(q_i\cdot k_\ell/\sqrt{d_k})},
+ \qquad y_i=\sum_{j=1}^{N}a_{ij}v_j,\qquad \sum_j a_{ij}=1.
+\]
+$Y\in\mathbb R^{N\times d_v}$ 仍为每个 query 保留一行。加权求和沿被读取的位置 $j$ 进行，保留 value 的特征维；\textbf{$V$ 是内容，$A$ 才是注意力权重}。完整数值计算见\relatedexercise{SC4001-L09-E01}{两 token 的 scaled dot-product attention}。
+
+\subsubsection{为什么除以平方根}
+
+Scaled dot-product attention（缩放点积注意力）控制送入 softmax 的分数尺度，避免差异过大时概率过度集中、梯度变小。按讲义假设，各 $q_i,k_i$ 相互独立、均值为 $0$、方差为 $1$，则
+\[
+ \mathbb E[q_i k_i]=0,\qquad
+ \operatorname{Var}(q_i k_i)=\mathbb E[q_i^2]\mathbb E[k_i^2]=1,
+\]
+\[
+ \operatorname{Var}(q\cdot k)=\sum_{i=1}^{d_k}1=d_k,
+ \qquad \operatorname{Var}\!\left(\frac{q\cdot k}{\sqrt{d_k}}\right)=1.
+\]
+所以缩放因子对应点积的标准差。讲义例子中，$[8,7,6]$ 的 softmax 约为 $[0.665,0.245,0.090]$；除以 $\sqrt{64}=8$ 后，约为 $[0.376,0.332,0.293]$。
+
+\subsubsection{Multi-head：并行学习不同的读取方式}
+
+单个 head 只有一套相关性与内容投影；multi-head attention（多头注意力）使用多组独立投影，使同一层能结合不同的关系：
+\[
+ H_h=\operatorname{Attention}(XW_Q^{(h)},XW_K^{(h)},XW_V^{(h)}),
+ \qquad h=1,\ldots,H,
+\]
+\[
+ \operatorname{MHA}(X)=\operatorname{Concat}(H_1,\ldots,H_H)W_O.
+\]
+每个 $H_h\in\mathbb R^{N\times d_v}$；沿\textbf{特征维}拼接为 $N\times Hd_v$，再由 $W_O\in\mathbb R^{Hd_v\times D}$ 投影回 $N\times D$。常取 $d_v=D/H$，在分配每头维数的同时保持总表示宽度。
+
+\lecturetopic{SC4001-L09-T03}{Encoder：读入位置，逐层形成上下文表示}
+
+\textbf{来源：}pp.~41--55。
+
+\subsubsection{输入为什么要加位置编码}
+
+Self-attention 根据内容匹配；如果没有位置信息，把输入行重排，只会使相应输出行重排，无法单凭这种运算表示词序。因此先将 positional encoding（位置编码）加到 token embedding 上，二者形状相同。
+
+讲义采用 sinusoidal encoding（正弦／余弦位置编码），$D=d_{\rm model}$，维度从 $0$ 开始编号：
+\[
+ \operatorname{PE}_{pos,2i}=\sin\!\left(\frac{pos}{10000^{2i/D}}\right),\qquad
+ \operatorname{PE}_{pos,2i+1}=\cos\!\left(\frac{pos}{10000^{2i/D}}\right).
+\]
+$pos$ 表示位置，$i$ 表示一对特征维；同一对使用相同频率，不同对使用不同频率。固定公式可计算任意位置的编码。代值例见\relatedexercise{SC4001-L09-E03}{位置 1 的前六个编码分量}。
+
+\subsubsection{一个 encoder block 怎样处理输入}
+
+原始 Transformer 将 6 个相同结构的 encoder blocks（编码器块）堆叠。每块先通过多头自注意力在位置之间交换信息，再通过逐位置的 MLP（多层感知机）做非线性变换：
+\[
+ \boxed{Z=\operatorname{LN}\bigl(X+\operatorname{MHA}(X)\bigr),\qquad
+ X'=\operatorname{LN}\bigl(Z+\operatorname{MLP}(Z)\bigr)}.
+\]
+MLP 对每一行使用同一个网络，独立处理各 token，相当于核宽为 1 的卷积式逐位置变换。Residual connection 保留直接的信息路径，便于训练深层网络；每块输出仍为 $N\times D$，可继续送入下一块。最终 encoder 输出记为 $E$。
+
+\subsubsection{LayerNorm 与残差连接的位置}
+
+Layer normalization（层归一化）对\textbf{一个 token 的全部 $D$ 个特征}计算统计量：
+\[
+ \mu=\frac1D\sum_{j=1}^{D}x_j,\qquad
+ \sigma^2=\frac1D\sum_{j=1}^{D}(x_j-\mu)^2,\qquad
+ \operatorname{LN}(x)=\gamma\odot\frac{x-\mu}{\sqrt{\sigma^2+\epsilon}}+\beta.
+\]
+$\gamma,\beta$ 是可学习的逐特征缩放和平移，$\epsilon$ 保证数值稳定。它不依赖其他 token 或其他样本的统计量；例题见\relatedexercise{SC4001-L09-E02}{四维 token 的 LayerNorm}。
+
+上面的原始结构为 post-norm（后归一化）。把某个子层记为 $F$，两种放置方式为
+\[
+ \text{Post-norm: }\operatorname{LN}(X+F(X)),\qquad
+ \text{Pre-norm: }X+F(\operatorname{LN}(X)).
+\]
+Pre-norm（前归一化）常使很深的网络更易稳定训练；post-norm 可能需要更仔细的调参。
+
+\lecturetopic{SC4001-L09-T04}{Decoder：结合目标前缀与源句，预测下一个词}
+
+\textbf{来源：}pp.~56--66。
+
+\subsubsection{两种 attention 串联在同一个 block 内}
+
+Decoder 输入是目标前缀的 embedding 加位置编码，记为 $U\in\mathbb R^{M\times D}$。每个 block 依次执行：
+\begin{enumerate}
+ \item \textbf{Masked self-attention（带掩码自注意力）：}从目标前缀中读取当前及更早位置的信息。
+ \item \textbf{Cross-attention（交叉注意力）：}以上一步的表示作为查询，读取 encoder 输出中与当前预测有关的内容。
+ \item \textbf{MLP：}逐位置进一步变换融合后的表示。
+\end{enumerate}
+每个子层都有 residual connection 与 LayerNorm。按讲义的 post-norm 图，信息流可写为
+\[
+ \begin{aligned}
+ Z_1&=\operatorname{LN}\bigl(U+\operatorname{MaskedMHA}(U)\bigr),\\
+ Z_2&=\operatorname{LN}\bigl(Z_1+\operatorname{CrossMHA}(Z_1,E)\bigr),\\
+ U'&=\operatorname{LN}\bigl(Z_2+\operatorname{MLP}(Z_2)\bigr).
+ \end{aligned}
+\]
+两种 attention 在一次前向计算中\textbf{先后执行，并随整个网络一起训练}。残差相加发生在每个子层内部；masked self-attention 的输出要继续经过 cross-attention。
+
+Cross-attention 的每个 head 使用
+\[
+ Q=Z_1W_Q,\qquad K=EW_K,\qquad V=EW_V.
+\]
+这里 $Q$ 来自 decoder，$K,V$ 来自 encoder。若目标前缀长 $M$、源句长 $N$，分数矩阵为 $M\times N$；每个目标位置对 $N$ 个源位置归一化，再汇总源句内容。Self-attention 则从同一序列取得三者。
+
+\subsubsection{表示怎样变成一个词}
+
+堆叠 decoder blocks 后得到 $H\in\mathbb R^{M\times D}$，每个前缀位置仍对应一行。生成下一个 token 时，取\textbf{最后一个位置的表示} $h=H_{M,:}\in\mathbb R^{1\times D}$。这一步选取一行，没有压平或平均整个矩阵。
+
+将讲义图中的 Linear $\to$ Softmax 按维度写清：词表含 $C$ 个 token，则
+\[
+ \underbrace{z}_{1\times C}
+ =\underbrace{h}_{1\times D}\underbrace{W_{\rm vocab}}_{D\times C}+b,
+ \qquad
+ p_j=\frac{e^{z_j}}{\sum_{k=1}^{C}e^{z_k}}.
+\]
+线性层给每个候选 token 一个分数，softmax 得到词表概率，再据此确定输出 token。Attention 提供上下文表示，词预测由这个输出层完成。
+
+\lecturetopic{SC4001-L09-T05}{训练与生成：同一结构，两种输入方式}
+
+\textbf{来源：}pp.~59--70。
+
+\subsubsection{生成时从 BOS 开始，逐步扩展前缀}
+
+没有已生成的词时，以 BOS（序列开始标记）启动。讲义的翻译过程为
+\[
+ \begin{array}{rcl}
+ \lbrack\mathrm{BOS}\rbrack&\longrightarrow&\text{J'}\\
+ \lbrack\mathrm{BOS},\text{J'}\rbrack&\longrightarrow&\text{aime}\\
+ \lbrack\mathrm{BOS},\text{J'},\text{aime}\rbrack&\longrightarrow&\text{les}\\
+ \lbrack\mathrm{BOS},\text{J'},\text{aime},\text{les}\rbrack&\longrightarrow&\text{chats}.
+ \end{array}
+\]
+每次把新 token 接到前缀后面，继续经过 decoder 与输出层，直到生成 EOS（序列结束标记）。源句的 encoder 表示供各次解码读取；目标前缀则逐步增长。这就是 autoregressive decoding（自回归解码）。
+
+\subsubsection{训练时右移答案，并遮住未来位置}
+
+训练数据已提供目标句，可以一次构造所有位置的输入与监督目标：
+\[
+ \begin{array}{c|cccc}
+ \text{Decoder 输入}&\mathrm{BOS}&\text{J'}&\text{aime}&\text{les}\\
+ \text{对应目标}&\text{J'}&\text{aime}&\text{les}&\text{chats}
+ \end{array}
+\]
+每一行隐藏表示都经过同一个词表输出层，形成各位置的预测。但位置 $i$ 不能看到作为其答案的未来输入，因此在 self-attention 分数上加 causal mask（因果掩码）：
+\[
+ A=\operatorname{softmax}_{\rm row}\!\left(\frac{QK^\top}{\sqrt{d_k}}+B\right),
+ \qquad
+ B_{ij}=\begin{cases}0,&j\le i,\\-\infty,&j>i.\end{cases}
+\]
+被遮住的位置在 softmax 后权重为 $0$。允许读取当前\emph{输入}位置，是因为它已经相对目标右移；例如预测 \emph{across} 时，只能读取 \emph{start, I, swam}。Cross-attention 读取的是已给定的源句，不需要这类防止偷看目标未来的掩码。
+
+因此训练可并行处理各目标位置；生成时尚不知道未来 token，仍要逐个产生。并行训练没有消除生成时的前缀依赖。
+
+\subsection{一分钟回顾}
+
+Transformer 将 token embedding 与位置编码送入网络；encoder 用自注意力形成输入的上下文表示。Decoder 先用 masked self-attention 读目标前缀，再用 cross-attention 读源句，随后经过 MLP。最终隐藏表示经 Linear 与词表 softmax 预测 token。Attention 内部是 $QK^\top$ 求相关性、softmax 求权重、加权汇总 $V$；训练用右移目标与因果掩码并行计算，生成从 BOS 开始逐步延长前缀。

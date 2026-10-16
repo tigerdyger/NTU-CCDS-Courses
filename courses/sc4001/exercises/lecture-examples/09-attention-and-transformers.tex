@@ -1,0 +1,82 @@
+% Source: 9_attention.pdf pp. 31--33, 47--48, 55.
+% Prepared from templates/lecture-example.tex; source numerical examples only.
+
+\exercisegroup{SC4001-L09-EX}{第 09 讲：Attention 与 Transformer}
+
+\exercisemeta
+  {SC4001-L09-EX}
+  {2026-10-16}
+  {9\_attention：pp.~31--33、47--48、55 的三道数值例题}
+  {题目、公式与数值已独立复算}
+  {已整理，待审阅}
+
+\exercisequestion{SC4001-L09-E01}{两个 token 的缩放点积注意力}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L09-T02}{Attention 的矩阵计算}。
+
+\textbf{题目（pp.~31--33）。}两个词嵌入为 $(1,2,3)$、$(4,5,6)$，投影矩阵为
+\[
+ W_Q=\begin{pmatrix}.01&.03\\.02&.02\\.03&.01\end{pmatrix},\qquad
+ W_K=\begin{pmatrix}.05&.05\\.06&.05\\.07&.05\end{pmatrix},\qquad
+ W_V=\begin{pmatrix}.02&.02\\.01&.02\\.01&.01\end{pmatrix}.
+\]
+求 $Y=\operatorname{Attention}(Q,K,V)$。
+
+\begin{workedsolution}
+将 token 按行排列，$X=\bigl(\begin{smallmatrix}1&2&3\\4&5&6\end{smallmatrix}\bigr)$。先投影：
+\[
+ Q=XW_Q=\begin{pmatrix}.14&.10\\.32&.28\end{pmatrix},\quad
+ K=XW_K=\begin{pmatrix}.38&.30\\.92&.75\end{pmatrix},\quad
+ V=XW_V=\begin{pmatrix}.07&.09\\.19&.24\end{pmatrix}.
+\]
+每个 key 有两维，故 $d_k=2$：
+\[
+ S=\frac{QK^\top}{\sqrt2}
+ \approx\begin{pmatrix}.0588&.1441\\.1454&.3567\end{pmatrix},\qquad
+ A=\operatorname{softmax}_{\rm row}(S)
+ \approx\begin{pmatrix}.4787&.5213\\.4474&.5526\end{pmatrix}.
+\]
+例如 $a_{11}=e^{S_{11}}/(e^{S_{11}}+e^{S_{12}})$；每一行单独归一化。最后汇总 values：
+\[
+ \boxed{Y=AV\approx\begin{pmatrix}.1326&.1682\\.1363&.1729\end{pmatrix}}.
+\]
+第一行即 $0.4787[.07,.09]+0.5213[.19,.24]$。两个输入 token 对应两行输出，每行保留两维 value 特征；计算使用未舍入的中间数值。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L09-E02}{一个 token 的 LayerNorm}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L09-T03}{Encoder 与归一化}。
+
+\textbf{题目（pp.~47--48）。}对 $x=[2,4,6,8]$ 做 LayerNorm，设 $\gamma=1$、$\beta=0$、$\epsilon\approx0$。
+
+\begin{workedsolution}
+只在这个 token 的四个特征上计算：
+\[
+ \mu=5,\qquad \sigma^2=\frac{9+1+1+9}{4}=5,
+ \qquad \operatorname{LN}(x)=\frac{[-3,-1,1,3]}{\sqrt5}
+ \approx[-1.34,-0.45,0.45,1.34].
+\]
+方差的分母为特征数 $4$；无需其他 token 或 batch 中其他样本的数据。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L09-E03}{正弦位置编码的前六维}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L09-T03}{位置编码}。
+
+\textbf{题目（p.~55）。}设 $pos=1$、$d_{\rm model}=512$，求正弦位置编码的第 $0$ 至第 $5$ 维。
+
+\begin{workedsolution}
+每对维度依次计算 $\sin\theta_i,\cos\theta_i$，其中 $\theta_i=1/10000^{2i/512}$：
+\begin{center}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+$i$ & 维度 $(2i,2i+1)$ & $\theta_i$ & 对应编码 \\
+\midrule
+0 & $(0,1)$ & $1$ & $(0.8415,0.5403)$ \\
+1 & $(2,3)$ & $10000^{-2/512}$ & $(0.8219,0.5697)$ \\
+2 & $(4,5)$ & $10000^{-4/512}$ & $(0.8020,0.5974)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+所以前六维为 $[0.8415,0.5403,0.8219,0.5697,0.8020,0.5974]$。只计算六个分量，公式中的总维数仍为 $512$。
+\end{workedsolution}
