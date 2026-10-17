@@ -4,14 +4,229 @@
 \newcommand{\coursecode}{SC2008}
 \newcommand{\coursetitle}{Computer Networks}
 \newcommand{\academicyear}{AY2026--27 Semester 1}
+\usepackage{needspace}
 \input{../../../shared/preamble}
+\linespread{1.12}
+\setlength{\parskip}{0.25em plus 0.1em minus 0.05em}
+\setlist{itemsep=0.1em,parsep=0pt,topsep=0.2em,partopsep=0pt}
+\ctexset{
+  section={beforeskip=1.2ex plus 0.3ex,afterskip=0.6ex},
+  subsection={beforeskip=1.3ex plus 0.3ex,afterskip=0.5ex},
+  subsubsection={beforeskip=1.1ex plus 0.2ex,afterskip=0.4ex}
+}
+\AddToHook{cmd/subsection/before}{\Needspace{6\baselineskip}}
+\clubpenalty=10000
+\widowpenalty=10000
+\raggedbottom
+\renewcommand{\exercisequestion}[2]{%
+  \Needspace{5\baselineskip}%
+  \subsubsection{#2}\label{exercise:#1}%
+}
+\renewcommand{\exercisemeta}[5]{%
+  {\small\textbf{日期：}#2\quad\textbf{来源：}#3\par}%
+}
+\renewenvironment{checkedsolution}
+  {\par\nopagebreak[4]\textbf{解答：}\ignorespaces}
+  {\par}
 \title{\textcolor{ntuRed}{\coursecode}\\[0.4em]\coursetitle\\[0.8em]\large 书面作业}
 \author{作业整理}
 
 \begin{document}
-\maketitle
+\begin{center}
+  {\Large\bfseries\textcolor{ntuRed}{\coursecode}\quad\coursetitle\quad 书面作业\par}
+  {\small\academicyear\par}
+\end{center}
 
-\section*{当前状态}
-暂无已完成并核对的书面作业。
+% Written assignment: SC2008-HW01
+% Source: completed IP LAB 01 web activities 01--10, supplied in the conversation.
+% Completion/check date: 2026-10-17; answers checked against page feedback.
+\section{Online Interactive Exercise 1：IP Addresses}
+\label{homework:SC2008-HW01}
+\exercisemeta
+  {SC2008-HW01}
+  {2026-10-17}
+  {IP LAB 01: Build a network that fits；网页 01--10}
+  {练习与 checkpoint 已完成；依据题面、反馈及计算核对}
+  {已确认提交}
+
+本题组含七项 practice activities（练习活动）、两个网页例题及五道 checkpoint（综合检查）题。对应讲义 \texttt{SC2008-L06-T02}，与 Tutorial 05 Q1--Q3 的地址规划方法相同。
+
+\subsection{计算规则}
+
+IPv4 共 32 位，前缀 \texttt{/p} 留下 $h=32-p$ 个 host bits（主机位）。本练习均保留 network address（网络地址）与 broadcast address（广播地址），因此
+\[
+  B=2^{32-p}\quad\text{（总地址数）},\qquad U=B-2\quad\text{（可用接口数）}.
+\]
+已知所需接口数 $N$，取最小的 $h$ 使 $2^h-2\geq N$，再用前缀 $32-h$。题目只数电脑时需加路由器 LAN 接口；若总数已包含它，就不再增加。
+
+Subnet mask（子网掩码）前 $p$ 位为 1、其余为 0。网络地址等于 IP 与掩码逐位 AND；广播地址保留前缀、将主机位全设为 1。可用范围去掉首末地址。
+父块 \texttt{/p} 划为 \texttt{/q}（$q\geq p$）可得 $2^{q-p}$ 个等大小子网。VLSM（可变长子网掩码）允许各 LAN 使用不同前缀，需满足\textbf{容量足够、边界对齐、互不重叠、位于父块内}。
+
+\subsection{练习活动}
+
+\exercisequestion{SC2008-HW01-Q01}{Read the mask：前缀增长后的容量}
+
+\textbf{题目。}主机地址固定为 \texttt{192.168.10.77}。将前缀从 \texttt{/26} 改为 \texttt{/27}，每块的\emph{总地址数}如何变化？选项：They stay the same（不变）、They halve（减半）、They double（翻倍）。
+
+\begin{checkedsolution}
+选 \textbf{They halve}。主机位从 6 位减到 5 位，总地址数从 $2^6=64$ 减到 $2^5=32$。
+在 \texttt{192.168.10.0/24} 内，包含该主机的范围由 \texttt{.64--.127} 缩为 \texttt{.64--.95}。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q02}{Find the range：求子网全部边界}
+
+\textbf{题目。}给定 \texttt{172.20.6.174/27}，填写完整掩码、网络地址、广播地址、首末可用地址及可用地址数。网页先以 \texttt{172.20.6.141/27} 演示同一过程，二者对照如下。
+
+\begin{checkedsolution}
+\texttt{/27} 的块长为 32，最后一段起点为 $0,32,64,96,128,160,192,224$。
+$\lfloor141/32\rfloor\times32=128$；$\lfloor174/32\rfloor\times32=160$。
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+字段 & 网页例题：\texttt{.141/27} & 本题：\texttt{.174/27} \\
+\midrule
+掩码 & \texttt{255.255.255.224} & \texttt{255.255.255.224} \\
+网络地址 & \texttt{172.20.6.128} & \texttt{172.20.6.160} \\
+广播地址 & \texttt{172.20.6.159} & \texttt{172.20.6.191} \\
+首个可用地址 & \texttt{172.20.6.129} & \texttt{172.20.6.161} \\
+最后可用地址 & \texttt{172.20.6.158} & \texttt{172.20.6.190} \\
+可用地址数 & $32-2=30$ & $32-2=30$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+掩码的最后一段为 $11100000_2=128+64+32=224$。已知主机 IP 用来定位所属块，不能把该 IP 当作子网起点往后数。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q03}{Count every interface：是否已包含路由器}
+
+\textbf{题目。}分别选择最小合适子网，选项均为 \texttt{/28、/27、/26、/25}。
+Case A：30 台电脑，另需一个路由器 LAN 接口。Case B：总共需要 30 个可用地址，\emph{已包含}路由器 LAN 接口。
+
+\begin{checkedsolution}
+Case A 需要 $30+1=31$ 个可用地址，\texttt{/27} 只有 30 个，故选 \textbf{\texttt{/26}}（62 个可用）。
+Case B 只需 30 个，选 \textbf{\texttt{/27}} 恰好满足。两题差别在计数口径。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q04}{Split a parent block：等大小子网}
+
+\textbf{题目。}父块为 \texttt{10.48.0.0/20}，六个部门各有至多 300 台电脑及一个网关接口。选最小的等大小子网（\texttt{/24、/23、/22、/21}），并求每部门可用地址数、父块可容纳的子网数、分配后剩余块数。
+
+\begin{checkedsolution}
+每部门需要 301 个地址；$2^8-2=254<301\leq2^9-2=510$，所以选 \textbf{\texttt{/23}}，每块 \textbf{510} 个可用地址。
+父块能容纳 $2^{23-20}=\mathbf{8}$ 个子网，分配六块后剩 \textbf{2} 块。
+\texttt{/23} 的掩码为 \texttt{255.255.254.0}，八块可从 \texttt{10.48.0.0、10.48.2.0、\ldots、10.48.14.0} 开始。
+\end{checkedsolution}
+
+\textbf{网页例题：不同大小的 LAN。}
+在 \texttt{10.90.2.0/24} 中，X 有 60 台电脑及一个网关，Y 有 20 台电脑及一个网关。
+X 需 61 个可用地址，取 \texttt{10.90.2.0/26}（\texttt{.0--.63}）；Y 需 21 个，取 \texttt{10.90.2.64/27}（\texttt{.64--.95}）。
+Y 若取 \texttt{.32/27}，虽边界合法、容量足够，仍会与 X 重叠。
+
+\exercisequestion{SC2008-HW01-Q05}{Build your address plan：四个 LAN 与四条链路}
+
+\textbf{题目。}在 \texttt{10.60.4.0/24} 内规划 A、B、C、D 四个 LAN，电脑数依次为 90、45、24、10，\emph{每个 LAN 另需一个路由器接口}。还需四条 router-to-router links（路由器互连链路），每条用 \texttt{/30} 连接两个接口。为各 LAN 选前缀和合法网络地址，确保链路仍有空间。
+
+\begin{checkedsolution}
+先计接口，再按块大小从大到小放置。下表中的 \texttt{.x} 均表示 \texttt{10.60.4.x}。
+\begin{center}
+\small
+\begin{tabular}{@{}lrrlll@{}}
+\toprule
+LAN & 需求 & 可用容量 & 网络地址/前缀 & 全范围 & 可用范围 \\
+\midrule
+A & 91 & 126 & \texttt{.0/25} & \texttt{.0--.127} & \texttt{.1--.126} \\
+B & 46 & 62 & \texttt{.128/26} & \texttt{.128--.191} & \texttt{.129--.190} \\
+C & 25 & 30 & \texttt{.192/27} & \texttt{.192--.223} & \texttt{.193--.222} \\
+D & 11 & 14 & \texttt{.224/28} & \texttt{.224--.239} & \texttt{.225--.238} \\
+\bottomrule
+\end{tabular}
+\end{center}
+余下 \texttt{.240--.255} 共 16 个地址，恰好划成四个 \texttt{/30}。每条链路两端可分配：
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+链路 & 网络地址/前缀 & 两端接口地址 & 广播地址 \\
+\midrule
+1 & \texttt{.240/30} & \texttt{.241、.242} & \texttt{.243} \\
+2 & \texttt{.244/30} & \texttt{.245、.246} & \texttt{.247} \\
+3 & \texttt{.248/30} & \texttt{.249、.250} & \texttt{.251} \\
+4 & \texttt{.252/30} & \texttt{.253、.254} & \texttt{.255} \\
+\bottomrule
+\end{tabular}
+\end{center}
+总占用 $128+64+32+16+4\times4=256$，正好用完父块。各块起点按自身块长对齐，且互不重叠；这是一套可行分配，并非唯一排列。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q06}{Keep the given addresses：保留已有主机 IP}
+
+\textbf{题目。}父块为 \texttt{10.70.6.0/24}。A 共需 30 个可用地址，含主机 \texttt{10.70.6.145}；D 共需 10 个，含主机 \texttt{10.70.6.174}。数量\emph{均已包含路由器接口}。从 \texttt{/26、/27、/28} 中选各自最小合适前缀，并给出网络地址。
+
+\begin{checkedsolution}
+A 取 \textbf{\texttt{10.70.6.128/27}}，可用范围 \texttt{.129--.158}，含 \texttt{.145}，提供 30 个可用地址。
+
+D 取 \textbf{\texttt{10.70.6.160/28}}，可用范围 \texttt{.161--.174}，含 \texttt{.174}，提供 14 个。
+两块不重叠。容量决定所需块大小，已有 IP 决定这个块应放在哪里；已有 IP 必须是可用地址，不能落在网络或广播地址上。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q07}{Address the routers：逐接口分配地址}
+
+\textbf{题目。}LAN A 为 \texttt{10.22.4.0/25}，已有主机使用 \texttt{10.22.4.1}。R1--R2 链路为 \texttt{10.22.4.240/30}。选择 R1 的 LAN 网关地址、R1 与 R2 的链路接口地址，以及两端链路掩码。
+
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+接口 & 一套可行地址 & 掩码 \\
+\midrule
+R1 LAN 网关 & \texttt{10.22.4.2} & \texttt{255.255.255.128} \\
+R1 链路接口 & \texttt{10.22.4.241} & \texttt{255.255.255.252} \\
+R2 链路接口 & \texttt{10.22.4.242} & \texttt{255.255.255.252} \\
+\bottomrule
+\end{tabular}
+\end{center}
+LAN 可用范围为 \texttt{.1--.126}，排除已占用的 \texttt{.1} 后可选 \texttt{.2}。链路只剩 \texttt{.241}、\texttt{.242} 两个可用地址，不能用网络地址 \texttt{.240} 或广播地址 \texttt{.243}。两个链路地址可以交换；同一路由器的不同接口各自使用所在子网的地址与掩码。
+\end{checkedsolution}
+
+\subsection{Independent checkpoint}
+
+\exercisequestion{SC2008-HW01-Q08}{Question 1：Masks}
+\textbf{题目。}What is the dotted-decimal mask for \texttt{/26}?
+\begin{checkedsolution}
+\textbf{\texttt{255.255.255.192}}。前 24 位为 1，最后一段为 $11000000_2=192$。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q09}{Question 2：Address ranges}
+\textbf{题目。}Host \texttt{192.168.40.201/27}: what is the subnet broadcast address?
+\begin{checkedsolution}
+块长 32，$\lfloor201/32\rfloor\times32=192$，范围为 \texttt{.192--.223}，故广播地址为 \textbf{\texttt{192.168.40.223}}。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q10}{Question 3：Interface counting}
+\textbf{题目。}A LAN needs 14 computers and one router interface. What is the smallest suitable prefix? 选项：\texttt{/25、/26、/27、/28、/29}。
+\begin{checkedsolution}
+选 \textbf{\texttt{/27}}。需 $14+1=15$ 个可用地址；\texttt{/28} 仅有 $16-2=14$ 个，\texttt{/27} 有 30 个。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q11}{Question 4：Parent and child blocks}
+\textbf{题目。}How many equal \texttt{/27} subnets fit inside one \texttt{/24} parent block?
+\begin{checkedsolution}
+\textbf{8 个}。前缀增加 3 位，故子网数为 $2^{27-24}=8$；也可由 $256/32=8$ 核对。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW01-Q12}{Question 5：VLSM boundaries}
+\textbf{题目。}LAN X uses \texttt{10.80.2.0/26}. LAN Y needs 25 usable addresses, including its router. Which proposed block for Y has enough capacity and no overlap?
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item \texttt{10.80.2.32/27}
+  \item \texttt{10.80.2.64/28}
+  \item \texttt{10.80.2.64/27}
+  \item \texttt{10.80.2.0/25}
+\end{enumerate}
+\begin{checkedsolution}
+选 \textbf{C：\texttt{10.80.2.64/27}}。X 占 \texttt{.0--.63}，C 占 \texttt{.64--.95}、提供 30 个可用地址。
+A 占 \texttt{.32--.63}、D 占 \texttt{.0--.127}，均与 X 重叠；B 只有 14 个可用地址，不够 25 个。
+\end{checkedsolution}
 
 \end{document}
