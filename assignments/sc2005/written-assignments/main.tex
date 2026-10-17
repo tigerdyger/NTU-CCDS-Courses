@@ -7,11 +7,38 @@
 \newcommand{\academicyear}{AY2026--27 Semester 1}
 \usepackage{needspace}
 \input{../../../shared/preamble}
+
+% Local review layout; retain labels without repeated administrative blocks.
+\linespread{1.12}
+\setlength{\parskip}{0.25em plus 0.1em minus 0.05em}
+\setlist{itemsep=0.1em,parsep=0pt,topsep=0.2em,partopsep=0pt}
+\ctexset{
+  section={beforeskip=1.2ex plus 0.3ex,afterskip=0.6ex},
+  subsection={beforeskip=1.3ex plus 0.3ex,afterskip=0.5ex}
+}
+\AddToHook{cmd/section/before}{\Needspace{10\baselineskip}}
+\clubpenalty=10000
+\widowpenalty=10000
+\raggedbottom
+\renewcommand{\exercisequestion}[2]{%
+  \Needspace{5\baselineskip}%
+  \subsection{#2}\label{exercise:#1}%
+}
+\renewcommand{\exercisemeta}[5]{%
+  {\small\textbf{日期：}#2\quad\textbf{来源：}#3\par}%
+}
+\renewenvironment{checkedsolution}
+  {\par\nopagebreak[4]\textbf{解析：}\ignorespaces}
+  {\par}
+
 \title{\textcolor{ntuRed}{\coursecode}\\[0.4em]\coursetitle\\[0.8em]\large 书面作业}
 \author{作业整理}
 
 \begin{document}
-\maketitle
+\begin{center}
+  {\Large\bfseries\textcolor{ntuRed}{\coursecode}\quad\coursetitle\quad 书面作业\par}
+  {\small\academicyear\par}
+\end{center}
 
 \section{Lecture Quiz 1}
 \label{homework:SC2005-HW01}
@@ -23,7 +50,6 @@
   {已完成，并根据平台反馈逐题核对}
   {是（2026-08-23）}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q01}{Question 1：Thread Shared Resources}
 
 \textbf{题干：} What parts of the process memory space are shared between threads in the same process?
@@ -38,12 +64,10 @@
 \textbf{正确答案：C}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L04-T04}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 同一 process（进程）的 threads（线程）共享 text、data、heap 与 open files 等 OS resources；stack、registers 与 program counter 由各 thread 独享。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q02}{Question 2：Definition of an Operating System}
 
 \textbf{题干：} What is an Operating System?
@@ -58,12 +82,10 @@
 \textbf{正确答案：D}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L02-T01}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 OS 同时承担 control program（控制程序）、resource allocator（资源分配器）和 event-driven manager（事件驱动管理者）的职责，因此前三项共同描述了课程中的 OS 角色。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q03}{Question 3：Timer Interrupt}
 
 \textbf{题干：} In the process state transition diagram, what is a timer interrupt?
@@ -78,12 +100,10 @@ OS 同时承担 control program（控制程序）、resource allocator（资源�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L02-T03}，\texttt{SC2005-L03-T02}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 Timer interrupt（时钟中断）由 timer hardware（定时器硬件）异步产生，使 OS 重新获得控制权；它不是当前程序主动触发的 trap（陷阱）。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q04}{Question 4：Multiprogramming and Parallelism}
 
 \textbf{题干：} Multiprogrammed systems allow parallel execution of jobs, hence they are also called time-shared systems.
@@ -96,12 +116,10 @@ Timer interrupt（时钟中断）由 timer hardware（定时器硬件）异步�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L02-T02}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 Multiprogramming（多道程序设计）通过切换形成 concurrency（并发）；true parallelism（真正并行）取决于 multicore/multiprocessing hardware（多核/多处理硬件）。更严格地说，time-sharing（分时）是强调 preemption（抢占）与 interactive response（交互响应）的 multiprogramming 扩展。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q05}{Question 5：Real-Time Requirement}
 
 \textbf{题干：} In real-time systems, average response time of user programs should be minimized.
@@ -116,12 +134,10 @@ Multiprogramming（多道程序设计）通过切换形成 concurrency（并发�
 \textbf{正确答案：C}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L02-T02}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 Real-time system（实时系统）要求对 deadline（截止期限）给出保证；较小的 average response time（平均响应时间）本身不能提供该保证。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q06}{Question 6：Multithreading、Multiprogramming and Multiprocessing}
 
 \textbf{题干：} What is the difference between multi-threading, multi-programming and multi-processing?
@@ -136,12 +152,10 @@ Real-time system（实时系统）要求对 deadline（截止期限）给出保�
 \textbf{正确答案：D}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L02-T02}，\texttt{SC2005-L04-T04}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 Multithreading（多线程）指一个 process 内有多条执行流；multiprogramming 指 memory 中有多个可调度 processes；multiprocessing 指存在多个 CPU cores。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q07}{Question 7：One-to-One Thread Mapping}
 
 \textbf{题干：} What is an advantage and a disadvantage of one-to-one mapping of logical (user) and physical (kernel) threads?
@@ -156,12 +170,10 @@ Multithreading（多线程）指一个 process 内有多条执行流；multiprog
 \textbf{正确答案：C}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L04-T05}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 One-to-One mapping（一对一映射）比 Many-to-One 提供更高 concurrency，并允许多核并行；代价是每个 user thread 都需要一个 kernel thread。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q08}{Question 8：Privileged I/O Instruction}
 
 \textbf{题干：} When a user program tries to execute an I/O instruction directly,
@@ -176,12 +188,10 @@ One-to-One mapping（一对一映射）比 Many-to-One 提供更高 concurrency�
 \textbf{正确答案：D}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L02-T04}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 I/O instruction（输入输出指令）是 privileged instruction（特权指令）；user mode 直接执行会产生 trap，并把控制权交给 OS。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q09}{Question 9：Direct and Indirect Message Passing}
 
 \textbf{题干：} How do you distinguish between direct and indirect message passing for inter-process communication?
@@ -195,12 +205,10 @@ I/O instruction（输入输出指令）是 privileged instruction（特权指令
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L04-T03}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 Direct message passing（直接消息传递）显式指定通信 process；indirect message passing（间接消息传递）通过可由多个 processes 访问的 mailbox/port。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW01-Q10}{Question 10：Process Context and PCB}
 
 \textbf{题干：} What comprises a process context and where is it stored?
@@ -215,7 +223,6 @@ Direct message passing（直接消息传递）显式指定通信 process；indir
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L03-T03}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 Process context（进程上下文）包含恢复执行所需的 program counter、stack pointer、registers 与 protection state（保护状态），由 OS 保存在 PCB。
 \end{checkedsolution}
@@ -238,7 +245,6 @@ Process context（进程上下文）包含恢复执行所需的 program counter�
   {已完成，并根据平台满分反馈逐题核对}
   {是（2026-08-29）}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW02-Q01}{Question 1：Preemptive Scheduling Events}
 
 \textbf{题干：} In a preemptive CPU scheduler, when does scheduling happen?
@@ -253,12 +259,10 @@ Process context（进程上下文）包含恢复执行所需的 program counter�
 \textbf{正确答案：B}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L05-T02}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Preemptive scheduling（抢占式调度）不仅包含五种 state transitions（状态转换）上的调度，还允许 scheduler 在其他 time instants（时刻）收回 CPU，例如 time quantum（时间片）到期。D 只列出 transitions 2、3、4，遗漏了 transitions 1、5 以及其他时刻。Scheduler 被唤起并重新选择不等于一定发生 process context switch（进程上下文切换）。
 \end{checkedsolution}
 
-\Needspace{12\baselineskip}
 \exercisequestion{SC2005-HW02-Q02}{Question 2：Aging}
 
 \textbf{题干：} What is Aging?
@@ -272,12 +276,10 @@ Preemptive scheduling（抢占式调度）不仅包含五种 state transitions�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L06-T02}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Aging（老化）逐步提高长期无法执行的 processes 的 effective priority（有效优先级），使其最终获得 CPU，从而避免 starvation（饥饿）。这里的“提高 priority”指提高调度地位；若系统采用 smaller integer means higher priority（数字越小优先级越高），实现时反而会逐渐减小 priority number。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW02-Q03}{Question 3：Global Multiprocessor Scheduling}
 
 \textbf{题干：} Under global multiprocessor scheduling, a process may execute on two cores at the same time.
@@ -292,12 +294,10 @@ Aging（老化）逐步提高长期无法执行的 processes 的 effective prior
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L06-T05}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 按本讲模型，一个 process 在任一时刻只能占用一个 CPU core。Global scheduling（全局调度）允许该 process 在不同调度区间运行于不同 cores，即发生 migration（迁移），但不允许同一个 execution stream 同时在多个 cores 上执行。B 描述的是固定 core mapping（核心映射），属于 partitioned scheduling（分区调度）。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW02-Q04}{Question 4：RR Quantum 与 Turnaround Time}
 
 \textbf{题干：} Turnaround time of processes decreases as the quantum size in Round-Robin (RR) scheduling increases.
@@ -312,12 +312,10 @@ Aging（老化）逐步提高长期无法执行的 processes 的 effective prior
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L06-T03}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Average turnaround time（平均周转时间）与 time quantum（时间片）之间通常不存在单调关系；改变 $q$ 会改变 completion order（完成顺序），因此可能增大、减小或保持不变。在讲义忽略 context-switch overhead（上下文切换开销）的固定 workload 模型中，当 $q$ 大于最大 CPU burst length 后，RR 退化为 FCFS，turnaround time 才不再随 $q$ 改变。D 的后半句成立，但题干声称“随 $q$ 增大而减小”，所以整体仍为 False。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW02-Q05}{Question 5：Nonpreemptive Scheduling Events}
 
 \textbf{题干：} In a nonpreemptive CPU scheduler, when does scheduling happen?
@@ -332,7 +330,6 @@ Average turnaround time（平均周转时间）与 time quantum（时间片）�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L05-T02}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Nonpreemptive scheduling（非抢占式调度）只在当前 process 主动释放 CPU 时重新选择：transition 1 为 Running $\rightarrow$ Waiting，transition 5 为 Running $\rightarrow$ Terminated。Transition 4（New $\rightarrow$ Ready）通常不会打断正在运行的 process；只有 CPU core 原本 idle 时才需要立即调度，因此是 occasionally（偶尔）。
 \end{checkedsolution}
@@ -356,7 +353,6 @@ Nonpreemptive scheduling（非抢占式调度）只在当前 process 主动释�
   {已完成，并根据平台满分反馈逐题核对}
   {是（2026-09-12）}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW03-Q01}{Question 1：Mutual Exclusion}
 
 \textbf{题干：} What is meant by the mutual exclusion property?
@@ -371,12 +367,10 @@ Nonpreemptive scheduling（非抢占式调度）只在当前 process 主动释�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L07-T04}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Mutual exclusion（互斥）要求任意时刻至多一个 process（进程）处于相关 critical section（临界区）。它限制的是并发访问结果，并不禁止 critical section 内发生 context switch（上下文切换）。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW03-Q02}{Question 2：Blocking Wait 的操作顺序}
 
 \textbf{题干：} In the blocking implementation of \texttt{Wait()}, why can we not decrement the semaphore value after the \texttt{if()} condition check?
@@ -390,12 +384,10 @@ Mutual exclusion（互斥）要求任意时刻至多一个 process（进程）�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L09-T04}，\texttt{SC2005-L09-T05}
 
-\Needspace{8\baselineskip}
 \begin{checkedsolution}
 若先检查再 decrement（减一），当 $S=1$ 时，P0 可通过检查后被切走；P1 也通过检查、减一并进入 critical section，随后 P0 恢复、减一并同样进入。Check--update（检查—更新）不是一个 atomic action（原子操作），因而可能直接破坏 mutual exclusion。正确顺序是先执行 $S.value\mathrel{-}=1$，再按更新后的值决定是否 block（阻塞）。
 \end{checkedsolution}
 
-\Needspace{14\baselineskip}
 \exercisequestion{SC2005-HW03-Q03}{Question 3：Blocking Semaphore 的 Atomicity}
 
 \textbf{题干：} Why must \texttt{Wait()} and \texttt{Signal()} system calls with blocking implementation be atomic? Give all reasons.
@@ -410,12 +402,10 @@ Mutual exclusion（互斥）要求任意时刻至多一个 process（进程）�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L09-T05}
 
-\Needspace{7\baselineskip}
 \begin{checkedsolution}
 Atomicity（原子性）同时保护两件事：多个 callers（调用者）不能对共享 semaphore value（信号量值）产生 lost update（丢失更新）；value update、condition check 以及必要的 queue operation（队列操作）也不能被其他调用插入，否则 mutual exclusion 或 wake-up bookkeeping（唤醒记账）可能失效。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW03-Q04}{Question 4：Algorithm 2 的 Progress Violation}
 
 \textbf{题干：} In Algorithm 2 in the lecture, Progress property is violated because
@@ -429,12 +419,10 @@ Atomicity（原子性）同时保护两件事：多个 callers（调用者）不
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L08-T02}
 
-\Needspace{7\baselineskip}
 \begin{checkedsolution}
 Algorithm 2（interest flags）中，两者若先后设置自己的 $flag=true$，随后都会在 \texttt{while (flag[other])} 中等待。此时 critical section 为空，却没有任何 process 能进入，形成 deadlock（死锁）并违反 Progress（进展性）。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW03-Q05}{Question 5：Progress Property}
 
 \textbf{题干：} What is meant by the Progress property?
@@ -448,12 +436,10 @@ Algorithm 2（interest flags）中，两者若先后设置自己的 $flag=true$�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L07-T04}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Progress（进展性）是一项 liveness（活性）要求：当 critical section 为空且存在申请者时，选择下一位进入者的决定不能无限延期。它不要求打断当前已在 critical section 中的 process。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW03-Q06}{Question 6：Reader Preference}
 
 \textbf{题干：} In the Reader-Writer implementation, explain what it means by ``the reader is given preference''.
@@ -467,12 +453,10 @@ Progress（进展性）是一项 liveness（活性）要求：当 critical secti
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L10-T05}
 
-\Needspace{7\baselineskip}
 \begin{checkedsolution}
 Reader preference（读者优先）允许已有 reader group（读者组）存在时，新 readers 继续加入，即使 writer 正在等待；但 reader 与 writer 仍不能同时访问数据库。持续到来的 readers 因此可能造成 writer starvation（写者饥饿）。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW03-Q07}{Question 7：Bounded Waiting}
 
 \textbf{题干：} What is meant by the property of Bounded Waiting?
@@ -486,12 +470,10 @@ Reader preference（读者优先）允许已有 reader group（读者组）存�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L07-T04}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Bounded waiting（有界等待）是一项 fairness（公平性）要求：process 发出进入请求后，其他 processes 在它之前进入 critical section 的次数必须有有限上界，从而排除无限 overtaking（超越）和 starvation。
 \end{checkedsolution}
 
-\Needspace{15\baselineskip}
 \exercisequestion{SC2005-HW03-Q08}{Question 8：Peterson's Algorithm 的 Progress}
 
 \textbf{题干：} Algorithm 3 in the lecture satisfies Progress property because
@@ -505,12 +487,10 @@ Bounded waiting（有界等待）是一项 fairness（公平性）要求：proce
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L08-T03}
 
-\Needspace{8\baselineskip}
 \begin{checkedsolution}
 Peterson's Algorithm（Peterson 算法）用 $flag$ 表示意愿、用 $turn$ 在双方同时申请时打破平局：只有一方申请时它可直接进入；双方同时申请时，$turn$ 保证至少一方进入。因此不会在 critical section 为空且有申请者时让两者永久停在 entry section。C 只验证一个 interleaving（交错序列），A 才覆盖 P1 所处的各类状态。
 \end{checkedsolution}
 
-\Needspace{14\baselineskip}
 \exercisequestion{SC2005-HW03-Q09}{Question 9：Algorithm 2 的 Bounded Waiting}
 
 \textbf{题干：} In Algorithm 2 in the lecture, Bounded Waiting is satisfied because
@@ -524,12 +504,10 @@ Peterson's Algorithm（Peterson 算法）用 $flag$ 表示意愿、用 $turn$ �
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L08-T02}
 
-\Needspace{8\baselineskip}
 \begin{checkedsolution}
 一旦 Pi 设置 $flag[i]=true$，Pj 此后不能再次通过自己的 entry loop 进入 critical section，因此 Pj 不可能无限次 overtaking Pi；这满足本讲单独检查的 bounded-waiting 条件。但 Algorithm 2 仍可能让双方一起卡住，所以 bounded waiting 成立并不推出 Progress 成立。C 只是一个特定 trace（执行轨迹），A 给出了通用判断依据。
 \end{checkedsolution}
 
-\Needspace{15\baselineskip}
 \exercisequestion{SC2005-HW03-Q10}{Question 10：Bounded-Buffer 的 Wait 顺序}
 
 \textbf{题干：} In the Producer-Consumer Bounder-Buffer implementation, why is the \texttt{Wait()} on empty or full semaphore done before the \texttt{Wait()} on mutex?
@@ -543,7 +521,6 @@ Peterson's Algorithm（Peterson 算法）用 $flag$ 表示意愿、用 $turn$ �
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L10-T03}
 
-\Needspace{9\baselineskip}
 \begin{checkedsolution}
 若 producer（生产者）先取得 $mutex$，再因 full buffer（满缓冲区）等待 $empty$，consumer（消费者）便无法取得 $mutex$ 来移除 item 并执行 \texttt{Signal(empty)}，双方形成 circular wait（循环等待）；empty buffer 时同理。故应先等待 resource-count semaphore（资源计数信号量）$empty/full$，确认资源可用后再取得 $mutex$ 修改缓冲区。
 \end{checkedsolution}
@@ -567,7 +544,6 @@ Peterson's Algorithm（Peterson 算法）用 $flag$ 表示意愿、用 $turn$ �
   {已完成并逐题核对}
   {是（2026-10-04）}
 
-\Needspace{15\baselineskip}
 \exercisequestion{SC2005-HW04-Q01}{Question 1：Deadlock Avoidance}
 
 \textbf{题干：} What do deadlock avoidance algorithms do?
@@ -582,12 +558,10 @@ Peterson's Algorithm（Peterson 算法）用 $flag$ 表示意愿、用 $turn$ �
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L12-T01}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Avoidance（避免）动态检查 resource requests（资源请求），只批准分配后仍处于 safe state（安全状态）的请求。A 中的 prevent 是普通动词，不是在指 prevention 这一策略类别。Prevention（预防）通过规则破坏至少一个死锁必要条件，并不要求同时消除全部四个条件；C 描述的是 detection and recovery（检测与恢复）。
 \end{checkedsolution}
 
-\Needspace{18\baselineskip}
 \exercisequestion{SC2005-HW04-Q02}{Question 2：Banker's Algorithm 保持的状态}
 
 \textbf{题干：} Banker's algorithm ensures that the system never enters.
@@ -601,12 +575,10 @@ Avoidance（避免）动态检查 resource requests（资源请求），只批�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L12-T01}，\texttt{SC2005-L12-T03}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 Banker's Algorithm（银行家算法）直接维护的不变量是系统始终 safe；使试分配结果变为 unsafe（不安全）的请求不会被批准。在进程遵守声明的最大需求等模型假设下，避免 deadlock 是这一不变量的结果。因此本题选最直接的 A；C 也是推论，不能为了区分选项而把 C 的陈述说成错误，更不能将 unsafe 与 deadlocked 等同。
 \end{checkedsolution}
 
-\Needspace{18\baselineskip}
 \exercisequestion{SC2005-HW04-Q03}{Question 3：Non-Nested Resource Acquisition}
 
 \textbf{题干：} Deadlocks cannot occur if resources (e.g., semaphores) are not locked in a nested manner.
@@ -621,12 +593,10 @@ Banker's Algorithm（银行家算法）直接维护的不变量是系统始终 s
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L11-T02}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 本题的资源获取模型中，不嵌套加锁意味着 process（进程）不会在持有一个资源时再申请另一个资源，因而破坏 hold and wait（持有并等待）。资源本身仍可要求 mutual exclusion（互斥）；被消除的是申请方式中的持有并等待，而不是互斥性。
 \end{checkedsolution}
 
-\Needspace{17\baselineskip}
 \exercisequestion{SC2005-HW04-Q04}{Question 4：Unsafe 不等于必然 Deadlock}
 
 \textbf{题干：} When a system is in the unsafe state, then deadlock is guaranteed.
@@ -641,14 +611,12 @@ Banker's Algorithm（银行家算法）直接维护的不变量是系统始终 s
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L11-T02}，\texttt{SC2005-L12-T01}
 
-\Needspace{10\baselineskip}
 \begin{checkedsolution}
 Unsafe 表示按各进程\textbf{声明的剩余最大需求}找不到安全完成序列，不代表实际执行必然死锁。A 给出了继续申请前先释放已有资源的处理方式，破坏 hold and wait。
 
 \textbf{措辞辨析：}B 的退出释放须以进程能先结束为前提；若实际需求低于声明上限，确实可能顺利结束，因此其 ``can'' 措辞并非完全排他，但仅指出 \texttt{exit()} 会释放资源不足以解释进程如何摆脱等待。D 假设已有 safe completion sequence，与当前状态 unsafe 的定义矛盾；它并不是对 A、B 两种情况的概括。
 \end{checkedsolution}
 
-\Needspace{16\baselineskip}
 \exercisequestion{SC2005-HW04-Q05}{Question 5：Safe State 的存在性条件}
 
 \textbf{题干：} Every completion sequence must be safe, for the system to be in the safe state.
@@ -663,12 +631,10 @@ Unsafe 表示按各进程\textbf{声明的剩余最大需求}找不到安全完�
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L12-T01}，\texttt{SC2005-L12-T02}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 Safe state 要求\textbf{存在至少一个}安全完成序列，是 $\exists$ 而非 $\forall$。无需额外保证其他所有顺序也安全。安全算法寻找的是可满足各进程最大需求的完成顺序，不是在要求 CPU 实际严格按这个顺序逐个运行。
 \end{checkedsolution}
 
-\Needspace{16\baselineskip}
 \exercisequestion{SC2005-HW04-Q06}{Question 6：Need Matrix}
 
 \textbf{题干：} In Banker's algorithm, what is the information stored in the Need matrix?
@@ -683,7 +649,6 @@ Safe state 要求\textbf{存在至少一个}安全完成序列，是 $\exists$ �
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L12-T01}
 
-\Needspace{8\baselineskip}
 \begin{checkedsolution}
 \[
   \boxed{Need=Max-Allocation}.
@@ -691,7 +656,6 @@ Safe state 要求\textbf{存在至少一个}安全完成序列，是 $\exists$ �
 $Need[i,j]$ 表示进程 $i$ 为达到声明的最大需求，最多还可能需要多少类 $j$ 资源；不是超出 Max 的额外额度。A 的 ``not yet requested'' 是简化表述：严格说是尚未分配的剩余最大需求，不能与当前已发出、正在等待的一笔 Request 混淆。B 对应 Allocation，C 对应 Available。
 \end{checkedsolution}
 
-\Needspace{13\baselineskip}
 \exercisequestion{SC2005-HW04-Q07}{Question 7：Deadlock 的必要条件}
 
 \textbf{题干：} If a system satisfies any two of the four deadlock conditions (mutual exclusion, no preemption, hold and wait, circular wait), then a deadlock has occurred.
@@ -706,12 +670,10 @@ $Need[i,j]$ 表示进程 $i$ 为达到声明的最大需求，最多还可能需
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L11-T02}
 
-\Needspace{5\baselineskip}
 \begin{checkedsolution}
 资源死锁发生时，四个必要条件必须同时成立；满足任意两个不能推出已经死锁。不要把必要条件当成充分判据，例如资源有多个实例时，resource-allocation graph（资源分配图）中存在环仍不一定死锁。
 \end{checkedsolution}
 
-\Needspace{24\baselineskip}
 \exercisequestion{SC2005-HW04-Q08}{Question 8：Fixed 与 Dynamic Priority}
 
 \textbf{题干：} The key difference between fixed-priority and dynamic-priority real-time CPU scheduling is that:
@@ -726,14 +688,12 @@ $Need[i,j]$ 表示进程 $i$ 为达到声明的最大需求，最多还可能需
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L13-T02}，\texttt{SC2005-L13-T03}
 
-\Needspace{9\baselineskip}
 \begin{checkedsolution}
 Fixed priority（固定优先级）在 recurrent task（反复释放实例的任务）之间保持固定排序，各任务的不同 job / instance（作业实例）继承这个排序；dynamic priority（动态优先级）没有这一跨实例限制。RM 根据 $T$ 排序，$T$ 越小优先级越高；EDF 根据各实例的\textbf{绝对截止时刻} $d_k=r_k+D$ 排序，不是只比较相对截止期限 $D$。
 
 B 将动态优先级过窄地限定为实例之间固定排序；这可描述 EDF 中给定两个实例的相对截止时刻关系，却不是所有动态优先级算法的定义。讲义来源为 Part6a PDF pp.~15--18。
 \end{checkedsolution}
 
-\Needspace{14\baselineskip}
 \exercisequestion{SC2005-HW04-Q09}{Question 9：Bare-Metal Hypervisor}
 
 \textbf{题干：} Which of the following is NOT true for bare-metal hypervisors?
@@ -748,12 +708,10 @@ B 将动态优先级过窄地限定为实例之间固定排序；这可描述 ED
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L14-T03}
 
-\Needspace{6\baselineskip}
 \begin{checkedsolution}
 注意题目问的是 \textbf{NOT true}。本题按典型使用场景区分：Type 1 / bare-metal 直接管理硬件，常见于服务器、数据中心和企业环境；Type 2 / hosted 依托已有 host OS，常用于终端用户的桌面虚拟化。B、C 按减少宿主依赖和抽象层的典型优势理解，并非宣称 Type 1 绝对安全、没有漏洞或在任何负载下都更快。
 \end{checkedsolution}
 
-\Needspace{18\baselineskip}
 \exercisequestion{SC2005-HW04-Q10}{Question 10：Periodic 与 Sporadic Process}
 
 \textbf{题干：} The key difference between a periodic and a sporadic real-time process is that:
@@ -768,7 +726,6 @@ B 将动态优先级过窄地限定为实例之间固定排序；这可描述 ED
 \textbf{正确答案：A}\qquad
 \textbf{对应讲义：}\texttt{SC2005-L13-T01}，\texttt{SC2005-L13-T02}
 
-\Needspace{8\baselineskip}
 \begin{checkedsolution}
 Periodic（周期性）任务以固定间隔 $T$ 释放；sporadic（偶发）任务只限制相邻释放的最小间隔为 $T$：
 \[
@@ -786,6 +743,173 @@ Sporadic 可以隔更久才释放下一实例，并没有“最多等 $T$”的�
   \item Safe 是存在至少一个安全序列；unsafe 不等于已经或必然 deadlocked。$Need=Max-Allocation$ 是剩余最大需求，不是当前 Request。
   \item 固定优先级固定的是任务之间的排序；动态优先级允许不同实例改变排序。EDF 比较绝对截止时刻 $r+D$，不是只比较 $D$。
   \item Periodic 的 $T$ 是固定释放间隔，sporadic 的 $T$ 是最小释放间隔；Type 1 / Type 2 区分 hypervisor 与 host OS 的结构关系。
+\end{itemize}
+
+\section{Lecture Quiz 5}
+\label{homework:SC2005-HW05}
+
+\exercisemeta
+  {SC2005-HW05}
+  {2026-10-17}
+  {NTULearn Lecture Quiz 5；Memory Organization 7.5--7.10、7.14--7.26、7.39--7.44}
+  {五道主问题已完成并根据平台反馈核对；三道补充题按讲义核对}
+  {是（2026-10-17）}
+
+下列五题保留已完成题组的顺序；补充题收录同一 Quiz 中另外出现的三道题，重复题不再列出。
+
+\exercisequestion{SC2005-HW05-Q01}{Question 1：Logical 与 Physical Address}
+
+\textbf{题干：} Logical address and physical address will be the same if address binding is performed in
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item compile-time
+  \item load-time
+  \item execution-time
+  \item both compile-time and load-time
+\end{enumerate}
+
+\textbf{正确答案：D}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L15-T01}
+
+\begin{checkedsolution}
+在讲义的地址模型中，compile-time / load-time binding（编译时／装入时绑定）使装入后的 process image（进程映像）使用 absolute addresses（绝对地址），CPU 产生的地址就是实际访问的物理地址。Load-time binding 中，装入前的可重定位地址已经由 loader（装入器）修正。Execution-time binding（执行时绑定）则保留逻辑地址，在访问时再由 MMU 转换。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW05-Q02}{Question 2：Contiguous Allocation}
+
+\textbf{题干：} Which of the following memory allocation approaches allocates contiguous memory space for a process?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Dynamic partitioning
+  \item Paging
+  \item Segmentation
+  \item All the above
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L15-T02}，\texttt{SC2005-L16-T01,T05}
+
+\begin{checkedsolution}
+Dynamic partitioning（动态分区）从一个足够大的 hole（空洞）中为\textbf{整个进程}分配连续物理空间。Paging（分页）的各页可以位于不同页框；segmentation（分段）只要求\textbf{每个段内部}连续，不要求各段相邻。因此后两者均不保证整个进程连续存放。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW05-Q03}{Question 3：Largest Leftover Hole}
+
+\textbf{题干：} Which dynamic storage-allocation policy results in the largest leftover hole in memory?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item First fit
+  \item Best fit
+  \item Worst fits
+\end{enumerate}
+
+\textbf{正确答案：C}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L15-T02}
+
+\begin{checkedsolution}
+Worst-fit（最坏适应）选取最大的可用空洞。对固定请求大小 $n$，选中空洞大小为 $H$ 时，切分后的余量为 $H-n$；选最大的 $H$ 就产生最大的剩余空洞。这里比较的是\textbf{本次选中空洞的剩余部分}。Best-fit 留下最小余量；first-fit 只取第一个足够大的空洞。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW05-Q04}{Question 4：Memory Compaction}
+
+\textbf{题干：} Which of the following statement about memory compaction is true?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item It can be done at compile, load, or execution time.
+  \item It is used to solve the problem of internal fragmentation.
+  \item It does not shuffle memory contents.
+  \item It is possible only if address binding is dynamic and done at execution time.
+\end{enumerate}
+
+\textbf{正确答案：D}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L15-T03}
+
+\begin{checkedsolution}
+Compaction（紧凑）搬动内存中的进程，把分散空洞合并成大块连续空闲空间，以缓解 external fragmentation（外部碎片）。进程搬动后，其逻辑地址须映射到新的物理位置，因此本讲模型要求 execution-time binding。它不会消除已分配块内部的闲置空间；B、C 均不符合这一机制。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW05-Q05}{Question 5：Page Number 与 Offset}
+
+\textbf{题干：} Given the logical address \texttt{0xAEF9} (in hexadecimal) with a page size of 256 bytes, what is the page number of this logical address?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item \texttt{0xF9}
+  \item \texttt{0xAE}
+  \item \texttt{0xA}
+  \item \texttt{0x9}
+\end{enumerate}
+
+\textbf{正确答案：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L16-T01}
+
+\begin{checkedsolution}
+Page size $S=256=2^8$ bytes，故 offset（页内偏移）占低 8 位，即两个十六进制数字：
+\[
+  \underbrace{\texttt{AE}}_{p}\,
+  \underbrace{\texttt{F9}}_{d},\qquad
+  p=\left\lfloor\frac{a}{S}\right\rfloor=\texttt{0xAE},\quad
+  d=a\bmod S=\texttt{0xF9}.
+\]
+页号为 $174$、偏移为 $249$；$174\times256+249=44793=\texttt{0xAEF9}$。此处求的是逻辑页号，物理页框号还需查页表。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW05-Q06}{补充题 1：Relocatable Code}
+
+\textbf{题干：} Re-locatable code will be generated for
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item compile-time binding
+  \item load-time binding
+  \item execution-time binding
+\end{enumerate}
+
+\textbf{按讲义作答：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L15-T01}
+
+\begin{checkedsolution}
+讲义 7.5 将 compiler generates relocatable code（编译器生成可重定位代码）列在 load-time binding 下：编译时尚未固定装入位置，loader 根据实际起点完成地址修正。Compile-time binding 生成绝对地址代码；execution-time binding 将最终转换推迟到运行时。讲义 7.8 的执行时绑定图也保留可重定位地址，故本题的 B 按 7.5 的分类表述理解，不应引申成“执行时绑定不能使用可重定位地址”。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW05-Q07}{补充题 2：Internal Fragmentation}
+
+\textbf{题干：} Which of the following memory allocation methods may result in internal fragmentation?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Dynamic partitioning
+  \item Paging
+  \item Segmentation
+\end{enumerate}
+
+\textbf{按讲义作答：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L15-T03}，\texttt{SC2005-L16-T01}
+
+\begin{checkedsolution}
+Paging 使用固定大小的页框，进程最后一页可能未用满，空余部分已经分配给该进程却未被利用，形成 internal fragmentation（内部碎片）。按本讲的基本分配模型，dynamic partitioning 与 segmentation 使用可变大小的连续块，其典型问题是块之间的 external fragmentation（外部碎片）。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW05-Q08}{补充题 3：Compaction 的绑定时机}
+
+\textbf{题干：} Memory compaction can be performed if address binding is done in
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item compile-time
+  \item load-time
+  \item execution-time
+\end{enumerate}
+
+\textbf{按讲义作答：C}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L15-T01,T03}
+
+\begin{checkedsolution}
+紧凑会改变进程在物理内存中的位置，执行时的地址映射必须随之调整。此题与 Question 4 考查同一条件，只是选项顺序不同。
+\end{checkedsolution}
+
+\subsection{易错点}
+
+\begin{itemize}
+  \item Load-time binding 在装入时修正地址；execution-time binding 在访问时转换地址。能在不同装入位置运行，不等于能在运行途中任意搬动。
+  \item 判断连续分配时看整个进程；分段只保证单个段连续。分页消除外部碎片，但最后一页仍可能有内部碎片。
+  \item 若页大小为 $2^b$ bytes，低 $b$ 位是 offset，其余高位是 page number；不要把页号当成物理页框号。
 \end{itemize}
 
 \end{document}
