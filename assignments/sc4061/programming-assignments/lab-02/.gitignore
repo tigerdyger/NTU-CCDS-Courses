@@ -1,0 +1,6 @@
+# Default deny: assessed work and future files stay local.
+*
+!/.gitignore
+!/README.md
+!/tools/
+!/tools/check_environment.m

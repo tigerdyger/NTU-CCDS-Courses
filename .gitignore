@@ -31,6 +31,9 @@ courses/*/lms-exports/
 # only the README, ignore rules, and a generic environment diagnostic.
 /assignments/sc4061/programming-assignments/lab-01/*
 
+# SC4061 Lab2 uses the same explicit public allowlist.
+/assignments/sc4061/programming-assignments/lab-02/*
+
 # Large raw media should never be committed to this notes repository
 *.m4a
 *.mov
