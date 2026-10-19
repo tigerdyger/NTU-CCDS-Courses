@@ -1,0 +1,126 @@
+% Based on templates/lecture.tex; regular lecture L09, Week 10.
+% Source: Week 10 - First-order Logic.pptx, slides 2--56 of 57.
+% Transcript: 79489 - 0_qqxl6vof - PID 117.txt; complete lecture, trailing retake omitted.
+% Schedule: Week 8 - Logical Agent-slides.pptx, slides 2--3, 2026-10-19.
+% Corrected source slips: s30 OR; CNF non-uniqueness; WFF versus closed formula;
+% s47 at least two; s51 query direction; s53 ground-term instantiation.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
+\section{第 09 节课：First-Order Logic}
+\label{lecture:SC3000-L09}
+
+\textbf{日期与资料：}2026-10-19（Week 10）；Week 10 -- First-order Logic，原始 slides 2--56，配套字幕覆盖 Part 1、2。官方后半学期课表将本日安排为 First-Order Logic 1、2；正课编号承接上一讲，Diffusion 补课不占正课编号。
+
+First-Order Logic（一阶逻辑，FOL）把知识写成关于\emph{对象、性质和关系}的事实与规则。本讲沿着“确定对象与关系、量化一般规律、检查公式含义、构建知识库、回答查询”的顺序展开。核心用途是复用一条规则处理不同对象，例如由两条亲子事实和祖父母规则推导跨代关系。
+
+\lecturetopic{SC3000-L09-T01}{对象、项与谓词：表示语句内部的结构}
+
+Propositional logic（命题逻辑）把完整陈述当作命题符号；符号本身不揭示句内对象。将“Socrates 是人”“所有人都会死”“Socrates 会死”分别命名为 $P,Q,R$ 后，仅有 $P,Q$ 不能推出 $R$。FOL 可以共享 $Man(x)\Rightarrow Mortal(x)$ 的结构，配合全称量词应用于不同人；完整推导见\relatedexercise{SC3000-L09-E01}{Socrates 三段论}。
+
+\textbf{Domain 与 interpretation。}Domain（论域）规定变量可以指向哪些对象；interpretation（解释）指定常量、函数和谓词的含义。Constant（常量）如 $John$ 在同一解释中指向固定对象，但名字本身不决定是哪个 John。Variable（变量）如 $x$ 是对象的占位符。这种以对象及其关系描述世界的选择，是本讲的 ontological commitment（本体论承诺）。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+构件 & 例子 & 表示或返回什么 \\
+\midrule
+Term（项） & $John,\ x,\ FatherOf(John)$ & 对象；可由常量、变量或函数应用构成。 \\
+Function（函数） & $Plus(3,4)$ & 一个对象，此例为 $7$。每组输入对应一个确定输出。 \\
+Predicate（谓词） & $GreaterThan(3,4)$ & 对象的性质或关系，此例真值为假。 \\
+Atomic formula & $Parent(Henry,John)$ & 一条原子陈述；也可以是两个项相等。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+谓词的 arity（元数）是参数个数：$Male(x)$ 为一元，$Parent(x,y)$ 为二元。$n$ 元谓词可用满足关系的有序 $n$ 元组集合解释；$n$ 元函数的输入输出记录则含 $n+1$ 个对象，最后一个是输出。参数顺序属于定义，$Parent(x,y)$ 与 $Parent(y,x)$ 通常不同。
+
+\textbf{组合语义。}$Married(FatherOf(Richard),MotherOf(John))$ 先确定两个函数项指向的人，再判断婚姻关系。内部项复杂不妨碍整体仍是原子公式；原子公式之间再用 $\neg,\land,\lor,\Rightarrow,\Leftrightarrow$ 连接，真值规则与命题逻辑相同。函数必须单值：若用 $BrotherOf(John)$，须约定选定哪一位兄弟；表示多位兄弟时应采用关系 $Brother(x,John)$。
+
+\textbf{语法边界。}项表示对象，公式陈述关系；函数接收项，不能任意把真假公式当作人物参数。Well-formed formula（合式公式）指语法合法的公式，可以含自由变量；没有自由变量的公式才是 closed formula / sentence（闭公式／语句）。写独立的一般规则时，应明确量词及其作用域。
+
+\lecturetopic{SC3000-L09-T02}{量词、作用域与对象身份}
+
+Universal quantifier（全称量词）$\forall$ 表示论域中的每个对象；existential quantifier（存在量词）$\exists$ 表示至少一个对象，不要求只有一个，也不要求已经知道其名字。
+
+\begin{align*}
+ \text{所有狗都是哺乳动物：}\quad
+ &\forall x\,[Dog(x)\Rightarrow Mammal(x)],\\
+ \text{John 拥有至少一只狗：}\quad
+ &\exists x\,[Dog(x)\land Owns(John,x)].
+\end{align*}
+
+第一式只约束狗；对非狗对象，前件为假，条件式为真。\textbf{它不保证狗存在}。若改写成 $\forall x[Dog(x)\land Mammal(x)]$，就声称论域中的所有对象都是狗且都是哺乳动物，条件过强。
+
+第二式要求\emph{同一个}对象既是狗，又被 John 拥有。若改成 $\exists x[Dog(x)\Rightarrow Owns(John,x)]$，任一非狗对象便可使条件式成立，不能保证 John 拥有狗。$\forall$ 常与 $\Rightarrow$ 配合、$\exists$ 常与 $\land$ 配合，是上述句意的翻译模式，不是强制的语法规则。
+
+\textbf{嵌套量词的顺序。}约定 $Parent(y,x)$ 为“$y$ 是 $x$ 的家长”，则
+\begin{align*}
+ \forall x\exists y\,Parent(y,x)
+ &:\ \text{每个人都有某个家长，$y$ 可以随 $x$ 改变；}\\
+ \exists y\forall x\,Parent(y,x)
+ &:\ \text{存在同一个人，是所有人的家长。}
+\end{align*}
+后式蕴含前式，前式一般不蕴含后式。连续全称量词之间、连续存在量词之间可以交换；不同种量词不可随意交换。
+
+\textbf{量词否定。}将否定推进量词时，同时交换 $\forall/\exists$ 并否定内部公式：
+\[
+ \neg\forall x\,P(x)\equiv\exists x\,\neg P(x),\qquad
+ \neg\exists x\,P(x)\equiv\forall x\,\neg P(x).
+\]
+因此“并非人人都满足”只需要一个反例；“没有人满足”要求所有对象都不满足。等价地，$\forall xP(x)\equiv\neg\exists x\neg P(x)$。
+
+\textbf{Equality（相等）。}$FatherOf(John)=Henry$ 表示两个项指向同一对象。不同变量名不保证不同对象；课件“John 有两个兄弟”的公式应精确读作\emph{至少两个}：
+\[
+ \exists x\exists y\,
+ [Brother(x,John)\land Brother(y,John)\land x\ne y].
+\]
+它没有排除第三位兄弟，故不保证恰好两个。
+
+\lecturetopic{SC3000-L09-T03}{等价改写与自然语言核验}
+
+一阶逻辑沿用命题逻辑的联结词等价关系。改写公式能显露其条件与结论，检查是否准确表达原意：
+\begin{align*}
+ A\Rightarrow B&\equiv\neg A\lor B,\\
+ (A\land B)\Rightarrow C
+ &\equiv\neg A\lor\neg B\lor C
+ \equiv A\Rightarrow(B\Rightarrow C).
+\end{align*}
+例如 $Dog(x)\Rightarrow Mammal(x)$ 对应 $\neg Dog(x)\lor Mammal(x)$；这里必须是 OR。嵌套条件的完整推导及其自然语言意义见\relatedexercise{SC3000-L09-E02}{狗主人与共同敌人的公式改写}。
+
+Conjunctive Normal Form（合取范式，CNF）是若干子句的合取，每个子句是文字的析取。统一结构便于应用归结等推理规则；一个子句本身也可视为只有一项的 CNF。\textbf{一般 CNF 不唯一}，如 $P$ 与 $P\land(P\lor Q)$ 等价而写法不同；改写到相同表达式能确认等价，改写结果不同却不足以否定等价。本讲只涉及这些联结词变换，不展开带量词公式的完整 CNF 转换算法。
+
+\lecturetopic{SC3000-L09-T04}{亲属知识库：事实、规则与查询}
+
+Knowledge domain（知识领域）限定要建模的部分世界。亲属例中，对象是人，$Male,Female$ 是性质，$Parent,Child,Sibling,Grandparent$ 是关系，$MotherOf,FatherOf$ 是函数。事实描述具体对象，规则概括关系之间的联系。模型采用的性别分类和单一父母函数等约定须显式说明，不能当作逻辑公理自动成立。
+
+\textbf{TELL 与 ASK。}TELL 把事实或规则加入 KB；ASK 查询一个具体结论，或寻找让公式成立的 substitution（替换／变量绑定）。例如亲子事实结合祖父母规则，可以确认 Elizabeth 与 William 的祖孙关系；查询 $Child(William,x)$ 可得到 $\{x/Charles\}$，即 William 是 Charles 的孩子。完整规则、关系图与推导见\relatedexercise{SC3000-L09-E03}{亲属关系与 Prolog 查询}。
+
+问“是否能推出”与问“现实中是否为真”仍需区分：$KB\not\models\alpha$ 不代表 $KB\models\neg\alpha$。仅用 $Parent$ 与 $Child$ 相互定义不会凭空生成亲子事实；将它们直接写成循环调用的程序规则，还可能使朴素递归查询不终止。逻辑等价本身与程序的搜索行为是两个层次。
+
+\lecturetopic{SC3000-L09-T05}{量词推理与逻辑程序}
+
+Modus Ponens、合取引入／消去、析取引入、双重否定消去等规则继续适用。FOL 额外处理变量和量词，将一般规则与具体对象联系起来。
+
+\textbf{Universal elimination / instantiation（全称消去／实例化）。}
+\[
+ \frac{\forall x\,P(x)}{P(t)}.
+\]
+本讲取 $t$ 为 ground term（无变量的项），如 $Shirin$；$FatherOf(John)$ 这样的无变量函数项也可以。由 $\forall x\,Likes(x,Flower)$ 可得 $Likes(Shirin,Flower)$。课件只示范常量替换，不应把它扩大成函数项不能代入。
+
+\textbf{Existential elimination（存在消去）。}由 $\exists x\,P(x)$，在推理中为未知见证引入全新的局部名字 $c$，暂设 $P(c)$；最终结论不能依赖这个临时名字的特定身份。不能直接指定 $c=John$，也不能由新名字推出它与所有已知对象不同。这是带使用条件的见证处理，不是把存在语句与某个预先指定人的性质无条件等同。
+
+\textbf{Existential introduction（存在引入）。}
+\[
+ \frac{P(t)}{\exists x\,P(x)}.
+\]
+例如 $Likes(Mary,Flower)$ 提供一个见证，足以推出有人喜欢花；它不能证明所有人都喜欢花。
+
+\textbf{Prolog 示意。}事实与规则可以交给逻辑程序查询。小写名字可表示具体对象，大写名字表示变量；\texttt{head :- body.} 读作“若 body 成立，则 head 成立”，规则体中的逗号表示合取。查询通过匹配和变量绑定寻找满足条件的实例；\relatedexercise{SC3000-L09-E03}{亲属例题}给出与公式对应的最小代码。
+
+\subsection{一分钟回顾}
+
+FOL 用项表示对象，用谓词陈述性质或关系，用量词写出一般规则与存在条件。全称条件式不承诺对象存在，存在语句也不能随意指定见证；混合量词的顺序决定后一个对象能否依赖前一个。等价改写帮助核验句意，知识库通过实例化与可靠推理导出结论，变量查询还可返回满足条件的对象。
+\endgroup

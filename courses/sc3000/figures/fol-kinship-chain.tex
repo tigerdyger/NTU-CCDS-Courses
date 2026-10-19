@@ -1,0 +1,16 @@
+% Original diagram based on Week 10 FOL slides 50--51.
+\begin{tikzpicture}[
+  >=Latex,
+  person/.style={draw=noteBlue,rounded corners=2pt,
+    minimum height=0.65cm,minimum width=2.1cm,font=\small},
+  relation/.style={->,thick,noteBlue}
+]
+  \node[person] (e) at (0,0) {Elizabeth};
+  \node[person] (c) at (4.5,0) {Charles};
+  \node[person] (w) at (9,0) {William};
+  \draw[relation] (e) -- node[above,font=\small]{Parent} (c);
+  \draw[relation] (c) -- node[above,font=\small]{Parent} (w);
+  \draw[relation,dashed] (e.south) -- ++(0,-0.7)
+    -- node[below,font=\small]{Grandparent} ([yshift=-0.7cm]w.south)
+    -- (w.south);
+\end{tikzpicture}

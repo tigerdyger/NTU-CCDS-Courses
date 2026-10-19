@@ -1,0 +1,119 @@
+% Based on templates/lecture-example.tex; actual lecture SC3000-L09.
+% Source: Week 10 - First-order Logic.pptx, original slide order.
+% Lecture examples are paraphrased; derivations and the minimal Prolog version
+% are explanatory reconstructions, not a transcription of the slide 56 program.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC3000-L09-EX}{第 09 讲：First-Order Logic}
+
+\textbf{日期与来源：}2026-10-19；Week 10 -- First-order Logic，pp.~10--12、31、34--35、49--56。题意按课件例子整理，补全推导；代码为亲属例子的最小 Prolog 改写。
+
+\exercisequestion{SC3000-L09-E01}{Socrates 三段论：一般规则如何用于具体对象}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L09-T01}{结构化表示}；\relatedtopic{SC3000-L09-T05}{量词推理}。
+
+\textbf{题目。}课件 pp.~10--12 给出“Socrates 是人”“所有人都会死”，结论为“Socrates 会死”。说明将三句分别记为独立命题符号的局限，并用 FOL 推导结论。
+
+\begin{workedsolution}
+若三个句子分别编码为 $P,Q,R$，则 $P=Q=\mathrm T,R=\mathrm F$ 仍是命题逻辑允许的赋值。因此仅有 $P,Q$ 不蕴含 $R$；还需要额外写入连接它们的规则。
+
+FOL 将性质和对象分开表示：
+\[
+ Man(Socrates),\qquad
+ \forall x\,[Man(x)\Rightarrow Mortal(x)].
+\]
+先以 $x\leftarrow Socrates$ 作全称实例化，再作 MP：
+\[
+ Man(Socrates)\Rightarrow Mortal(Socrates),\quad
+ Man(Socrates)\ \vdash\ \boxed{Mortal(Socrates)}.
+\]
+同一条全称规则也能用于 $Plato$；推理依靠公式中共享的谓词与对象结构，不依靠系统理解自然语言中的人名。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L09-E02}{狗主人与共同敌人：从嵌套条件读出句意}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L09-T02}{量词与作用域}；\relatedtopic{SC3000-L09-T03}{等价改写}。
+
+\textbf{题目。}按 pp.~31、34--35，改写并解释：
+\begin{align*}
+ &(1)\quad Owns(x,y)\Rightarrow[Dog(y)\Rightarrow AnimalLover(x)],\\
+ &(2)\quad [Dog(x)\land Enemy(z,x)]\Rightarrow[Dog(y)\Rightarrow Enemy(z,y)].
+\end{align*}
+这些公式作为一般规则时，所有出现的变量均取全称量化；约定 $Enemy(z,x)$ 为“$z$ 是 $x$ 的敌人”。
+
+\begin{workedsolution}
+首先验证共同变换：
+\begin{align*}
+ A\Rightarrow(B\Rightarrow C)
+ &\equiv\neg A\lor(\neg B\lor C)\\
+ &\equiv\neg(A\land B)\lor C
+ \equiv(A\land B)\Rightarrow C.
+\end{align*}
+因此第一式为
+\[
+ \forall x\forall y\,
+ [Owns(x,y)\land Dog(y)\Rightarrow AnimalLover(x)].
+\]
+它说“拥有狗的人是爱动物的人”，没有反向断言每个爱动物的人都养狗，也没有断言狗主人一定存在。
+
+第二式为
+\[
+ \forall x\forall y\forall z\,
+ [Dog(x)\land Dog(y)\land Enemy(z,x)\Rightarrow Enemy(z,y)].
+\]
+任取两只狗，第一只的任何敌人也是第二只的敌人。由于 $x,y$ 任意，交换二者后也成立，故两只狗的敌人集合相同。这不保证敌人存在；所有狗的敌人集合都为空时，规则同样成立。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L09-E03}{亲属关系：定义、变量绑定与 Prolog 查询}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L09-T04}{亲属知识库}；\relatedtopic{SC3000-L09-T05}{逻辑程序}。
+
+\textbf{题目。}课件 pp.~49--51 的论域为人，$Parent(x,y)$ 表示 $x$ 是 $y$ 的家长。已知 $Female(Elizabeth)$、$Parent(Elizabeth,Charles)$ 和 $Parent(Charles,William)$。用一般规则定义父母函数、子女、祖父母和兄弟姐妹关系，并回答 $Grandparent(Elizabeth,William)$ 与 $Child(William,x)$ 两个查询。
+
+\begin{workedsolution}
+以下规则均对自由出现的 $x,y$ 全称量化。母亲和父亲函数采用课件的简化亲属模型，每个输入对应一个确定对象：
+\begin{align*}
+ FatherOf(x)=y&\Leftrightarrow Parent(y,x)\land Male(y),\\
+ MotherOf(x)=y&\Leftrightarrow Parent(y,x)\land Female(y),\\
+ Parent(x,y)&\Leftrightarrow Child(y,x),\\
+ Grandparent(x,y)&\Leftrightarrow
+   \exists z\,[Parent(x,z)\land Parent(z,y)],\\
+ Sibling(x,y)&\Leftrightarrow
+   [x\ne y\land\exists z\,(Parent(z,x)\land Parent(z,y))].
+\end{align*}
+Sibling 的定义要求不同的人共享至少一个家长；$x\ne y$ 防止把自己列为自己的兄弟姐妹。
+
+\begin{center}
+\input{figures/fol-kinship-chain}
+
+\small 依据课件 pp.~50--51 的事实重绘；实线是已知关系，虚线是推导结果。
+\end{center}
+
+由两条 Parent 事实作合取引入，得到
+\[
+ Parent(Elizabeth,Charles)\land Parent(Charles,William).
+\]
+以 Charles 为见证作存在引入，再应用祖父母规则的一侧，得到
+\[
+ \exists z\,[Parent(Elizabeth,z)\land Parent(z,William)]
+ \ \vdash\ \boxed{Grandparent(Elizabeth,William)}.
+\]
+因此第一个查询可回答 yes。同理由子女规则可确认 William 是 Charles 的孩子，第二个查询返回绑定 $\{x/Charles\}$。查询方向不能倒置；已知事实也不保证 Charles 是唯一可能满足查询的家长。
+
+\textbf{Prolog 最小改写。}下列程序取祖父母定义的充分条件方向，演示课件 pp.~55--56 所述的事实、规则和查询方式：
+\begin{verbatim}
+parent(elizabeth, charles).
+parent(charles, william).
+grandparent(X, Y) :- parent(X, Z), parent(Z, Y).
+child(Y, X) :- parent(X, Y).
+
+?- grandparent(elizabeth, william).
+true.
+?- child(william, X).
+X = charles.
+\end{verbatim}
+第一条查询通过 $Z=charles$ 连通两代关系；第二条查询返回满足条件的绑定。
+\end{workedsolution}
+\endgroup
