@@ -1,0 +1,214 @@
+% Based on templates/tutorial.tex; finished notes omit conversational checks.
+% Source: tut9.pdf, p. 9-1 (PDF p. 1), Questions 1--3. No answer key supplied.
+% Q1b: the unlabelled columns are interpreted as limit then base.
+% Q2c assumes one page per inner page table.
+% Q3 CLOCK follows Virtual Memory.pdf, p. 8.32: newly loaded R=0.
+% Arithmetic and all replacement traces independently simulated and checked.
+% Session: 2026-10-20, teaching Week 10. L18 remains a planned lecture.
+
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC2005-TUT09}{Tutorial 09：地址转换、两级页表与页面置换}
+\label{tutorial:SC2005-TUT09}
+
+{\small 2026-10-20（第十教学周）。来源：\texttt{tut9.pdf}，p.~9-1（PDF p.~1），Questions 1--3；原文件无参考答案。CLOCK 的引用位约定参照 \emph{Virtual Memory} p.~8.32。}
+
+\exercisequestion{SC2005-TUT09-Q01}{同一个逻辑地址：分页与分段的转换}
+
+\textbf{对应讲义：}\relatedtopic{SC2005-L16-T01}{分页地址转换}；\relatedtopic{SC2005-L16-T05}{分段地址转换}。
+
+\subsubsection*{题目}
+
+系统使用 $10$ 位逻辑地址。将 $1000011011_2$ 转换为物理地址，分别考虑：
+\begin{enumerate}[label=(\alph*)]
+  \item 分页，页大小为 $128$ bytes，使用下方页表。
+  \item 分段，系统支持的最大段大小为 $256$ bytes，使用下方段表。
+\end{enumerate}
+两表的索引用十进制表示，表内数值均为二进制。原图 Q1b 未标列名；下面将左列解释为段长 limit，右列解释为基址 base。
+
+\begin{center}
+\begin{minipage}[t]{0.34\textwidth}
+\centering
+\begin{tabular}[t]{@{}cc@{}}
+\toprule
+页号 & 页框号 \\
+\midrule
+0 & \texttt{01011} \\
+1 & \texttt{00010} \\
+2 & \texttt{00010} \\
+3 & \texttt{10101} \\
+4 & \texttt{01001} \\
+5 & \texttt{01100} \\
+6 & \texttt{11010} \\
+7 & \texttt{00110} \\
+\bottomrule
+\end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.61\textwidth}
+\centering
+\begin{tabular}[t]{@{}ccc@{}}
+\toprule
+段号 & 段长 limit & 基址 base \\
+\midrule
+0 & \texttt{00010000} & \texttt{010000000000} \\
+1 & \texttt{00001000} & \texttt{100000000000} \\
+2 & \texttt{00100000} & \texttt{010011010000} \\
+3 & \texttt{00011000} & \texttt{100001100000} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{center}
+
+\begin{checkedsolution}
+\textbf{(a) 分页：换页号，保留页内偏移。}按字节编址，$128=2^7$，所以偏移占 $7$ 位，页号占 $10-7=3$ 位：
+\[
+  1000011011_2=\underbrace{100}_{p=4}\;\underbrace{0011011}_{d=27}.
+\]
+查页表第 $4$ 项，页框号为 $01001_2=9$。将\emph{页框号与原来的七位偏移拼接}：
+\[
+  \text{PA}=\underbrace{01001}_{\text{页框号}}\;\underbrace{0011011}_{\text{偏移}}
+  =\boxed{010010011011_2}=9\times128+27=1179.
+\]
+
+\textbf{(b) 分段：检查段界限，再加基址。}最大段大小 $256=2^8$，所以段内偏移占 $8$ 位，段号占 $2$ 位：
+\[
+  1000011011_2=\underbrace{10}_{s=2}\;\underbrace{00011011}_{d=27}.
+\]
+第 $2$ 段的实际长度为 $00100000_2=32$ bytes。由于 $0\le27<32$，访问合法；基址为 $010011010000_2=1232$，故
+\[
+  \text{PA}=\text{base}[2]+27=1232+27=\boxed{1259=010011101011_2}.
+\]
+段长是允许的偏移范围，合法条件为 $d<\text{limit}$；最大段大小并不表示每个段都实际占满 $256$ bytes。分段采用基址加偏移，不将基址与偏移直接拼接。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT09-Q02}{由地址位数推导两级页表的结构}
+
+\textbf{对应讲义：}\relatedtopic{SC2005-L16-T03}{Two-level paging}。
+
+\subsubsection*{题目}
+
+分页系统的逻辑地址由 $x$ 位页号和 $y$ 位偏移组成。求：
+\begin{enumerate}[label=(\alph*)]
+  \item 页大小；
+  \item 完整单级页表的条目数；
+  \item 若每个页表项占 $4$ bytes，改用两级页表，外层页表有多少项？逻辑地址如何划分？
+\end{enumerate}
+
+\begin{checkedsolution}
+\textbf{条目（entry）就是表中的一行。}按字节编址，$y$ 位偏移能区分页内 $2^y$ 个字节位置；$x$ 位页号能区分 $2^x$ 个逻辑页。因此
+\[
+  \boxed{\text{页大小}=2^y\text{ bytes}},\qquad
+  \boxed{\text{完整单级页表}=2^x\text{ 项}}.
+\]
+
+\textbf{(c) 沿用讲义的组织方式：一张内层页表恰占一个页。}题干没有再次明说这一假设；有了它，才能确定如何切分页号。每项 $4=2^2$ bytes，所以
+\[
+\begin{aligned}
+  \text{每张内层表的项数}
+    &=\frac{2^y}{4}=\boxed{2^{y-2}},\\
+  \text{内层表张数}=\text{外层表项数}
+    &=\frac{2^x}{2^{y-2}}=\boxed{2^{x-y+2}}.
+\end{aligned}
+\]
+外层表的每一项指向一张内层表。选内层表需 $x-y+2$ 位，在该表中选一项需 $y-2$ 位；原来的偏移保持不变：
+\[
+  \boxed{\underbrace{p_1}_{x-y+2\text{ 位：外层索引}}}
+  \;\boxed{\underbrace{p_2}_{y-2\text{ 位：内层索引}}}
+  \;\boxed{\underbrace{d}_{y\text{ 位：页内偏移}}}.
+\]
+查找顺序为 $p_1\to$ 内层表、$p_2\to$ 物理页框，再用 $d$ 定位字节。前两段位数相加仍为 $x$，地址总长仍为 $x+y$ 位。上述划分要求 $y\ge2$ 且 $x\ge y-2$；页表项的\emph{个数}与每项的\emph{字节数}不要混淆。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT09-Q03}{四个页框下的 FIFO、CLOCK 与 LRU}
+
+\textbf{对应讲义：}\relatedtopic{SC2005-L17-T04}{页面置换机制}；算法参照 \emph{Virtual Memory} pp.~8.20、8.24、8.28--8.32。
+
+\subsubsection*{题目}
+
+有 $4$ 个初始为空的页框，页面访问序列为
+\[
+  0,\;1,\;6,\;0,\;3,\;4,\;0,\;1,\;0,\;3,\;4,\;6,\;3,\;4.
+\]
+分别计算 (a) FIFO、(b) CLOCK、(c) LRU 的缺页次数。页面尚未在内存中就是一次 page fault（缺页）；初次填入空页框也计数。
+
+\begin{checkedsolution}
+\textbf{FIFO 与 LRU 的区别在于如何更新顺序。}FIFO 淘汰最早装入的页，命中不改变队列；LRU 淘汰最久未访问的页，每次命中都将该页更新为最近使用。
+
+下表记录\emph{完成每次访问后的状态}，F 表示缺页，H 表示命中。FIFO 一列从最早装入排到最晚装入，LRU 一列从最久未访问排到最近访问；这是维护的顺序，不表示物理页框随之搬动。
+
+{\small
+\begin{longtable}{@{}rrclcl@{}}
+\toprule
+步 & 访问 & FIFO & 队列（旧 $\to$ 新） & LRU & 顺序（久 $\to$ 近） \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+1  & 0 & F & $[0]$       & F & $[0]$ \\
+2  & 1 & F & $[0,1]$     & F & $[0,1]$ \\
+3  & 6 & F & $[0,1,6]$   & F & $[0,1,6]$ \\
+4  & 0 & H & $[0,1,6]$   & H & $[1,6,0]$ \\
+5  & 3 & F & $[0,1,6,3]$ & F & $[1,6,0,3]$ \\
+6  & 4 & F & $[1,6,3,4]$ & F & $[6,0,3,4]$ \\
+7  & 0 & F & $[6,3,4,0]$ & H & $[6,3,4,0]$ \\
+8  & 1 & F & $[3,4,0,1]$ & F & $[3,4,0,1]$ \\
+9  & 0 & H & $[3,4,0,1]$ & H & $[3,4,1,0]$ \\
+10 & 3 & H & $[3,4,0,1]$ & H & $[4,1,0,3]$ \\
+11 & 4 & H & $[3,4,0,1]$ & H & $[1,0,3,4]$ \\
+12 & 6 & F & $[4,0,1,6]$ & F & $[0,3,4,6]$ \\
+13 & 3 & F & $[0,1,6,3]$ & H & $[0,4,6,3]$ \\
+14 & 4 & F & $[1,6,3,4]$ & H & $[0,6,3,4]$ \\
+\end{longtable}
+}
+第 $6$ 步访问 $4$ 时，FIFO 淘汰最早装入的 $0$；LRU 因第 $4$ 步刚访问过 $0$，淘汰更久未使用的 $1$。于是第 $7$ 步再次访问 $0$，FIFO 缺页而 LRU 命中。统计 F 得
+\[
+  \boxed{\text{FIFO：}10\text{ 次}},\qquad
+  \boxed{\text{LRU：}7\text{ 次}}.
+\]
+
+\textbf{CLOCK：用引用位给近期访问的页一次机会。}按讲义 p.~8.32 的例图，\textbf{新装入页的引用位 $R=0$，随后命中才将 $R$ 置为 $1$}。页框循环顺序为 $F_1\to F_2\to F_3\to F_4\to F_1$：
+\begin{itemize}
+  \item 命中：将该页的 $R$ 置为 $1$，指针不动。
+  \item 缺页：从指针位置扫描；遇 $R=1$ 就清零并前进，遇 $R=0$ 就替换。新页设 $R=0$，指针移到下一页框。
+  \item 初始依次填入四个空页框；填满后，指针回到 $F_1$。
+\end{itemize}
+下表每格写作“页号$^{R}$”；横向位置固定为四个物理页框。“下一指针”是本次访问处理完后的位置。
+
+{\small
+\begin{longtable}{@{}rrcccccc@{}}
+\toprule
+步 & 访问 & 结果 & $F_1$ & $F_2$ & $F_3$ & $F_4$ & 下一指针 \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+1  & 0 & F & $0^0$ & ---   & ---   & ---   & $F_2$ \\
+2  & 1 & F & $0^0$ & $1^0$ & ---   & ---   & $F_3$ \\
+3  & 6 & F & $0^0$ & $1^0$ & $6^0$ & ---   & $F_4$ \\
+4  & 0 & H & $0^1$ & $1^0$ & $6^0$ & ---   & $F_4$ \\
+5  & 3 & F & $0^1$ & $1^0$ & $6^0$ & $3^0$ & $F_1$ \\
+6  & 4 & F & $0^0$ & $4^0$ & $6^0$ & $3^0$ & $F_3$ \\
+7  & 0 & H & $0^1$ & $4^0$ & $6^0$ & $3^0$ & $F_3$ \\
+8  & 1 & F & $0^1$ & $4^0$ & $1^0$ & $3^0$ & $F_4$ \\
+9  & 0 & H & $0^1$ & $4^0$ & $1^0$ & $3^0$ & $F_4$ \\
+10 & 3 & H & $0^1$ & $4^0$ & $1^0$ & $3^1$ & $F_4$ \\
+11 & 4 & H & $0^1$ & $4^1$ & $1^0$ & $3^1$ & $F_4$ \\
+12 & 6 & F & $0^0$ & $4^0$ & $6^0$ & $3^0$ & $F_4$ \\
+13 & 3 & H & $0^0$ & $4^0$ & $6^0$ & $3^1$ & $F_4$ \\
+14 & 4 & H & $0^0$ & $4^1$ & $6^0$ & $3^1$ & $F_4$ \\
+\end{longtable}
+}
+第 $6$ 步先将页 $0$ 的 $R$ 清零，再替换 $R=0$ 的页 $1$。第 $12$ 步从 $F_4$ 开始，依次将页 $3,0,4$ 的 $R$ 清零，最后在 $F_3$ 替换页 $1$。缺页发生在第 $1,2,3,5,6,8,12$ 步，共
+\[
+  \boxed{\text{CLOCK：}7\text{ 次}}.
+\]
+这一结果使用上述新页 $R=0$ 的课堂例图约定；若改为装入即 $R=1$，本序列得到 $10$ 次，不能混用两套规则。CLOCK 与 LRU 在本题同为 $7$ 次，不表示两种算法一般等价。
+\end{checkedsolution}
+
+\subsubsection*{一分钟回顾}
+
+分页查表替换页号，页内偏移不变；分段先检查偏移是否小于段长，再加基址。两级页表先用“页大小除以页表项大小”求一张内层表的项数，再拆分页号。FIFO 记装入顺序，LRU 记最近访问顺序，CLOCK 维护循环指针和引用位。本题缺页数依次为 $10,7,7$。
+
+\endgroup
