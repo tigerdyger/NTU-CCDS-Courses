@@ -1,0 +1,200 @@
+% Tutorial set: 09; actual session: 2026-10-21 (Week 10).
+% Source: tute9.pdf, PDF p. 1, Questions 1--2.
+% Adapted from templates/tutorial.tex; no conversation/check records.
+% Illustrative code and theoretical expectations, not executed results.
+
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\Needspace{10\baselineskip}
+\exercisegroup{SC4001-TUT09}{Tutorial 09：Attention 与 Transformer}
+\label{tutorial:SC4001-TUT09}
+\textbf{日期：}2026-10-21（第 10 周）。
+\textbf{来源：}\texttt{tute9.pdf} p.~1，Q1--Q2。
+本组检验位置编码与因果掩码的作用。课程参考文件 \texttt{t9q1.ipynb}、
+\texttt{t9q2.ipynb} 未提供；以下为按题意整理的示例代码及理论预期，未运行实验。
+
+\exercisequestion{SC4001-TUT09-Q01}{位置编码与置换等变性}
+\nopagebreak[4]
+\textbf{题目。}(a) 用 \texttt{nn.MultiheadAttention} 验证无位置编码的
+self-attention（自注意力）具有 permutation equivariance（置换等变性）；
+(b) 实现 sinusoidal positional encoding（正弦位置编码）；
+(c) 加入位置编码后重复置换测试；(d) 解释两次结果为何不同。
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L09-T02}{自注意力与加权汇总}、
+\relatedtopic{SC4001-L09-T03}{位置编码与 Encoder}。
+
+\textbf{(a) 比较时须对齐 token。}令 $X\in\mathbb R^{N\times D}$ 每行表示一个
+token，$P$ 为重排行的置换矩阵。固定参数、关闭 dropout，且不加位置编码和位置相关掩码时，
+\[
+ \boxed{F(PX)=PF(X).}
+\]
+例如输入从 $(x_0,x_1,x_2)$ 变为 $(x_2,x_0,x_1)$，输出相应从
+$(y_0,y_1,y_2)$ 变为 $(y_2,y_0,y_1)$。等变表示输出随输入一起重排，
+不表示输出矩阵保持原样。代码应比较 $F(PX)$ 与 $PF(X)$，而非直接比较 $F(PX)$ 与 $F(X)$。
+
+其原因可从单个 query 的输出看出：
+\[
+ y_i=\sum_j a_{ij}v_j,\qquad
+ a_{ij}=\frac{\exp(q_i^\top k_j/\sqrt{d_k})}
+ {\sum_\ell\exp(q_i^\top k_\ell/\sqrt{d_k})}.
+\]
+重排后，同一个 token 的 query 不变，面对的 key--value 配对集合也不变；
+权重与相应的 value 一起换位，加权和不变。各 head 及逐位置输出投影保留这一性质。
+
+\textbf{(b) 按位置加入编码。}对偶数维 $D$，定义
+\[
+ E_{pos,2i}=\sin\!\left(\frac{pos}{10000^{2i/D}}\right),\qquad
+ E_{pos,2i+1}=\cos\!\left(\frac{pos}{10000^{2i/D}}\right).
+\]
+$pos$ 为序列位置，$i=0,\ldots,D/2-1$ 为特征维配对编号；送入 attention 的是 $X+E$。
+同一 token 处在不同位置时，叠加的编码不同。
+
+\textbf{(c)--(d) 置换 token，保留位置。}例如交换 $A,C$：
+\[
+ (x_A+e_0,\ x_B+e_1,\ x_C+e_2)
+ \longrightarrow
+ (x_C+e_0,\ x_B+e_1,\ x_A+e_2).
+\]
+应比较 $F(PX+E)$ 与 $PF(X+E)$，二者一般不同：token 与位置重新配对，
+产生的 $Q,K,V$ 和注意力权重都可能改变。
+若把编码随 token 一起搬走，输入成为 $P(X+E)=PX+PE$，则仍有
+\[
+ F\bigl(P(X+E)\bigr)=PF(X+E),
+\]
+这没有检验“同一 token 换到新位置”的效果。
+
+\Needspace{8\baselineskip}
+\textbf{关键实现。}取一条长度为 4 的序列、$D=8$、两个 head；
+张量按 $(B,N,D)$ 排列。以下随机初始化仅用于结构验证，无须训练。
+\par
+\begingroup
+\linespread{1}\fontsize{9}{11}\selectfont
+\begin{verbatim}
+import torch
+from torch import nn
+
+torch.manual_seed(0)
+x = torch.randn(1, 4, 8)
+mha = nn.MultiheadAttention(
+    8, 2, dropout=0.0, batch_first=True).eval()
+perm = torch.tensor([2, 0, 3, 1])
+
+pos = torch.arange(4, dtype=x.dtype)[:, None]
+scale = 10000.0 ** (torch.arange(0, 8, 2) / 8)
+angle = pos / scale
+pe = torch.zeros(4, 8)
+pe[:, 0::2] = torch.sin(angle)
+pe[:, 1::2] = torch.cos(angle)
+pe = pe.unsqueeze(0)
+
+with torch.no_grad():
+    y, _ = mha(x, x, x)
+    xp = x[:, perm, :]
+    yp, _ = mha(xp, xp, xp)
+    z, zp = x + pe, xp + pe
+    yz, _ = mha(z, z, z)
+    yzp, _ = mha(zp, zp, zp)
+
+print(torch.allclose(yp, y[:, perm, :], atol=1e-6))
+print(torch.allclose(yzp, yz[:, perm, :], atol=1e-6))
+\end{verbatim}
+\endgroup
+\textbf{预期。}第一次比较成立（容许浮点误差），第二次一般不成立。
+两次测试须复用同一组模型参数。位置编码提供区分词序的信息，
+不保证未训练网络已经理解句子语义。
+
+\exercisequestion{SC4001-TUT09-Q02}{因果掩码与未来信息隔离}
+\nopagebreak[4]
+\textbf{题目。}(a) 为四个 token 构造 causal mask（因果掩码）；
+(b) 只修改最后一个输入 token；
+(c) 比较有、无掩码时位置 0--2 的输出；
+(d) 验证所有读取未来 token 的 attention weights（注意力权重）均为零。
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L09-T04}{Decoder 的 masked self-attention}、
+\relatedtopic{SC4001-L09-T05}{右移目标与并行训练}。
+
+\textbf{(a) 行查询、列读取。}位置 $i$ 只允许读取 $j\le i$。分数掩码 $M$
+在允许位置取 $0$，未来位置取 $-\infty$；布尔掩码 $B$ 在禁止位置取 True：
+\[
+ M=\begin{pmatrix}
+ 0&-\infty&-\infty&-\infty\\
+ 0&0&-\infty&-\infty\\
+ 0&0&0&-\infty\\
+ 0&0&0&0
+ \end{pmatrix},
+ \qquad
+ B=\begin{pmatrix}
+ \mathrm{F}&\mathrm{T}&\mathrm{T}&\mathrm{T}\\
+ \mathrm{F}&\mathrm{F}&\mathrm{T}&\mathrm{T}\\
+ \mathrm{F}&\mathrm{F}&\mathrm{F}&\mathrm{T}\\
+ \mathrm{F}&\mathrm{F}&\mathrm{F}&\mathrm{F}
+ \end{pmatrix}.
+\]
+主对角线保留。Decoder 输入已相对预测目标右移：
+\[
+ \begin{array}{c|cccc}
+ \text{位置}&0&1&2&3\\ \hline
+ \text{输入}&\mathrm{BOS}&\text{我}&\text{喜欢}&\text{你}\\
+ \text{目标}&\text{我}&\text{喜欢}&\text{你}&\mathrm{EOS}
+ \end{array}
+\]
+例如位置 1 预测“喜欢”，可以读取当前位置的“我”，但不能读取位置 2 中的答案。
+
+\textbf{(b)--(c) 修改未来输入。}比较 $X=(x_0,x_1,x_2,x_3)$ 与
+$X'=(x_0,x_1,x_2,x'_3)$。无遮罩时，$x_3$ 的 key 和 value 可影响前面位置；
+有因果掩码时，这条读取通路被屏蔽。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+设置 & 位置 0--2 的输出 & 位置 3 的输出 \\
+\midrule
+无因果掩码 & 一般会改变 & 可以改变 \\
+有因果掩码 & 保持不变，容许数值误差 & 可以改变，因允许读取自身 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{(d) 权重检验。}掩码加在 softmax 之前：
+\[
+ A=\operatorname{softmax}_{\rm row}
+ \!\left(\frac{QK^\top}{\sqrt{d_k}}+M\right).
+\]
+未来位置的指数项为 $e^{-\infty}=0$，故 $a_{ij}=0$（$j>i$）。
+关闭 dropout 时每行权重和为 1；第一行只有自身可读，因此为 $[1,0,0,0]$。
+其余允许位置的权重由模型和输入决定。
+
+\textbf{关键实现。}沿用 Q1 的 $x$ 与 \texttt{mha}；
+\texttt{average\_attn\_weights=False} 保留各 head 的权重，形状为 $(B,H,N,N)$。
+\par
+\begingroup
+\linespread{1}\fontsize{9}{11}\selectfont
+\begin{verbatim}
+mask = torch.triu(torch.ones(4, 4, dtype=torch.bool), 1)
+x2 = x.clone()
+x2[:, -1, :] = torch.randn_like(x2[:, -1, :])
+
+with torch.no_grad():
+    free1, _ = mha(x, x, x)
+    free2, _ = mha(x2, x2, x2)
+    causal1, weights = mha(
+        x, x, x, attn_mask=mask,
+        average_attn_weights=False)
+    causal2, _ = mha(x2, x2, x2, attn_mask=mask)
+
+print(torch.allclose(free1[:, :3], free2[:, :3],
+                     atol=1e-6))
+print(torch.allclose(causal1[:, :3], causal2[:, :3],
+                     atol=1e-6))
+print(torch.all(weights[..., mask] == 0).item())
+\end{verbatim}
+\endgroup
+\textbf{预期。}第一项一般为 False，后两项为 True。
+布尔掩码 True 表示禁止读取的约定适用于这里的
+\href{https://docs.pytorch.org/docs/2.14/generated/torch.nn.MultiheadAttention.html}
+{\texttt{nn.MultiheadAttention}}。
+
+\textbf{两题的联系。}位置编码提供 token 的顺序信息；因果掩码限制各位置读取的范围，
+保证未来输入不能影响先前输出。加入位置编码并不会自动屏蔽未来 token。
+\endgroup
