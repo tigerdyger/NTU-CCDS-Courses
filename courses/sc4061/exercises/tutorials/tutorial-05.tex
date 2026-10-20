@@ -1,0 +1,143 @@
+% Based on templates/tutorial.tex; finished notes omit conversational checks.
+% Source: LEC05 Image Segmentation - Tutorial Problems.pdf, PDF p. 1, Q1--Q3.
+% Q1 supporting lecture: LEC05 Image Segmentation - 2026.pdf, p. 34.
+% No official answer key supplied. Q3 uses approximate diagram coordinates;
+% its assignment/update sequence was independently checked numerically.
+% Session: 2026-10-20, teaching Week 10. User reviewed and approved publication.
+
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC4061-TUT05}{Tutorial 05：Image Segmentation}
+\label{tutorial:SC4061-TUT05}
+
+{\small 2026-10-20（第十教学周）。来源：\emph{LEC05 Image Segmentation -- Tutorial Problems}，PDF p.~1，Questions 1--3；滤波特征的局部聚合参照 \emph{LEC05 Image Segmentation -- 2026} p.~34。原文件无参考答案；推导与迭代已核对，笔记已确认。}
+
+\exercisequestion{SC4061-TUT05-Q01}{用 Filter Bank 分割纹理图像}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L08-T01}{Gabor 滤波器与纹理特征向量}；
+\relatedtopic{SC4061-L08-T02}{K-means 纹理聚类}。
+
+\textbf{题目。}说明如何利用 filter bank（滤波器组）分割具有不同纹理的图像。
+
+\begin{checkedsolution}
+纹理差异体现在局部结构的方向、尺度和空间频率。选择对这些性质具有不同响应的滤波器，例如一组不同方向和波长的 Gabor filters，分别作用于同一幅原图：
+\[
+  g_j(x,y)=(f*h_j)(x,y),\qquad j=1,\ldots,M.
+\]
+每个滤波器产生一张响应图。按讲义 p.~34，在各响应图的局部窗口 $\mathcal N$ 内聚合幅值，再拼接成同一个像素的特征向量：
+\[
+  \tau_j(x,y)=\sum_{(u,v)\in\mathcal N}|g_j(x+u,y+v)|,\qquad
+  \bm\tau(x,y)=\bigl[\tau_1(x,y),\ldots,\tau_M(x,y)\bigr]^{\mathsf T}.
+\]
+幅值聚合避免振荡响应正负抵消，并描述邻域纹理。将每个像素的 $\bm\tau(x,y)$ 视为特征空间中的一个点，用 K-means 等算法将相似特征聚为一类，最后把簇标签放回对应的像素位置，得到分割图。
+
+\[
+  \boxed{\text{原图}}
+  \ \longrightarrow\ \boxed{M\text{ 张滤波响应图}}
+  \ \longrightarrow\ \boxed{\text{逐像素 }M\text{ 维特征}}
+  \ \longrightarrow\ \boxed{K\text{ 类标签图}}.
+\]
+滤波器数 $M$ 决定特征维数，簇数 $K$ 决定输出类别数。聚类比较的是纹理特征；同一簇的像素未必在图像中连成一个区域。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT05-Q02}{Otsu：灰度统计量与加权均值}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L07-T02}{区域统计与归一化直方图}；
+\relatedtopic{SC4061-L07-T03}{Global Thresholding 与 Otsu 方法}。
+\par\nopagebreak[4]
+
+\textbf{题目。}设 $p(r)$ 描述图像中灰度 $r\in\{0,\ldots,255\}$ 的概率。
+(a) 写出与阈值无关的整体均值 $\mu$ 和方差 $\sigma^2$；
+(b) 解释 Otsu 目标 $\sigma_w^2=q_L\sigma_L^2+q_H\sigma_H^2$ 的各项；
+(c) 给定阈值 $T$，证明 $\mu=q_L\mu_L+q_H\mu_H$。
+
+\begin{checkedsolution}
+\textbf{(a) 整体均值与方差。}令图像有 $n$ 个像素，其中 $h(r)$ 个像素的灰度为 $r$。归一化直方图为 $p(r)=h(r)/n$，满足 $\sum_{r=0}^{255}p(r)=1$。因此
+\[
+  \boxed{\mu=\sum_{r=0}^{255}r\,p(r)},\qquad
+  \boxed{\sigma^2=\sum_{r=0}^{255}(r-\mu)^2p(r)}.
+\]
+改变阈值只改变分组，原图的 $p(r)$ 保持不变，因此 $\mu$ 和 $\sigma^2$ 不变。这里统计的是原始灰度，不能用二值标签代替。
+
+\textbf{(b) 两类的比例与类内方差。}约定低灰度类 $L=\{r\le T\}$，高灰度类 $H=\{r>T\}$。两类在整幅图像中的像素占比为
+\[
+  q_L=\sum_{r=0}^{T}p(r)=\frac{n_L}{n},\qquad
+  q_H=\sum_{r=T+1}^{255}p(r)=\frac{n_H}{n},\qquad q_L+q_H=1.
+\]
+对两类都非空的阈值，类内统计量为
+\[
+\begin{aligned}
+  \mu_L&=\frac{1}{q_L}\sum_{r=0}^{T}r\,p(r),&
+  \mu_H&=\frac{1}{q_H}\sum_{r=T+1}^{255}r\,p(r),\\
+  \sigma_L^2&=\frac{1}{q_L}\sum_{r=0}^{T}(r-\mu_L)^2p(r),&
+  \sigma_H^2&=\frac{1}{q_H}\sum_{r=T+1}^{255}(r-\mu_H)^2p(r).
+\end{aligned}
+\]
+$\sigma_L^2$、$\sigma_H^2$ 分别衡量各类灰度围绕\emph{各自均值}的离散程度。Within-class variance（类内方差）
+\[
+  \boxed{\sigma_w^2(T)=q_L\sigma_L^2+q_H\sigma_H^2}
+\]
+按类的像素占比加权，Otsu 选择使它最小的阈值，使分组后的灰度尽量集中。$q_L$、$q_H$ 和类内统计量随 $T$ 改变；若某一类为空，其条件均值和方差未定义，应跳过该阈值。
+
+\textbf{(c) 整体均值等于两类均值的加权和。}用像素求和直接证明。设第 $i$ 个像素灰度为 $r_i$，则
+\[
+\begin{aligned}
+  q_L\mu_L+q_H\mu_H
+  &=\frac{n_L}{n}\left(\frac{1}{n_L}\sum_{i\in L}r_i\right)
+    +\frac{n_H}{n}\left(\frac{1}{n_H}\sum_{i\in H}r_i\right)\\
+  &=\frac{1}{n}\left(\sum_{i\in L}r_i+\sum_{i\in H}r_i\right)
+   =\frac{1}{n}\sum_{i=1}^{n}r_i
+   =\boxed{\mu}.
+\end{aligned}
+\]
+两类互不重叠且覆盖全图，所以两类的灰度总和相加就是全图灰度总和；均值的权重由像素占比决定。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT05-Q03}{手算 K-means：中心更新、空簇与决策边界}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L08-T02}{K-means：在特征空间中划分纹理}。
+\par\nopagebreak[4]
+
+\textbf{题目。}对图~\ref{fig:sc4061-tut05-kmeans} 的数据手动执行 $K=3$ 的 K-means，画出各轮中心及最终 decision boundaries（决策边界）。圆圈为数据点，方块为中心；初始中心记为 $A$（左）、$B$（右）、$C$（下）。题目规定：某个中心没有分配到点时，该轮保留原位。
+
+\begin{checkedsolution}
+每轮先把所有点分给最近的中心，再统一取各簇均值。非空簇更新为
+$\bm\mu_k^{\mathrm{new}}=|S_k|^{-1}\sum_{i\in S_k}\mathbf x_i$；空簇保持旧中心。整轮分配使用同一组中心，不能分配一个点就立刻移动中心。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lcccX@{}}
+\toprule
+分配轮次 & $|S_A|$ & $|S_B|$ & $|S_C|$ & 随后的中心更新 \\
+\midrule
+初始中心分配 & 5 & 6 & 0 &
+$A$ 移到左上 $5$ 点的均值；$B$ 移到右侧上下两组共 $6$ 点的均值；$C$ 保留初始位置。\\
+第二轮 & 8 & 0 & 3 &
+上方 $8$ 点归 $A$，右下 $3$ 点归 $C$，分别取均值；$B$ 保留\emph{上一轮更新后}的位置。\\
+第三轮 & 8 & 0 & 3 &
+分配不变，非空簇均值不再移动，算法收敛。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{center}
+  \input{figures/tutorial-05-kmeans}
+  \par\smallskip
+  \refstepcounter{figure}\label{fig:sc4061-tut05-kmeans}
+  {\small 图~\thefigure：按原题 p.~1 重绘，圆圈为数据点，方块为中心。原题无坐标刻度，位置与边界为近似示意。}
+\end{center}
+
+\textbf{决策边界。}到两个中心等距的点满足
+\[
+  \|\mathbf x-\bm\mu_i\|_2^2=\|\mathbf x-\bm\mu_j\|_2^2,
+\]
+在二维中就是两中心连线的垂直平分线。作为有效边界，还要求这些点到第三个中心的距离不更小。图示范围内，两条边界将区域分成上方 $A$、中间 $B$ 和下方 $C$。
+
+最终 $B$ 的决策区域内没有样本。按本题的空簇保留规则，指定 $K=3$ 可以得到两个非空簇；结果受初始中心影响。
+\end{checkedsolution}
+
+\textbf{一分钟回顾。}纹理分割对滤波特征聚类；Otsu 最小化加权类内方差；K-means 交替分配与取均值，本题稳定为 $(8,0,3)$。
+
+\endgroup

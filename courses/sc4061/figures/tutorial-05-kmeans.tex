@@ -1,0 +1,56 @@
+% Original schematic based on Tutorial 5, Q3, PDF p. 1.
+% Positions are approximate digitizations of the unscaled source diagram,
+% divided by 100. They are not coordinates supplied in the question.
+% Iteration check: (5,6,0) -> (8,0,3) -> (8,0,3).
+\begin{tikzpicture}[x=1.05cm,y=-1.05cm,font=\small]
+  \tikzset{
+    sample/.style={draw=noteBlue,fill=white,line width=0.6pt},
+    centre/.style={fill=ntuRed,draw=ntuRed},
+    border/.style={draw=black!50,line width=0.4pt},
+    boundary/.style={draw=black!70,line width=0.6pt}
+  }
+  \foreach \shift/\heading in {0/初始中心,4.45/第一次更新,8.9/最终中心与边界}{
+    \begin{scope}[shift={(\shift,0)}]
+      \ifdim\shift pt>8pt
+        \fill[blue!5] (0,0)--(3.62,0)--(3.62,0.057753)--(0,3.015270)--cycle;
+        \fill[black!4] (0,3.015270)--(3.62,0.057753)--(3.62,2.587094)--(0,3.284014)--cycle;
+        \fill[orange!8] (0,3.284014)--(3.62,2.587094)--(3.62,4.4)--(0,4.4)--cycle;
+        \draw[boundary] (0,3.015270)--(3.62,0.057753);
+        \draw[boundary] (0,3.284014)--(3.62,2.587094);
+      \fi
+      \draw[border] (0,0) rectangle (3.62,4.4);
+      \node[anchor=south] at (1.81,-0.12) {\heading};
+      \foreach \x/\y in {
+        0.64/0.80,0.94/0.60,1.29/0.45,1.04/1.01,1.29/0.95,
+        2.19/0.40,2.59/0.24,2.19/0.80,
+        2.64/3.54,2.89/3.39,3.19/3.60}{
+        \draw[sample] (\x,\y) circle[radius=0.065cm];
+      }
+    \end{scope}
+  }
+  \begin{scope}
+    \foreach \x/\y/\label in {1.49/3.34/A,2.14/3.34/B,1.79/3.94/C}{
+      \fill[centre] (\x-0.055,\y-0.055) rectangle (\x+0.055,\y+0.055);
+      \node[above=3pt] at (\x,\y) {$\label$};
+    }
+    \node[anchor=north] at (1.81,4.52) {分配：$(5,6,0)$};
+  \end{scope}
+  \begin{scope}[shift={(4.45,0)}]
+    \foreach \x/\y/\label in {1.04/0.762/A,2.615/1.995/B,1.79/3.94/C}{
+      \fill[centre] (\x-0.055,\y-0.055) rectangle (\x+0.055,\y+0.055);
+    }
+    \node[anchor=west] at (1.45,0.762) {$A$};
+    \node[above=3pt] at (2.615,1.995) {$B$};
+    \node[above=3pt] at (1.79,3.94) {$C$};
+    \node[anchor=north] at (1.81,4.52) {再次分配：$(8,0,3)$};
+  \end{scope}
+  \begin{scope}[shift={(8.9,0)}]
+    \foreach \x/\y in {1.52125/0.65625,2.615/1.995,2.906667/3.51}{
+      \fill[centre] (\x-0.055,\y-0.055) rectangle (\x+0.055,\y+0.055);
+    }
+    \node[anchor=west] at (1.65,0.65625) {$A$};
+    \node[above=3pt] at (2.615,1.995) {$B$};
+    \node[anchor=north] at (2.906667,3.77) {$C$};
+    \node[anchor=north] at (1.81,4.52) {稳定：$(8,0,3)$};
+  \end{scope}
+\end{tikzpicture}
