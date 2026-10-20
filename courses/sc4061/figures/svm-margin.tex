@@ -1,0 +1,20 @@
+% Original schematic based on the canonical margin equations in LEC06 pp. 26--28.
+\begin{tikzpicture}[x=1.35cm,y=0.9cm,font=\small,>=Latex]
+  \fill[blue!5] (-1,-1.35) rectangle (1,1.6);
+  \draw[noteBlue,dashed,thick] (-1,-1.35) -- (-1,1.6);
+  \draw[noteBlue,very thick] (0,-1.35) -- (0,1.6);
+  \draw[noteBlue,dashed,thick] (1,-1.35) -- (1,1.6);
+  \node[above] at (-1,1.6) {$f(\bm x)=-1$};
+  \node[above] at (0,2.1) {$f(\bm x)=0$};
+  \draw[noteBlue] (0,2.1) -- (0,1.6);
+  \node[above] at (1,1.6) {$f(\bm x)=+1$};
+  \foreach \x/\y in {-2.25/1.05,-1.75/-0.7,-2.4/-0.2,-1/0.3}
+    \fill[noteBlue] (\x,\y) circle[radius=2.4pt];
+  \foreach \x/\y in {1/0.3,1.8/0.7,2.35/-0.65,2.4/1.2}
+    \node[rectangle,fill=ntuRed,inner sep=2.4pt] at (\x,\y) {};
+  \draw[noteBlue,thick] (-1,0.3) circle[radius=5pt];
+  \draw[ntuRed,thick] (1,0.3) circle[radius=5pt];
+  \node[noteBlue] at (-2.1,-1.55) {负类};
+  \node[ntuRed] at (2.1,-1.55) {正类};
+  \draw[<->,thick] (-1,-1.7) -- node[below] {$m=2/\|\bm w\|$} (1,-1.7);
+\end{tikzpicture}

@@ -1,0 +1,157 @@
+% Related lecture: SC4061-L10.
+% Source: LEC06 Image Recognition - 2026, pp. 30--33 and p. 45.
+% Original lecture examples/questions; conversational checks are excluded.
+
+\exercisegroup{SC4061-L10-EX}{第 10 讲：SVM、评价指标与 CNN}
+
+\exercisemeta
+  {SC4061-L10-EX}
+  {2026-10-20}
+  {LEC06 pp.~30--33、45；字幕 70346、70347}
+  {题干、选项与计算已按讲义核对；分主题合并编排}
+  {已确认（2026-10-20）}
+
+\exercisequestion{SC4061-L10-E01}{SVM 的边界选择与间隔}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~33 第 1、2 题。
+\textbf{对应：}\relatedtopic{SC4061-L10-T01}{最大间隔分类}。
+
+\textbf{题目一。}在线性可分二分类中，X、Y 两个超平面都分对全部训练样本。X 很靠近若干样本，Y 与两类最近点都留有更宽空间。SVM 为什么偏好 Y？
+\begin{enumerate}[label=\Alph*.,nosep]
+  \item 它使支持向量数量恰好等于一个。
+  \item 它最大化间隔，预期有更好的未见数据泛化表现。
+  \item 它降低了输入特征维数。
+  \item 它保证未来测试集上的错误率为零。
+\end{enumerate}
+
+\textbf{题目二。}规范化 SVM 的 $\bm w=[3,4]^T$。按讲义的间隔定义，margin 是多少？
+\[
+  \text{A. }0.2\qquad
+  \text{B. }0.4\qquad
+  \text{C. }2.5\qquad
+  \text{D. }5.
+\]
+
+\begin{checkedsolution}
+两题均选 \textbf{B}。较大间隔提供更宽的分类缓冲，但不保证未来零错误，也不改变输入维数或强制支持向量个数。
+第二题中
+\[
+  \|\bm w\|=\sqrt{3^2+4^2}=5,\qquad
+  m=\frac2{\|\bm w\|}=\boxed{0.4}.
+\]
+$0.2$ 是中间决策面到单侧间隔边界的距离，不是本题的总宽度。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L10-E02}{十个样本的阈值评价}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 pp.~30--31；提高阈值的比较来自字幕 70346。
+
+\textbf{对应：}\relatedtopic{SC4061-L10-T02}{Precision、Recall 与 F1}。
+
+\textbf{题目。}十个样本的正类概率与真实标签如下。将概率\emph{大于} $0.8$ 的样本预测为正类，计算混淆计数及 $P,R,F_1$。
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrrrrrr@{}}
+  \toprule
+  样本 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
+  \midrule
+  正类概率 & .95 & .93 & .87 & .85 & .85 & .85 & .76 & .53 & .43 & .25 \\
+  真实标签 & $+$ & $+$ & $-$ & $-$ & $-$ & $+$ & $-$ & $+$ & $-$ & $+$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{checkedsolution}
+预测正类为样本 1--6。真正例为 $\{1,2,6\}$，误报为 $\{3,4,5\}$，漏检为 $\{8,10\}$，正确负类为 $\{7,9\}$，所以
+\[
+  TP=3,\quad FP=3,\quad FN=2,\quad TN=2.
+\]
+\[
+  P=\frac3{3+3}=\boxed{\frac12},\qquad
+  R=\frac3{3+2}=\boxed{\frac35},\qquad
+  F_1=\frac{2PR}{P+R}=\boxed{\frac6{11}}.
+\]
+四种计数相加为 10，真实正类总数 $TP+FN=5$，可用于核对。
+
+若阈值提高至 $0.9$，只返回样本 1、2，得到
+$TP=2,FP=0,FN=3,TN=5$。此时 $P=1$、$R=2/5$：结果更纯，但漏掉更多正类；按同一公式可得 $F_1=4/7$。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L10-E03}{三种苹果检索结果}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~32 例题及 p.~33 第 3 题。
+\textbf{对应：}\relatedtopic{SC4061-L10-T02}{检出质量与目标覆盖}。
+
+\textbf{题目。}图库共有 10000 张水果图片，其中 50 张是苹果。分别评价下列检索结果：
+\begin{enumerate}[nosep]
+  \item 返回 500 张，含全部 50 张苹果和 450 张其他图片；
+  \item 返回 5 张，全部是苹果；
+  \item 返回 100 张，含 40 张苹果和 60 张其他图片。
+\end{enumerate}
+另将前两种系统分别称为 X、Y。下列哪种判断正确？
+\begin{enumerate}[label=\Alph*.,nosep]
+  \item X 的 recall 为 $100\%$，所以 F1 更高。
+  \item Y 的 precision 为 $100\%$，所以 F1 更高。
+  \item X、Y 的 precision 和 recall 差异很大，但 F1 相同。
+  \item 返回数量不同，无法比较 F1。
+\end{enumerate}
+
+\begin{checkedsolution}
+每种情形中 $FN=50-TP$，$FP=\text{返回数}-TP$。由此得到：
+\begin{center}
+\begin{tabular}{@{}lrrrrrr@{}}
+  \toprule
+  情形 & TP & FP & FN & $P$ & $R$ & $F_1$ \\
+  \midrule
+  1：返回 500 张 & 50 & 450 & 0 & $1/10$ & $1$ & $2/11$ \\
+  2：返回 5 张 & 5 & 0 & 45 & $1$ & $1/10$ & $2/11$ \\
+  3：返回 100 张 & 40 & 60 & 10 & $2/5$ & $4/5$ & $8/15$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+例如第三种 $F_1=2(2/5)(4/5)/(2/5+4/5)=8/15$。
+选择题选 \textbf{C}。F1 对 $P,R$ 交换是对称的，但实际应用对漏检和误报的容忍程度未必相同；相同 F1 不等于两套系统行为相同。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L10-E04}{CNN 的非线性、数据准备与分类出口}
+\nopagebreak[4]
+
+\textbf{来源：}讲义 p.~45 第 1--3 题。
+\textbf{对应：}\relatedtopic{SC4061-L10-T03}{CNN 识别流程}。
+
+\textbf{题目一。}卷积输出四个位置的数值为 $[-3.2,0,1.7,5.1]$。经过 ReLU 后是什么？
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}XX@{}}
+  A.~$[-3.2,0,1.7,5.1]$ & B.~$[3.2,0,1.7,5.1]$ \\
+  C.~$[0,0,1.7,5.1]$ & D.~$[0,1,1,1]$
+\end{tabularx}
+\end{center}
+
+\textbf{题目二。}CIFAR-10 预处理包含 $X/255$、标签 one-hot 编码、$80/20$ 训练验证划分，以及训练图像水平翻转。哪项解释最准确？
+\begin{enumerate}[label=\Alph*.,nosep]
+  \item 除以 255 归一化标签，one-hot 编码用于增强图像。
+  \item One-hot 编码将每张图片变成十张特征图。
+  \item 验证集从训练数据中分离，水平翻转用于增强训练样本。
+  \item 水平翻转应用于测试集以提高测试准确率。
+\end{enumerate}
+
+\textbf{题目三。}网络最后一层为
+\texttt{Dense(10, activation='softmax')}，随后用
+\texttt{np.argmax(y\_pred, axis=1)} 评价。它们分别做什么？
+\begin{enumerate}[label=\Alph*.,nosep]
+  \item Softmax 产生十类的概率输出，argmax 选择输出最大的类别。
+  \item Softmax 直接选定一个类别，argmax 将它转为 one-hot。
+  \item Softmax 提取特征，argmax 执行卷积。
+  \item Softmax 将十分类转为二分类，argmax 再恢复十类。
+\end{enumerate}
+
+\begin{checkedsolution}
+依次选 \textbf{C、C、A}。
+ReLU 按 $\max(0,z)$ 处理，保留正数原值。
+像素归一化、标签编码、数据划分和训练增强作用于不同对象；验证样本不参与参数更新。
+Softmax 输出每个样本的十类概率，argmax 沿类别维选取最大项的索引，最后再映射为类别名称。
+\end{checkedsolution}

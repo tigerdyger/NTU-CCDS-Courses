@@ -1,0 +1,182 @@
+% Actual class: 10, 2026-10-20 (Week 10).
+% Source: LEC06 Image Recognition - 2026, PDF pp. 24--45; p. 46 is blank.
+% Videos: 70346 (BoVW classification and evaluation), 70347 (CNN).
+% Pre-class questions: Q6--Q8. Lecture 09 covered pp. 1--23.
+
+\section{第 10 节课：Image Recognition：SVM、评价指标与 CNN}
+\label{lecture:SC4061-L10}
+
+\lecturemeta
+  {SC4061-L10}
+  {2026-10-20}
+  {LEC06 Image Recognition -- 2026}
+  {pp.~24--45：BoVW 分类、Precision/Recall、CNN 识别}
+  {字幕 70346、70347；pre-class questions Q6--Q8}
+  {已确认（2026-10-20）}
+
+\subsection{本讲主线}
+
+上一讲将图像的局部 SIFT 描述子汇总成固定长度 BoVW 向量。本讲先用 Support Vector Machine（SVM，支持向量机）把向量映射为类别，再评价分类与检索结果，最后用 CNN 将特征学习和分类连接起来。两条识别路线分别是
+\[
+  \text{图像}\to\text{BoVW 特征}\to\text{SVM 类别},
+  \qquad
+  \text{图像}\to\text{CNN 特征}\to\text{类别概率}.
+\]
+\lecturetopic{SC4061-L10-T01}{SVM：从特征向量到最大间隔分类}
+
+\subsubsection*{判别分数与分类边界}
+
+给定线性可分训练集 $\{(\bm x_i,y_i)\}_{i=1}^{N}$，其中 $\bm x_i\in\mathbb R^D$ 为整张图的特征向量，$y_i\in\{-1,+1\}$ 为二分类标签。线性判别函数为
+\[
+  f(\bm x)=\bm w^T\bm x+b,
+  \qquad \boxed{\bm w^T\bm x+b=0\ \text{为决策边界}}.
+\]
+$\bm w$ 是边界的法向量，$b$ 调整其位置。预测时，$f(\bm x)>0$ 判正类，$f(\bm x)<0$ 判负类；等于零时恰在边界上。二维中边界是一条直线，高维中称为 hyperplane（超平面）。
+
+很多边界都能分对训练样本。SVM 选择两类最近样本之间间隔最大的边界，希望减小小幅特征扰动的影响；这是一种有利于泛化的选择原则，不保证所有未来测试样本均分类正确。
+
+\subsubsection*{Canonical form、支持向量与间隔}
+
+在 canonical form（规范化形式）中，把两侧间隔边界写为 $f(\bm x)=+1$ 和 $f(\bm x)=-1$，并要求
+\[
+  \begin{cases}
+    \bm w^T\bm x_i+b\geq1,&y_i=+1,\\
+    \bm w^T\bm x_i+b\leq-1,&y_i=-1,
+  \end{cases}
+  \quad\Longleftrightarrow\quad
+  \boxed{y_i(\bm w^T\bm x_i+b)\geq1}.
+\]
+最靠近决策边界、达到等号的训练点位于间隔边界上，称为 support vectors（支持向量）。\textbf{$\pm1$ 用于约束训练间隔，预测类别仍以 $0$ 为界。}
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/svm-margin}
+  \caption{最大间隔的原创示意。实线为决策边界，虚线为规范化间隔边界；圈出的点为支持向量。}
+  \label{fig:sc4061-l10-svm}
+\end{figure}
+
+讲义所用 margin 是两侧边界之间的\emph{总宽度}：
+\[
+  \boxed{m=\frac{2}{\|\bm w\|}},
+  \qquad
+  \text{决策面到每侧边界的距离}=\frac{1}{\|\bm w\|}.
+\]
+\textbf{推导补全。}取两边界上沿法向相对的点 $\bm x_+,\bm x_-$，则
+$\bm w^T(\bm x_+-\bm x_-)=2$；除以 $\|\bm w\|$，就是它们沿单位法向的距离。共同缩放 $\bm w,b$ 不会改变零分界面，以上公式必须结合规范化约束使用。
+
+\subsubsection*{训练目标与约束的作用}
+
+最大化 $2/\|\bm w\|$ 等价于在约束下最小化平方范数：
+\[
+  \boxed{
+  \min_{\bm w,b}\frac12\|\bm w\|^2
+  \quad\text{subject to}\quad
+  y_i(\bm w^T\bm x_i+b)\geq1\quad\forall i.
+  }
+\]
+不能丢掉约束后任意缩小权重，否则会破坏训练样本的位置要求。此处目标为凸二次函数、约束为线性的，因此局部最优也是全局最优；“二次函数”本身不足以推出这一结论。
+
+讲义 p.~29 用 Lagrangian（拉格朗日函数）表示约束：
+\[
+  L(\bm w,b,\bm\alpha)
+  =\frac12\|\bm w\|^2
+   -\sum_{i=1}^{N}\alpha_i
+       \bigl[y_i(\bm w^T\bm x_i+b)-1\bigr],
+  \qquad \alpha_i\geq0.
+\]
+乘子将约束并入优化表达式；对应原问题的是
+$\min_{\bm w,b}\max_{\bm\alpha\geq0}L$，不能理解成对所有变量一起无约束最小化。本讲不展开其求解、非线性核或不可分情形。间隔选择与数值例题见\relatedexercise{SC4061-L10-E01}{SVM 的最大间隔}。
+
+\lecturetopic{SC4061-L10-T02}{评价结果：Precision、Recall 与 F1}
+
+先指定关注的 positive class（正类），例如“苹果”。Positive 指类别，不能理解为“预测正确”。四种结果为：
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+  \toprule
+  真实类别 & 预测为正类 & 预测为负类 \\
+  \midrule
+  正类 & True Positive（TP，正确检出） & False Negative（FN，漏检）\\
+  负类 & False Positive（FP，误报） & True Negative（TN，正确排除）\\
+  \bottomrule
+\end{tabular}
+\end{center}
+\[
+  \boxed{P=\frac{TP}{TP+FP}},\qquad
+  \boxed{R=\frac{TP}{TP+FN}},\qquad
+  \boxed{F_1=\frac{2PR}{P+R}
+              =\frac{2TP}{2TP+FP+FN}}.
+\]
+Precision（精确率）问“检出的样本有多少是真的”；Recall（召回率）问“真实目标有多少被检出”。F1 是两者的调和平均，其中一项很低会拉低综合得分。以上比值在分母非零时直接定义；空检索或无正类情形须另约定评价方式。
+
+\subsubsection*{阈值改变预测集合，指标反映不同代价}
+
+讲义 pp.~30--31 使用输出正类概率的分类器，取 $p>0.8$ 为正类。此处的概率不能直接等同于 SVM 原始分数 $\bm w^T\bm x+b$。提高阈值会缩小预测正类集合，可能减少误报，也会漏掉更多目标；具体 precision 的变化要按实际样本计算。
+
+完整概率表与混淆计数见\relatedexercise{SC4061-L10-E02}{十个样本的阈值评价}。讲义的苹果检索例子见\relatedexercise{SC4061-L10-E03}{三种检索结果}：高 precision 与高 recall 可以对应完全不同的系统行为，甚至产生相同 F1。评价应结合漏检与误报的实际代价，不能只凭返回数量或某一项达到 $100\%$ 判断优劣。
+
+\lecturetopic{SC4061-L10-T03}{CNN：联合学习特征与类别}
+
+\subsubsection*{各层在识别流程中的位置}
+
+BoVW 使用人工设计的 SIFT 规则和从数据聚类得到的词典，再训练分类器。CNN 则将图像送入可学习的卷积层，产生特征图，再由 fully connected layers（全连接层）组合特征、输出类别。分类损失通过反向传播同时更新卷积核与全连接参数。
+
+\begin{itemize}
+  \item \textbf{Convolution（卷积）：}多个滤波器产生多个特征通道，同一滤波器的权重在不同空间位置共享；每个滤波器覆盖输入的全部通道。滤波器数与类别数没有必然对应关系。
+  \item \textbf{ReLU（修正线性单元）：}$\operatorname{ReLU}(z)=\max(0,z)$，逐元素将负数置零、保留非负值，引入非线性。
+  \item \textbf{Pooling（池化）：}在局部区域汇总响应并下采样，减小空间尺寸，也会损失精细位置。池化汇总已有特征，语义部件的检测能力来自所学习的特征，不能归因于池化独立学习了检测器。
+  \item \textbf{Dense 与 Softmax：}将整图特征映射成各类别分数，再得到概率并选出类别；这套网络已包含分类器，不必另接 SVM。
+\end{itemize}
+
+\subsubsection*{CIFAR-10 示例：从像素走到十类概率}
+
+讲义 pp.~39--44 使用 $32\times32$ RGB 图像，类别为 airplane、car、bird、cat、deer、dog、frog、horse、ship、truck。按代码逐层追踪，省略 batch 维度：
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.5cm}@{}}
+  \toprule
+  操作 & 输出形状 \\
+  \midrule
+  输入图像 & $32\times32\times3$ \\
+  $3\times3$ Conv，16 个滤波器，stride 1，SAME，ReLU；BN & $32\times32\times16$ \\
+  第二次 $3\times3$ Conv，16 个滤波器，stride 1，SAME，ReLU；BN & $32\times32\times16$ \\
+  $2\times2$ Max Pooling，stride 2 & $16\times16\times16$ \\
+  Dropout，丢弃概率 $0.25$ & $16\times16\times16$ \\
+  Flatten（展平） & $4096$ \\
+  Dense，32 个单元，ReLU & $32$ \\
+  Dense，10 个单元，Softmax & $10$ \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+第一层卷积核的输入深度是 3，第二层是 16。Flatten 将全部 $16\times16\times16$ 个数重排为向量，不平均、不减少元素；Dense 层才学习新的特征组合。
+Batch Normalization（BN，批归一化）帮助稳定中间激活尺度，推理时使用训练所得的统计量。Dropout 在训练时随机置零部分激活，推理时关闭随机丢弃；它不永久删除单元，也不缩小张量形状。
+
+\subsubsection*{数据准备、训练与验证}
+
+\begin{enumerate}
+  \item \textbf{预处理：}像素除以 255，缩放到 $[0,1]$；将类别标签转为十维 one-hot 向量。前者作用于图像，后者作用于标签。
+  \item \textbf{划分数据：}原训练集按 $80/20$ 分为训练、验证部分，原测试集保持独立；示例的划分随机种子为 42。
+  \item \textbf{训练增强：}以 batch size 64 生成训练批次，对训练图片随机水平翻转；增强应保持类别含义。验证、测试图片不因此加入参数训练。
+  \item \textbf{拟合参数：}采用 Adam、categorical cross-entropy（类别交叉熵）和 accuracy（正确率），固定训练 10 个 epoch。每轮记录训练和验证指标；验证数据不用于反向更新参数，传入 \texttt{validation\_data} 也不等于自动启用 early stopping。
+  \item \textbf{观察曲线：}若训练持续改善而验证表现回落，应关注过拟合。讲义 p.~43 的后期曲线展示了这种趋势；单轮波动本身不足以确定严重程度。
+\end{enumerate}
+
+字幕还提到 test-time augmentation（测试时增强）：固定模型，对同一测试图片的多个变换版本分别预测再融合结果。它与此处用于学习参数的训练增强分属不同阶段。
+
+\subsubsection*{分类出口与单图推理}
+
+令最后一层产生的十个类别分数为 $z_1,\ldots,z_{10}$。为解释代码中的 Softmax 与交叉熵，写成
+\[
+  p_c=\frac{e^{z_c}}{\sum_{j=1}^{10}e^{z_j}},
+  \qquad \widehat c=\operatorname*{arg\,max}_c p_c,
+  \qquad
+  \mathcal L=-\sum_{c=1}^{10}y_c\log p_c=-\log p_{\mathrm{true}}.
+\]
+Softmax 给出非负且总和为 1 的类别概率，argmax 选择概率最大的类别；训练损失使用概率，不使用 argmax 后的离散编号。
+
+预测一张图片时，采用与训练一致的预处理，再加 batch 维度得到
+$1\times32\times32\times3$，模型输出 $1\times10$ 概率，最后把类别编号映射成名称。单张图片预测正确只说明这次预测成功；整体表现需在完整测试集上评价。ReLU、预处理和分类出口的讲义题见\relatedexercise{SC4061-L10-E04}{CNN 流程辨析}。
+
+\subsection{一分钟回顾}
+
+SVM 在规范化约束下最大化间隔 $2/\|\bm w\|$，预测以分数零点为界。Precision 看检出结果的准确程度，recall 看真实目标的覆盖程度，F1 综合两者。CNN 通过卷积提取特征、池化缩小空间尺寸，再用全连接层与 Softmax 得到类别概率；分类损失共同训练卷积与全连接参数，验证和测试数据保持各自的评价角色。
