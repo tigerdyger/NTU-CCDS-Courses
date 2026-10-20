@@ -1,0 +1,20 @@
+% Original redraw: M2-L3 Routing pp. 29--39; Week 10 Routing pp. 29--41.
+% Symmetric link costs; blue path is the initial R1 -> server route.
+\begin{tikzpicture}[font=\small,>=Latex,
+  router/.style={circle,draw=noteBlue,fill=noteBlue!5,thick,minimum size=8mm},
+  cost/.style={fill=white,inner sep=2pt,font=\small}]
+ \node[router] (r1) at (0,0) {R1};
+ \node[router] (r2) at (3,1.6) {R2};
+ \node[router] (r3) at (3,0) {R3};
+ \node[router] (r4) at (3,-1.6) {R4};
+ \node[router] (r5) at (6,0) {R5};
+ \node[draw=noteBlue,rounded corners,align=center,inner sep=6pt] (lan)
+   at (9,0) {Server LAN\\\texttt{10.11.0.0/16}};
+ \draw (r1) -- node[cost,above left]{20} (r2);
+ \draw (r2) -- node[cost,above right]{10} (r5);
+ \draw (r1) -- node[cost,below left]{20} (r4);
+ \draw[noteBlue,very thick] (r1) -- node[cost,above]{5} (r3);
+ \draw[noteBlue,very thick] (r3) -- node[cost,right]{10} (r4);
+ \draw[noteBlue,very thick] (r4) -- node[cost,below right]{10} (r5);
+ \draw[noteBlue,very thick] (r5) -- node[cost,above]{2} (lan);
+\end{tikzpicture}

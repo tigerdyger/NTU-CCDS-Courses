@@ -1,0 +1,231 @@
+% Based on templates/lecture-example.tex. Lecture examples only.
+% Recorded = SC2008_M2-L3_Routing.pdf; Live = SC2008 Week 10_Routing.pdf.
+% Necessary conditions restated; calculations checked; finished notes await review.
+% No conversational checks or learner response records.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC2008-L07-EX}{第 07 讲：Routing}
+
+\textbf{日期与来源：}2026-10-20。录播指M2-L3 Routing；现场指Week 10 Routing。以下为讲义例题或演示情境的合并整理，页码均为PDF页码。
+
+\exercisequestion{SC2008-L07-E01}{VPN、本地打印机与默认路由}
+
+\textbf{来源与关联：}现场pp.~6--11；\relatedtopic{SC2008-L07-T01}{路由与逐跳交付}。
+
+\textbf{题目。}笔记本为\texttt{192.168.50.10/24}，家庭网关为\texttt{192.168.50.1}。本地打印机为\texttt{192.168.50.20}，大学服务器为\texttt{10.20.18.7}，公网服务器为\texttt{203.0.113.80}。VPN连接时路由如下；断开时仅移除大学/16，无其他匹配路由或大学私网入口。判断三个目标的发送路径，并解释断开后大学访问失败而公网仍正常。
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+前缀 & 交付方式 \\
+\midrule
+\texttt{192.168.50.0/24} & On-link，本地Wi-Fi \\
+\texttt{10.20.0.0/16} & VPN tunnel \\
+\texttt{0.0.0.0/0} & 经家庭网关\texttt{192.168.50.1} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{workedsolution}
+打印机同时匹配/24与/0，选本地/24；需要时ARP查询打印机的MAC。大学服务器匹配/16与/0，选VPN。公网服务器只匹配/0，经家庭网关发送，ARP查询的是网关MAC，IP目的地址仍是公网服务器。
+
+断开VPN后，大学地址仍匹配/0，包被交给家庭网关；默认条目只给出下一步，无法建立进入大学私网的路径。因此公网可继续正常访问，大学服务器却不再可达。本例为split tunnel，不代表所有VPN都采用该配置。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L07-E02}{请求到达后，为什么没有回复？}
+
+\textbf{来源与关联：}现场pp.~19--25；\relatedtopic{SC2008-L07-T01}{双向路径与链路交付}。
+
+\textbf{题目。}拓扑为PC--R1--R2--Server。PC为\texttt{10.1.0.10/24}，网关为R1的\texttt{10.1.0.1}；服务器为\texttt{10.2.0.20/24}，网关为R2的\texttt{10.2.0.1}。R1--R2链路为\texttt{10.255.12.0/30}，两端分别为.1和.2。所有链路正常，起初只有直连路由，没有默认路由、NAT或过滤。在R1加入以下路由后，请求到达服务器，回复却未返回，求缺失配置。
+
+\begin{quote}\small\ttfamily
+R1: ip route 10.2.0.0 255.255.255.0 10.255.12.2
+\end{quote}
+
+\begin{workedsolution}
+回复的目的地址是PC的\texttt{10.1.0.10}。服务器经网关R2发送，但R2没有匹配的返回路线，需要添加：
+\begin{quote}\small\ttfamily
+R2: ip route 10.1.0.0 255.255.255.0 10.255.12.1
+\end{quote}
+于是回复经R1返回PC。配置R1的前向路线不会自动修改R2的表。
+
+请求最后一跳的机制也可从输出逐项验证：R2的正常接口\texttt{Gi0/1}配置为\texttt{10.2.0.1/24}，自动产生直连路由；服务器ARP记录给出MAC \texttt{0200.0000.0020}；交换机S1的MAC表把该MAC映射到\texttt{Gi1/0/7}。三项依次确定目的LAN、帧的目的MAC、交换机出端口，packet的目的IP始终是服务器。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L07-E03}{RIP学习、失效更新与毒性逆转}
+
+\textbf{来源与关联：}录播pp.~11--21；现场pp.~43--45；\relatedtopic{SC2008-L07-T02}{距离向量}。
+
+\textbf{题目。}A直连Net1、Net2、Net4、Net5，各metric为1。A到邻居B、C、D的成本均为1，收到的初始报告如下。更新A的表；再分析Net1--A--B结构中，Net1--A断开而B仍向A报告旧距离2时的变化，比较启用与未启用poisoned reverse两种情况。
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+邻居 & 报告为距离1的网络 \\
+\midrule
+B & Net2、Net3、Net6 \\
+C & Net5、Net6、Net7 \\
+D & Net4 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{workedsolution}
+每条候选都先加到邻居的成本1，再与已有直连条目比较：
+\begin{center}
+\small
+\begin{tabular}{@{}lcl@{}}
+\toprule
+目的网络 & A的metric & 下一跳 \\
+\midrule
+Net1、Net2、Net4、Net5 & 1 & 直连 \\
+Net3 & 2 & B \\
+Net6 & 2 & B或C，等成本候选 \\
+Net7 & 2 & C \\
+\bottomrule
+\end{tabular}
+\end{center}
+例如Net3经B为$1+1=2$；Net2已有直连成本1，不改成经B的2。若题目改为链路成本3、邻居报告4，总成本就是7。
+
+\textbf{不使用防护。}B原来的“2经A”依赖A的直连路径。断链后A听到B报2，误认为仍有另一条路线：
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+收到的报告 & A的当前路线 & B的当前路线 \\
+\midrule
+B向A报2 & 3，经B & 2，经A \\
+A向B报3 & 3，经B & 4，经A \\
+B向A报4 & 5，经B & 4，经A \\
+\bottomrule
+\end{tabular}
+\end{center}
+双方更新各自当前下一跳的成本，数值不断增加，转发却形成A--B循环。RIP最终以16表示不可达。
+
+\textbf{使用毒性逆转。}正常工作时B已经向A把Net1报告为16，但自己仍保存2经A的可用路线。A失去直连后不会把B误认为备用出口。这种针对依赖邻居的报告防止两路由器循环，不等于能消除所有多节点循环。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L07-E04}{Dijkstra、下一跳与故障后重算}
+
+\textbf{来源与关联：}录播pp.~25--39；现场pp.~29--41；\relatedtopic{SC2008-L07-T03}{OSPF}。
+
+\textbf{题目。}所有路由器位于同一OSPF area，链路双向成本相同；R5连接服务器网段\texttt{10.11.0.0/16}，LAN成本2，无其他竞争路线覆盖该前缀。从R1运行Dijkstra，求到各路由器的成本、到服务器的路径及下一跳；再只移除R3--R4，重新计算并判断R1的邻居列表是否必然改变。
+
+\begin{center}
+\input{figures/routing-ospf-topology}
+
+\small 依据上述讲义重绘；蓝色为故障前最低成本路径，数字是配置成本。
+\end{center}
+
+\begin{workedsolution}
+R1到自身为0，其他节点初始为$\infty$。下表列出每轮处理后的当前最低成本：
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+已确定节点 & R2 & R3 & R4 & R5 \\
+\midrule
+R1 & 20 & 5 & 20 & $\infty$ \\
+R1、R3 & 20 & 5 & 15 & $\infty$ \\
+R1、R3、R4 & 20 & 5 & 15 & 25 \\
+R1、R3、R4、R2 & 20 & 5 & 15 & 25 \\
+全部 & 20 & 5 & 15 & 25 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+先确定R3的5，经它到R4为$5+10=15$，优于直连20；再确定R4，经它到R5为$15+10=25$。此时R2的20小于R5的25，先确定R2；经R2到R5为30，保留已有25，最后确定R5。
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcl@{}}
+\toprule
+目的路由器 & 最低成本 & R1的下一跳 \\
+\midrule
+R2 & 20 & R2 \\
+R3 & 5 & R3 \\
+R4 & 15 & R3 \\
+R5 & 25 & R3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+服务器路径为R1--R3--R4--R5--LAN，前缀成本$25+2=27$。R5的前驱是R4，但R1的下一跳是R3。录播中R2所接\texttt{10.5.0.0/16}、R3所接\texttt{10.6.0.0/16}也各增加LAN成本2，故从R1到这两个前缀分别为22、7，下一跳分别为R2、R3。
+
+\textbf{R3--R4故障后。}更新LSA并重算，R1到R4改为直连成本20，到R5有两条等成本路径：
+\begin{center}
+\small
+\begin{tabular}{@{}lcl@{}}
+\toprule
+路径 & 到R5 & 到服务器网段 \\
+\midrule
+R1--R2--R5 & $20+10=30$ & $30+2=32$ \\
+R1--R4--R5 & $20+10=30$ & $30+2=32$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+本例可安装R2、R4两个等成本下一跳。R1与R2、R3、R4的直接连接仍正常，因此邻居列表不变；变的是数据库中的远端链路和计算得到的路线。上述为收敛后的结果，不保证故障瞬间零丢包。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L07-E05}{BGP选路与非中转出口策略}
+
+\textbf{来源与关联：}录播pp.~48--52；现场pp.~48--51、55--57；\relatedtopic{SC2008-L07-T04}{AS路径与策略}。现场使用不同ASN，下面沿用录播编号，并将现场的local preference数值代入同一结构。
+
+\textbf{题目。}Campus为AS100，连接P与Q，且不提供中转。到数据中心前缀\texttt{203.0.113.0/24}的候选为P报告\texttt{200 500}、Q报告\texttt{300 400 500}，另一邻居报告\texttt{600 100 500}。先令所有相关偏好相同，再令P的local preference为100、Q为200。比较选择结果，并说明向Q发布P学来的路线会产生什么后果。
+
+\begin{center}
+\input{figures/routing-bgp-topology}
+
+\small 依据录播pp.~48--52重绘；线表示连接，未规定数据包或通告方向。
+\end{center}
+
+\begin{workedsolution}
+\texttt{600 100 500}包含自己的ASN100，应拒绝。其余相关选择因素相同时，\texttt{200 500}长度2，小于Q的长度3，因此选P。Q的local preference提高到200后，高于P的100，选择Q，即使它的AS path更长。
+
+例如AS500先向P通告\texttt{500}，P向Campus通告时加入自身编号，变为\texttt{200 500}。若出口策略允许Campus继续向外通告，路径会成为\texttt{100 200 500}；目的IP前缀不变。
+
+但在本题非中转策略下，Campus不应把从P学来的该路由通告给Q。否则Q若采用它，数据包可走Q--Campus--P--D，使Campus承载源和目的都在自身之外的流量。Campus可以向两家运营商通告自己的前缀；Q也可通过import prefix check拒绝Campus无权提供的D前缀。
+
+在内部，边界路由器E通过eBGP学到外部路线，通过iBGP分享给其他BGP路由器。若E是本例选定的BGP下一跳，内部路由器I还通过OSPF计算到E的内部路径。选择外部出口与到达该出口是相衔接的两项工作。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L07-E06}{更具体的错误通告为何会吸引流量}
+
+\textbf{来源与关联：}录播p.~53的YouTube历史案例；\relatedtopic{SC2008-L07-T04}{路由通告检查}。
+
+\textbf{情境。}讲义以2008-02-24的事件说明错误路由的传播。正常公告与错误公告的前缀如下，后者经Pakistan Telecom的提供商PCCW传播。目标为\texttt{208.65.153.238}，求两前缀的覆盖范围并解释转发结果。
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+公告 & 前缀 \\
+\midrule
+正常 & \texttt{208.65.152.0/22} \\
+错误 & \texttt{208.65.153.0/24} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{workedsolution}
+正常/22的第三段范围为152--155，错误/24的第三段固定为153：
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+前缀长度 & 首地址 & 末地址 \\
+\midrule
+/22 & \texttt{208.65.152.0} & \texttt{208.65.155.255} \\
+/24 & \texttt{208.65.153.0} & \texttt{208.65.153.255} \\
+\bottomrule
+\end{tabular}
+\end{center}
+目标同时匹配两者。若两条路线都被接受并安装，/24在转发时按最长前缀匹配优先，流量被引向错误路径。
+
+这里不是比较同一前缀的AS path长短：两个不同前缀可同时存在于表中，随后才针对packet选择最长匹配。因此较大的local preference或较短的正常AS path，不能自动替代对更具体错误通告的检查。
+\end{workedsolution}
+\endgroup

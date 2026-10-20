@@ -1,0 +1,159 @@
+% Based on templates/lecture.tex. Actual notes lecture: 07; Week 10, 2026-10-20.
+% Main source: SC2008_M2-L3_Routing.pdf pp. 1--56.
+% Live source: SC2008 Week 10_Routing.pdf pp. 3--60; p. 64 optional commands.
+% Transcripts: 79979 -> recorded pp. 1--40; 79978 -> pp. 41--56; no timestamps.
+% Optional: SC2008_Optional_Classful_Addressing.pdf pp. 1--16, not examinable.
+% Source scope, calculations and conceptual answers checked; notes await review.
+% Conversational checks and learner responses are excluded.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
+\section{第 07 节课：Routing}
+\label{lecture:SC2008-L07}
+
+\textbf{日期与资料：}2026-10-20（Week 10）。录播 M2-L3 Routing，pp.~1--56；现场 Week 10 Routing，知识内容 pp.~3--60。字幕79979、79978分别对应录播的域内、域间路由；同一机制与现场应用合并呈现。第07节沿用本笔记的连续编号，M2-L3是第二模块编号。
+
+上一讲在已有路由表上选择下一跳。本讲解释这些条目如何产生和更新：本机配置提供基本路径，RIP与OSPF学习组织内部的路线，BGP交换跨组织的可达性，并执行各自的策略。
+
+\lecturetopic{SC2008-L07-T01}{从路由信息到逐跳交付}
+
+\textbf{Routing 与 forwarding。}Routing（路由学习与计算）形成、更新路径信息；forwarding（转发）对当前packet的目的IP查已安装的路由，按longest-prefix matching（最长前缀匹配）选出接口与下一跳。Destination prefix（目的前缀）表示一组目标地址；next hop（下一跳）是先交付的邻居；outgoing interface（出接口）是本设备使用的连接。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\toprule
+来源 & Cisco标记 & 形成方式 \\
+\midrule
+Connected（直连） & C & 已配置地址且正常工作的接口建立本地网段路由。\\
+Static（静态） & S & 管理员指定目的前缀和下一跳。\\
+Dynamic（动态） & O表示OSPF & 协议交换信息并计算路径；仍需配置接口、策略等。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+主机的接口、默认网关配置与VPN软件即可提供其所需路由，不要求主机运行动态路由协议。Default route \texttt{0.0.0.0/0}匹配所有IPv4目的地，但仅在没有更具体匹配时使用；匹配成功只确定本机下一步，不保证端到端可达。
+
+\textbf{VPN（虚拟专用网络）。}本讲的远程接入VPN先认证用户，再将大学流量的原始IP包加密、封装到发给VPN网关的外层包；网关解封装后向私网转发。隧道仍依靠原有Wi-Fi与Internet运输。Split tunnel（分流隧道）只把选定目的地送入VPN，其余流量沿普通路径发送；其他VPN配置可以采用不同策略。前缀选路与断开后的变化见\relatedexercise{SC2008-L07-E01}{VPN与本地打印机}。
+
+\textbf{每个方向独立查表。}请求到达服务器，不会自动创建回复所需的返回路由。每台路由器查询的是当前packet的目的地址；回包可以经过不同路径。讲义中Riot的历史案例在Portland接收请求，却在Chicago把回复交回ISP，说明游戏RTT取决于双向路径；不对称本身不等于性能差。静态路由的双向配置见\relatedexercise{SC2008-L07-E02}{请求到达但回复丢失}。
+
+\textbf{路由之后的链路交付。}路由表选网段、接口与下一跳，ARP给出本地下一跳IP对应的MAC，交换机表把目的MAC映射到端口。交换机从入站帧的\emph{源}MAC学习、按\emph{目的}MAC转发；未知单播在相应广播域内泛洪。Hub重复比特、不查地址；普通二层交换机查MAC，路由器查IP。Layer 3 switch（三层交换机）也能执行IP路由并充当网关；设备外形或“switch”名称不能独自判定功能。配线架仅组织物理连接。
+
+\textbf{管理范围。}Autonomous system（AS，自治系统）是在共同管理与路由策略下的一组IP网络和路由器，可以包含许多子网。ASN标识自治系统，IP prefix标识目的地址块。Intra-AS（域内）使用IGP，如RIP、OSPF；inter-AS（域间）使用BGP。边界路由器可同时参与内部寻路与外部路由交换。
+
+\lecturetopic{SC2008-L07-T02}{RIP：根据邻居的距离报告学习路径}
+
+RIP（Routing Information Protocol，路由信息协议）采用distance-vector routing（距离向量路由）。邻居交换“目的网络及当前距离”的列表，本机比较：
+\[
+ \boxed{\text{经邻居的总成本}
+ =\text{到邻居的成本}+\text{邻居报告的距离}}.
+\]
+选取较小的可用总成本，并把该邻居记为下一跳。通常每跳成本为1；题目给定其他成本时按给定值相加。RIP通常约每30秒发送周期更新，路由变化也可触发更新；不要求每台路由器掌握完整拓扑。
+
+\textbf{Metric的边界。}RIP的可用metric为1--15，16代表unreachable（不可达）。因此常规hop count（跳数）有长度限制；配置更高成本也会更快用尽范围。例如每跳5，三跳为15仍可用，四跳20在RIP中按16处理。本讲例题把直连网络的metric计为1，不能与Dijkstra中源节点到自身距离0混淆。
+
+\textbf{Count-to-infinity（计数到无穷）。}距离报告没有携带完整路径，可能隐藏“邻居原本依赖本机”的关系。若A到目标的连接失败，而B仍报告经A得到的旧距离，A可能错误地改走B；双方随后不断把对方的新距离加1，数据包在二者之间循环。RIP到16才把路线视为不可达。当前下一跳的报告变差时必须相应更新，不能永久保留其旧的较小距离。
+
+\textbf{Poisoned reverse（毒性逆转）。}若B依靠A到达目标，则B向A报告该目标不可达（16）；B自己仍保留经A的可用路线。此规则在正常工作时就适用，防止A把B误认作独立替代路径。它阻止这类两路由器循环，但不保证消除更长循环。学习路由、错误更新及毒性逆转的完整对照见\relatedexercise{SC2008-L07-E03}{RIP距离更新}。
+
+\lecturetopic{SC2008-L07-T03}{OSPF：共享链路地图并计算最低成本路径}
+
+OSPF（Open Shortest Path First，开放最短路径优先）采用link-state routing（链路状态路由），共享局部连接与成本，再用Dijkstra计算路径。OSPF area（区域）限定本讲共享详细链路信息的范围；成本通常基于带宽，也可配置，较小者优先。\textbf{成本不是当前RTT}，“最短”必须说明采用的metric。若S--A--D有两跳、总成本20，S--B--C--D有三跳、总成本3，按跳数选前者，按上述OSPF成本选后者。
+
+\begin{enumerate}[label=\arabic*.]
+ \item \textbf{发现邻居：}在启用的链路上发送Hello packets；本地组播可用于发现兼容邻居，持续Hello帮助检测邻居丢失。
+ \item \textbf{生成通告：}LSA（link-state advertisement，链路状态通告）描述本路由器的链路、成本及相应网段；不必先知道全网。
+ \item \textbf{传播并存储：}LSA通过flooding（泛洪）传播到区域内，协议处理确认、重传及重复/过旧通告；LSDB（链路状态数据库）收集这些报告。
+ \item \textbf{计算并安装：}每台路由器从自身出发运行Dijkstra，得到最低成本路径，并导出目的前缀对应的下一跳。
+\end{enumerate}
+
+收敛后，同一区域的路由器共享相同拓扑信息，但因起点不同，路由表不同。Router-LSA既可报告相邻路由器，也可描述附属LAN；远端路由器的LSA也会出现在本机数据库中。
+
+\textbf{Dijkstra的状态。}Tentative distance（暂定距离）是目前找到的最低成本，settled distance（已确定距离）已确认最优。源节点为0，其余初始为$\infty$；每轮从未确定节点中选暂定距离最小者，尝试通过它改善相邻节点，直到所有可达节点确定。\emph{刚被更新的节点不一定是下一轮选中的节点。}
+
+Predecessor（前驱）是所选路径上紧邻目的节点之前的节点；next hop是从源节点出发的第一个邻居。到目的网段的总成本还要计入最后的LAN连接，不能只算到它的路由器。完整计算见\relatedexercise{SC2008-L07-E04}{Dijkstra、前缀成本与断链重算}。
+
+\textbf{读取实际输出。}例如
+\begin{quote}\small\ttfamily
+O 10.11.0.0/16 [110/27] via 10.255.13.2,\\
+\hspace*{1em}GigabitEthernet0/1
+\end{quote}
+表示OSPF选择该接口，经邻居\texttt{10.255.13.2}到目标前缀，成本27。110是Cisco默认的OSPF administrative distance（管理距离），用于比较同一前缀的不同路由来源，不是另一项路径成本。接口命令\texttt{ip ospf 1 area 0}启用area 0内的OSPF；进程号1是本地标识。\texttt{ip ospf cost 5}把该出接口成本设为5；其他参与接口也需兼容配置。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+命令/视图 & 回答的问题 \\
+\midrule
+\texttt{show ip ospf neighbor} & 本机有哪些OSPF邻居，邻接处于什么状态？\\
+\texttt{show ip ospf database} & 已收集哪些拓扑信息，包括哪些远端链路？\\
+\texttt{show ip route ospf} & 最终安装了哪些OSPF前缀与下一跳？\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Router ID标识OSPF路由器，不必等于其链路接口地址。FULL表示邻接已完成数据库同步，不保证全网无故障。远处断链可以改变本机路线，同时本机邻居列表保持不变。
+
+\textbf{故障与convergence（收敛）。}端点检测失败，生成并泛洪更新LSA；其他路由器更新地图、重算并安装新路径。备用链路虽已存在，控制信息仍需传播；不同路由器可能在不同时刻更新，期间可能丢包。动态路由可以选择现有路径，不能创建缺失的物理连接。
+
+\lecturetopic{SC2008-L07-T04}{BGP：跨组织的可达性、路径与策略}
+
+\textbf{为什么分域。}AS内部可统一成本与管理；AS之间需要尊重各运营方的策略、商业关系，并控制交换信息的规模。只交换外部可达性，无须公布全球每条内部链路。连接在物理上存在，也不意味着对方愿意提供该路径。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+角色或关系 & 含义 \\
+\midrule
+Stub AS（末梢AS） & 一个外部连接，业务流量从本AS发出或在此终止。\\
+Multihomed non-transit AS & 多宿主非中转AS，有多个外部连接，但不替其他AS提供中转。\\
+Transit AS（中转AS） & 承载源和目的都在本AS之外的流量。\\
+Customer-provider transit & 客户向提供商购买到其他网络的连接服务。\\
+Peering（对等互联） & 交换双方及其客户的流量；不提供无限制的第三方中转，可免费结算或付费。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+BGP（Border Gateway Protocol，边界网关协议）是path-vector（路径向量）协议，通过TCP交换目的IP前缀的可达性与AS path（AS路径）等信息。AS path列出通往目的前缀的AS编号；向另一个AS发布允许通告的路径时，把本AS编号加在最前。通告从目的地向外传播，使用它的数据包向目的地前进。
+
+\textbf{路径选择。}拒绝包含自己ASN的AS path，以防AS级循环。对同一目的前缀，local preference（本地优先级）较高的候选可先胜出；偏好及其他相关因素相同时，才比较较短的可用AS path。AS路径长度不是地理距离、RTT或容量的度量。完整选择与出口策略见\relatedexercise{SC2008-L07-E05}{BGP候选与非中转策略}。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+决定 & 处理的问题 \\
+\midrule
+Import（导入） & 接受邻居的哪些路由，并赋予什么偏好？\\
+Select（选择） & 为同一个前缀选择哪个被接受的候选？\\
+Forward（转发） & 当前包匹配哪些已安装前缀，最长的是哪条？\\
+Export（导出） & 向这个邻居通告哪些路由？\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Import/export policies处理路由信息，不是普通数据包过滤器的别名。采用某条路由发送自己的流量，不意味着必须向另一个AS通告它。非中转大学可向两家运营商通告自己的前缀，同时不相互转告从另一家学来的外部路由；对端的导入前缀检查还能拒绝误发的通告。
+
+\textbf{eBGP、iBGP与OSPF的配合。}eBGP在不同AS间交换路由；iBGP把外部路由分享给同一AS内其他BGP路由器；OSPF提供内部通往出口的路径。本讲例子以边界路由器E为BGP下一跳，内部路由器I还需通过OSPF知道如何到E。iBGP的交换发生在AS内，但不代替IGP计算内部拓扑路径。
+
+\textbf{通告的可信边界。}BGP通告是一项可达性声明，需检查发布者权限。RPKI origin validation（起源验证）检查某AS是否获准起源发布某前缀，不验证整条AS path。\relatedexercise{SC2008-L07-E06}{错误的更具体前缀}区分“为同一前缀选路径”和“对packet做最长前缀匹配”。
+
+\subsection{选读：Classful Addressing 与 CIDR}
+
+Optional Classful Addressing首页明确标注\emph{Not examinable}。旧式分类编址按首部位确定A/B/C类及默认/8、/16、/24边界，可分配规模过于粗糙。CIDR按明确的/$n$分配地址块，并可聚合连续、边界对齐的路由；它缓解地址浪费与路由表增长，但未扩大IPv4的32-bit空间。
+
+例如2000个主机用/21可提供2046个可用地址。八个连续、对齐的/23可以汇总为一个/20：
+\[
+ \texttt{200.23.16.0/23},\ \ldots,\ \texttt{200.23.30.0/23}
+ \quad\Longrightarrow\quad\texttt{200.23.16.0/20}.
+\]
+普通CIDR题始终使用给定掩码，不从首段推断类别边界。以上只作历史背景，不扩展为本讲考核主线。
+
+\subsection{一分钟回顾}
+
+路由学习和策略选择形成条目，packet再按目的IP做最长前缀匹配，最后经本地链路交付。RIP依靠邻居距离，毒性逆转阻止两节点互相误用；OSPF共享链路地图、各自运行Dijkstra，故障后需要时间收敛。BGP交换跨AS可达性并应用策略，短AS路径不一定优先，接受、选择、转发和通告各有不同目的。往返方向独立查表，下一跳存在不等于端到端可达。
+\endgroup
