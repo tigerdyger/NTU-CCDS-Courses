@@ -1,0 +1,17 @@
+% Original schematic based on Lec3_week10.pdf pp. 40--44.
+\begin{tikzpicture}[
+ >=Latex,font=\small,
+ box/.style={draw=noteBlue,fill=blue!4,rounded corners,
+ align=center,text width=2.25cm,minimum height=.85cm},
+ flow/.style={->,thick,noteBlue}
+]
+ \node[box,text width=2.8cm] (c) at (0,.8) {Encoder 输出\\$\mathbf s_0=\mathbf c$};
+ \node[box,text width=2.8cm] (bos) at (0,-.8) {输入词元 \texttt{<bos>}\\$\mathbf e_{\texttt{<bos>}}$};
+ \node[box] (dec) at (4.2,0) {Decoder 更新\\得到 $\mathbf s_1$};
+ \node[box,text width=2.6cm] (out) at (7.8,0) {词表投影 + Softmax\\得到 $\mathbf p_1$};
+ \node[box,text width=1.65cm] (y) at (11.3,0) {选出首词\\$y_1$};
+ \draw[flow] (c.east) -- node[above,sloped,font=\scriptsize] {上一状态} (dec.north west);
+ \draw[flow] (bos.east) -- node[below,sloped,font=\scriptsize] {输入向量} (dec.south west);
+ \draw[flow] (dec) -- (out);
+ \draw[flow] (out) -- (y);
+\end{tikzpicture}

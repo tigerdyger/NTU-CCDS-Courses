@@ -1,0 +1,23 @@
+% Original schematic based on Lec3_recorded.pdf pp. 8--10.
+\begin{tikzpicture}[
+ >=Latex,font=\small,
+ state/.style={draw=noteBlue,fill=blue!4,rounded corners,
+ minimum width=1.65cm,minimum height=.65cm},
+ flow/.style={->,thick,noteBlue}
+]
+ \node (h0) at (0,0) {$\mathbf h_0$};
+ \node[state] (h1) at (2.7,0) {$\mathbf h_1$};
+ \node[state] (h2) at (6.3,0) {$\mathbf h_2$};
+ \node[state] (h3) at (9.9,0) {$\mathbf h_3$};
+ \node (tail) at (12,0) {$\cdots$};
+ \draw[flow] (h0) -- (h1);
+ \draw[flow] (h1) -- node[above] {$W_h$} (h2);
+ \draw[flow] (h2) -- node[above] {$W_h$} (h3);
+ \draw[flow] (h3) -- (tail);
+ \foreach \t/\x in {1/2.7,2/6.3,3/9.9}{
+   \node (e\t) at (\x,-1.05) {$\mathbf e_{\t}$};
+   \node (p\t) at (\x,1.25) {$\mathbf p_{\t}$：下一词分布};
+   \draw[flow] (e\t) -- node[right] {$W_x$} (h\t);
+   \draw[flow] (h\t) -- node[right,font=\scriptsize] {输出层} (p\t);
+ }
+\end{tikzpicture}

@@ -1,0 +1,241 @@
+% Actual class: 10, 2026-10-21 (Week 10).
+% Sources: Lec3_week10.pdf pp. 4--55; Lec3_recorded.pdf pp. 4--64.
+% Transcript: 80549 - 0_0hl6q6pr - PID 117.txt; no timestamps supplied.
+% Live pp. 15--21 and 51--52 are marked Optional; live pp. 45--46 duplicate.
+% Source scope and worked examples checked; notes await user review.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 10 节课：Recurrent Networks 与 Sequence Modeling}
+\label{lecture:SC4002-L10}
+
+\textbf{日期与来源：}2026-10-21（Week 10）；\texttt{Lec3\_week10.pdf} pp.~4--55、\texttt{Lec3\_recorded.pdf} pp.~4--64，录播字幕 80549（无时间戳）。两版重叠内容合并；现场版补充 LSTM 与数值例题，末页总结并入正文。公式与例题已核对，笔记待审阅。
+
+\textbf{本讲主线。}上一讲的固定窗口模型把有限个历史词拼接起来预测下一词。本讲先用 RNN 将历史压入可更新的状态，再用 LSTM 改善长期信息的保存；随后根据任务决定逐词输出、整句输出或另生成一个序列。Lec3 是后半学期第三讲，本笔记延续实际课次 L10；Transformer 留待后续。
+
+\lecturetopic{SC4002-L10-T01}{RNN：用共享的递归计算表示历史}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~4--10；录播版 pp.~4--29。
+\nopagebreak[4]
+
+\subsubsection{状态、参数与下一词预测}
+
+Recurrent neural network（循环神经网络，RNN）每步接收当前词的 embedding（词嵌入）$\mathbf e_t\in\mathbb R^d$ 和上一状态 $\mathbf h_{t-1}\in\mathbb R^H$，产生新状态。采用讲义数值例子的 $\tanh$ 激活时，
+\begin{align*}
+ \mathbf h_t&=\tanh(W_x\mathbf e_t+W_h\mathbf h_{t-1}+\mathbf b_h),\\
+ \mathbf z_t&=W_{\rm out}\mathbf h_t+\mathbf b_{m out},
+ &\mathbf p_t&=\operatorname{softmax}(\mathbf z_t).
+\end{align*}
+$\mathbf h_t$ 概括已读前缀；输出层将它映射为整个词表的 logits（未归一化得分），再得到下一词分布 $P(w_{t+1}\mid w_{\leq t})$。输出词由该分布选择，无须寻找与隐藏向量最近的词。
+
+\begin{center}
+\input{figures/rnn-unrolled}
+\end{center}
+{\small\textit{原创示意，依据录播版 pp.~8--10。横向传状态；每一步使用同一组参数。}}
+
+时间展开后的多个单元共享 $W_x,W_h,W_{\rm out}$，但各步输入和状态不同。初始状态 $\mathbf h_0$ 可设为零，也可作为可学习量；本讲数值例题均从零开始。
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+参数 & 一般形状（词表大小 $V$） & $V=1000,d=32,H=64$ \\
+\midrule
+Embedding table $E$ & $V\times d$ & $1000\times32$ \\
+输入权重 $W_x$ & $H\times d$ & $64\times32$ \\
+递归权重 $W_h$ & $H\times H$ & $64\times64$ \\
+输出权重 $W_{\rm out}$ & $V\times H$ & $1000\times64$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+固定词表与状态维度后，加长输入不增加这些参数的数量，但会增加计算步数。词向量可直接查表；若独热输入为列向量 $\mathbf x_t$，以上表的方向应写成 $\mathbf e_t=E^\top\mathbf x_t$。
+
+\subsubsection{训练与生成}
+
+训练时，真实文本自动提供下一词标签。对 $T$ 个预测位置，平均交叉熵为
+\[
+ L=-\frac1T\sum_{t=1}^{T}\log p_{t,w_{t+1}}.
+\]
+Backpropagation through time（随时间反向传播，BPTT）在展开后的计算图上传递梯度，各时间步对共享参数的贡献相加；词嵌入也可共同训练。相邻训练对写成 $w_t\to w_{t+1}$，并不意味着每次重置状态或只使用一个历史词。
+
+生成从句首标记开始，每步计算分布、选择一个词，再把该词作为下一步输入，直到句尾标记或指定长度。Greedy decoding（贪心解码）取当前最高概率词；sampling（采样）按分布抽取，能产生多样结果。贪心的局部选择不保证整段序列概率最高。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L10-E01}{二维 RNN 的状态、概率与损失}。
+
+\subsubsection{长期依赖与梯度问题}
+
+RNN 在结构上可利用远处历史，但历史须经过有限维状态和多次变换。例如 \texttt{The writer of the books \_\_} 应由单数主语 writer 决定填 is，不能只根据最近的 books 选择 are。
+
+多步反传会连乘状态转换的 Jacobian（雅可比矩阵）。用标量递归链示意这种依赖，
+\[
+ \frac{\partial L_4}{\partial h_1}
+ =\frac{\partial L_4}{\partial h_4}
+  \frac{\partial h_4}{\partial h_3}
+  \frac{\partial h_3}{\partial h_2}
+  \frac{\partial h_2}{\partial h_1}.
+\]
+连续的缩小或放大可能导致 vanishing gradients（梯度消失）或 exploding gradients（梯度爆炸），使早期信息难以获得有效学习信号。另一个限制是状态沿时间依赖前一步，难以并行完成整条递归链。
+
+\lecturetopic{SC4002-L10-T02}{LSTM：控制记忆的保留、写入与输出}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~12--28；其中 pp.~15--21 的门公式与结构细节标为 Optional。
+\nopagebreak[4]
+
+Long short-term memory（长短期记忆网络，LSTM）同时维护 cell state（记忆状态）$\mathbf c_t$ 和 hidden state（隐藏状态）$\mathbf h_t$。二者均为 $H$ 维：前者沿时间保存记忆，后者是当前对外提供的表示。
+
+三个门根据当前输入与上一隐藏状态动态计算。令 $\mathbf q_t=[\mathbf h_{t-1};\mathbf e_t]$，统一写成
+\begin{align*}
+ \mathbf f_t&=\sigma(W_f\mathbf q_t+\mathbf b_f),&
+ \mathbf i_t&=\sigma(W_i\mathbf q_t+\mathbf b_i),\\
+ \mathbf o_t&=\sigma(W_o\mathbf q_t+\mathbf b_o),&
+ \widetilde{\mathbf c}_t&=\tanh(W_c\mathbf q_t+\mathbf b_c),\\
+ \mathbf c_t&=\mathbf f_t\odot\mathbf c_{t-1}
+              +\mathbf i_t\odot\widetilde{\mathbf c}_t,&
+ \mathbf h_t&=\mathbf o_t\odot\tanh(\mathbf c_t).
+\end{align*}
+这里 $\odot$ 为逐元素乘法；$\sigma$ 把门值压到 $(0,1)$，0 和 1 可作为关闭与打开的极限理解。此处 $W_o$ 是输出门权重，与词表投影 $W_{\rm out}$ 不同。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+量 & 功能 & 在更新中的作用 \\
+\midrule
+$\mathbf f_t$：forget gate & 保留／遗忘 & 缩放旧记忆 $\mathbf c_{t-1}$ \\
+$\mathbf i_t$：input gate & 写入 & 控制候选内容 $\widetilde{\mathbf c}_t$ 写入多少 \\
+$\mathbf o_t$：output gate & 读出 & 控制记忆有多少反映到 $\mathbf h_t$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+旧记忆通过乘门后与新内容相加，为长期信息和梯度提供较直接的传递路径。忘记门接近 1 只说明旧项保留较多；若同时写入新内容，整个 $\mathbf c_t$ 仍会变化。输出门关闭也不等于抹除内部记忆。
+
+LSTM 缓解长期依赖问题，但不保证梯度永不消失或爆炸。讲义进一步提到 residual connection（残差连接）$\mathbf y=F(\mathbf x)+\mathbf x$：它在层间保留直接路径，和 LSTM 的时间方向记忆通路有相似动机，结构并不相同。
+
+\lecturetopic{SC4002-L10-T03}{按任务组织输出：标注、分类、双向与堆叠}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~30--36、53--55；录播版 pp.~31--42。
+\nopagebreak[4]
+
+同一条状态序列可以接不同的输出层，选择取决于预测单位：下一词、每个词的标签，或整句的类别。
+
+\subsubsection{每个词一个标签，或整句一个标签}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+任务 & 输入与输出 & 从状态到预测 \\
+\midrule
+Language modeling & 前缀 $\to$ 下一词 & $\mathbf h_t\to$ 词表 Softmax \\
+Sequence tagging & 整个句子 $\to$ 每词标签 & 每个 $\mathbf h_t\to$ 标签 Softmax \\
+Sequence classification & 整个句子 $\to$ 一个类别 & 聚合各状态，再分类 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Sequence tagging（序列标注）包括 POS、NER；输出维度由标签集合大小决定。NER 的 BIO 规则沿用前文：实体首词用 B，后续词用 I，非实体用 O。录播字幕对图中把实体首词写作 I 的示例作了更正。
+
+Sequence classification（序列分类）如情感分类，先将状态序列聚合成句向量 $\mathbf g$，再经过分类器。常见 pooling（池化）为
+\[
+ \mathbf g_{\rm last}=\mathbf h_T,\qquad
+ \mathbf g_{\rm mean}=\frac1T\sum_{t=1}^{T}\mathbf h_t,\qquad
+ (\mathbf g_{\rm max})_j=\max_t(h_t)_j.
+\]
+Max pooling 对每个维度分别沿时间取最大值，结果可以组合来自不同时间步的分量；它并不挑选一整个“最大状态”。不同池化保留信息的方式不同，没有普遍最优的一种。
+
+\subsubsection{Bidirectional RNN：为已知句子利用两侧语境}
+
+Bidirectional RNN（双向 RNN）用两套参数分别从左往右、从右往左计算，再拼接同一位置的表示：
+\begin{align*}
+ \overrightarrow{\mathbf h}_t
+ &=f(W_{\to}\mathbf e_t+U_{\to}\overrightarrow{\mathbf h}_{t-1}+\mathbf b_{\to}),\\
+ \overleftarrow{\mathbf h}_t
+ &=f(W_{\leftarrow}\mathbf e_t+U_{\leftarrow}\overleftarrow{\mathbf h}_{t+1}+\mathbf b_{\leftarrow}),\\
+ \mathbf r_t&=[\overrightarrow{\mathbf h}_t;\overleftarrow{\mathbf h}_t]\in\mathbb R^{2H}.
+\end{align*}
+两方向各有自己的边界状态。右侧词能帮助理解前面的词，例如 terribly 在 \texttt{terribly exciting} 中的作用要结合后文判断。
+
+对完整句子做标注或分类时，两侧文本已经给定，使用双向网络合理；自回归预测尚未出现的下一词时，不能输入真实未来词。若用两方向的最终状态表示整句，应拼接
+\[
+ \boxed{\mathbf g=[\overrightarrow{\mathbf h}_T;\overleftarrow{\mathbf h}_1]},
+\]
+因为反向网络读完整句的位置在 $t=1$，而非 $t=T$。也可对 $\mathbf r_1,\ldots,\mathbf r_T$ 做均值或逐维最大池化。
+
+\subsubsection{Stacked RNN：增加层次而非增加时间步}
+
+Stacked RNN（堆叠 RNN）把下一层的同位置表示与本层上一时刻状态结合：
+\[
+ \mathbf h_t^{(\ell)}=
+ f\!\left(W^{(\ell)}\mathbf h_t^{(\ell-1)}
+          +U^{(\ell)}\mathbf h_{t-1}^{(\ell)}+\mathbf b^{(\ell)}\right),
+ \qquad\mathbf h_t^{(0)}=\mathbf e_t.
+\]
+时间方向传递历史，层方向加工表示；各层有独立参数，同一层跨时间共享参数。堆叠与双向是不同设计，可结合使用。更深或双向模型不自动保证更好的泛化效果。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L10-E02}{\texttt{not good} 的池化、双向与堆叠计算}。
+
+\lecturetopic{SC4002-L10-T04}{Seq2seq：读入一个序列，再生成另一个序列}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~38--52；录播版 pp.~44--63。BLEU 数值细节在现场版标为 Optional。
+\nopagebreak[4]
+
+\subsubsection{机器翻译为什么不能逐词替换}
+
+Machine translation（机器翻译，MT）的源句与译句不一定等长，也不要求同位置对齐。语言差异包含词形变化、词汇概念的划分、语序、语义表达和语篇／语用习惯。例如一个词在另一种语言中可能要用短语表达，主语与动词的位置可能变化，代词省略与礼貌表达也依赖语境。
+
+Rule-based MT（规则翻译）依靠词典和人工语言规则，维护成本高；statistical MT（统计翻译）从 parallel corpus（平行语料，即相互对应的译文）学习统计规律；neural MT（神经翻译）以网络直接学习条件生成，减少手工组件，但仍依赖数据与设计，且解释和控制内部决策较难。
+
+\subsubsection{Encoder、初始状态与第一个输入}
+
+Seq2seq（sequence-to-sequence，序列到序列）采用 encoder--decoder 架构。Encoder（编码器）读取源序列 $x_1,\ldots,x_T$。本讲的普通 RNN 实现取末状态为 context vector（上下文向量）$\mathbf c=\mathbf h_T$，并用它初始化 decoder（解码器）：
+\[
+ \mathbf s_0=\mathbf c,\qquad y_0=\texttt{<bos>}.
+\]
+$\mathbf c$ 携带源句信息，\texttt{<bos>} 是开始生成的 token。Decoder 的每次更新使用“上一状态 + 上一个目标词的向量”：
+\begin{align*}
+ \mathbf s_j&=f(W_d\mathbf e_{y_{j-1}}+U_d\mathbf s_{j-1}+\mathbf b_d),\\
+ \mathbf p_j&=\operatorname{softmax}(W_{\rm out}\mathbf s_j+\mathbf b_{\rm out}).
+\end{align*}
+其中 $\mathbf p_j$ 是目标词表上的分布。第一次更新同时使用 $\mathbf s_0=\mathbf c$ 与 $\mathbf e_{\texttt{<bos>}}$，产生 $\mathbf s_1$ 并预测 $y_1$。Context vector 不充当第一个词元。
+
+\begin{center}
+\input{figures/seq2seq-first-step}
+\end{center}
+{\small\textit{原创示意，依据现场版 pp.~40--44。状态初始化与输入词向量通过不同位置进入 decoder。}}
+
+下一步携带 $\mathbf s_1$，输入所选词 $y_1$，再预测 $y_2$；生成 \texttt{<eos>} 时停止。Encoder 与 decoder 通常有各自的参数。Seq2seq 可以用 RNN 或 LSTM 实现；本讲讨论的固定上下文版本尚未加入 attention。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L10-E03}{从 \texttt{What is 2+2?} 到 \texttt{four <eos>}}。
+
+\subsubsection{条件概率、联合训练与瓶颈}
+
+对目标序列 $\mathbf y=(y_1,\ldots,y_M)$（包括结束标记），
+\[
+ P(\mathbf y\mid\mathbf x)=\prod_{j=1}^{M}P(y_j\mid y_{<j},\mathbf c),
+ \qquad
+ L=-\sum_{j=1}^{M}\log P(y_j\mid y_{<j},\mathbf c).
+\]
+这里 $\mathbf c$ 由 $\mathbf x$ 编码得到，decoder 是受源句条件约束的语言模型。现场版 p.~47 把对数项之和等同于概率，左侧应为 $\log P$；上式区分了概率的乘积与负对数损失。
+
+训练使用 teacher forcing（教师强制）：每步输入真实目标前缀。例如答案为 \texttt{four <eos>} 时，decoder 输入为 \texttt{<bos>, four}，对应目标为 \texttt{four, <eos>}。生成时没有真实答案可用，后续输入来自自己的预测。真实 $y_j$ 用作该步损失标签，不能提前作为预测自身的输入。
+
+目标端损失的梯度通过 decoder 和 $\mathbf c$ 回到 encoder，二者可端到端联合训练。固定上下文模型把所有源信息压进一个向量，长句或复杂关系可能在压缩中丢失；这是该架构的瓶颈。
+
+\subsubsection{BLEU：依据参考译文评价生成结果}
+
+BLEU 将候选译文与参考译文的 $n$-gram 匹配精度组合，并惩罚过短输出。记 $p_n$ 为 modified precision（修正精度）：每种候选 $n$-gram 的匹配次数不能超过参考中允许的次数，避免靠重复词刷高得分。设候选长度为 $c>0$、参考长度为 $r$，则
+\[
+ \mathrm{BLEU}=\mathrm{BP}\exp\!\left(\sum_{n=1}^{N}w_n\log p_n\right),
+ \qquad
+ \mathrm{BP}=\begin{cases}1,&c>r,\\e^{1-r/c},&0<c\leq r.\end{cases}
+\]
+$\sum_nw_n=1$；常用 BLEU 考虑 1--4 gram，本讲例题只考虑 1、2 gram 且权重各为 $1/2$。无平滑时，某个正权重的 $p_n=0$ 会使得分为 0。BLEU 衡量词串重合，无法充分识别所有等义改写，也不能单独代表语义正确性。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L10-E04}{同义改写的 BLEU-2 计算}。
+
+\subsection{一分钟回顾}
+
+RNN 用共享参数逐词更新状态，再由任务输出层决定预测下一词、逐词标签或整句类别。LSTM 通过保留、写入和输出门调节记忆，缓解长期信息与梯度传递困难。双向网络利用已知句子的两侧语境，堆叠网络增加表示层次。Seq2seq 用 encoder 的状态初始化 decoder，以 \texttt{<bos>} 开始生成；训练用真实前缀、推断用预测前缀。固定上下文有压缩瓶颈，BLEU 则从参考词串重合度评价生成结果。
+\endgroup

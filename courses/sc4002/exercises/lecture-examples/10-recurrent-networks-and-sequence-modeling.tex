@@ -1,0 +1,214 @@
+% Related lecture: SC4002-L10; based on templates/lecture-example.tex.
+% Source: Lec3_week10.pdf pp. 6--8, 31--35, 40--46, 51--52.
+% Calculations checked independently; sentiment probabilities are source-given.
+% No training experiments performed. Notes await user review.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4002-L10-EX}{第 10 讲：Recurrent Networks 与 Sequence Modeling}
+
+\textbf{日期与来源：}2026-10-21；\texttt{Lec3\_week10.pdf} 的四组讲义例题。保留必要条件并补全计算；数值取近似值，计算时使用未舍入状态。笔记待审阅。
+
+\exercisequestion{SC4002-L10-E01}{二维 RNN：从句首标记预测下一词}
+\nopagebreak[4]
+\textbf{题目（pp.~6--8）。}输入序列为 \texttt{<s> I like NLP}；依次以 \texttt{<s>, I, like} 预测 \texttt{I, like, NLP}。隐藏状态与 embedding 均为二维，初始状态为零，忽略偏置。给定列向量
+\[
+ \mathbf e_{\texttt{<s>}}=\begin{bmatrix}1\\0\end{bmatrix},\quad
+ \mathbf e_{\text{I}}=\begin{bmatrix}0\\1\end{bmatrix},\quad
+ \mathbf e_{\text{like}}=\begin{bmatrix}1\\1\end{bmatrix},
+\]
+\[
+ W_x=\begin{bmatrix}.8&.1\\.2&.7\end{bmatrix},\quad
+ W_h=\begin{bmatrix}.5&0\\.1&.4\end{bmatrix},\quad
+ W_{\rm out}=\begin{bmatrix}1&0\\0&1\\.5&.5\end{bmatrix}.
+\]
+输出词表顺序为 \texttt{[I, like, NLP]}。计算第一步状态、分布与交叉熵，并说明下一步如何承接。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L10-T01}{RNN 语言模型}。
+
+\begin{workedsolution}
+第一步预激活、隐藏状态与 logits 为
+\begin{align*}
+ \mathbf a_1&=W_x\mathbf e_{\texttt{<s>}}+W_h\mathbf h_0=[.8,.2]^\top,\\
+ \mathbf h_1&=\tanh(\mathbf a_1)\approx[.6640,.1974]^\top,\\
+ \mathbf z_1&=W_{\rm out}\mathbf h_1\approx[.6640,.1974,.4307]^\top.
+\end{align*}
+Softmax 与真实下一词 I 的损失为
+\[
+ \mathbf p_1\approx[.4134,.2592,.3274]^\top,\qquad
+ L_1=-\ln(.4133967)\approx\boxed{.88335}.
+\]
+最高概率项为 I。下一步输入真实词 I，但保留上一状态：
+\[
+ \mathbf h_2=\tanh\!\left(
+ \begin{bmatrix}.1\\.7\end{bmatrix}
+ +\begin{bmatrix}.5(.6640)\\.1(.6640)+.4(.1974)\end{bmatrix}\right)
+ \approx[.4070,.6886]^\top.
+\]
+因此第二步已经通过 $\mathbf h_1$ 保留前缀信息，训练对的简写 \texttt{I}$\to$\texttt{like} 并非重置后的 bigram 模型。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L10-E02}{\texttt{not good}：池化、双向与堆叠}
+\nopagebreak[4]
+\textbf{题目（pp.~31--35）。}句子为 \texttt{not good}，真实标签为 negative。给定
+\[
+ \mathbf e_{\rm not}=[1,0]^\top,\quad\mathbf e_{\rm good}=[0,1]^\top,
+ \quad\mathbf h_0=\mathbf0,\qquad
+ \mathbf h_t=\tanh(.6\mathbf h_{t-1}+\mathbf e_t).
+\]
+比较单向 RNN、相同递归系数的双向 RNN，以及额外一层 RNN 的句子表示。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L10-T03}{分类、池化、双向与堆叠}。下列向量用横排展示，均按列向量参与运算。
+
+\textbf{1. 单向状态与池化。}
+\[
+ \mathbf h_1=\tanh([1,0])\approx[.762,0],\qquad
+ \mathbf h_2=\tanh([.457,1])\approx[.428,.762].
+\]
+\begin{center}
+\small
+\begin{tabular}{@{}l l c l@{}}
+\toprule
+池化方式 & 句向量 $\mathbf g$（复算） & $p(\mathrm{positive})$（讲义给定） & 预测 \\
+\midrule
+Last & $[.428,.762]$ & .562 & positive \\
+Mean & $[.595,.381]$ & .418 & negative \\
+Max & $[.762,.762]$ & .462 & negative \\
+\bottomrule
+\end{tabular}
+\end{center}
+Max 的第一维来自 $\mathbf h_1$，第二维来自 $\mathbf h_2$。这些表示确有差异；讲义没有给出分类器参数，表中的概率不能仅由状态独立推导。所示预测按 $p(\mathrm{positive})>0.5$ 判断，不能据此宣称某种池化总是更优。
+
+\textbf{2. 双向状态。}前向沿 not、good 读取；反向以零状态从 good 开始，再读取 not：
+\begin{align*}
+ \overleftarrow{\mathbf h}_2&=\tanh([0,1])\approx[0,.762],\\
+ \overleftarrow{\mathbf h}_1&=\tanh(.6[0,.762]+[1,0])\approx[.762,.428].
+\end{align*}
+按相同词位置拼接，得到
+\[
+ \mathbf r_1=[.762,0,.762,.428],\qquad
+ \mathbf r_2=[.428,.762,0,.762].
+\]
+\begin{center}
+\small
+\begin{tabular}{@{}l l c@{}}
+\toprule
+池化方式 & 句向量（复算） & $p(\mathrm{positive})$（讲义给定） \\
+\midrule
+两方向末状态 & $[\overrightarrow{\mathbf h}_2;\overleftarrow{\mathbf h}_1]=[.428,.762,.762,.428]$ & .255 \\
+Mean over $\mathbf r_t$ & $[.595,.381,.381,.595]$ & .294 \\
+Max over $\mathbf r_t$ & $[.762,.762,.762,.762]$ & .202 \\
+\bottomrule
+\end{tabular}
+\end{center}
+三项均判为 negative。注意第一行取两方向各自读完整句的状态，不直接取 $\mathbf r_2$。原单向网络的 $\mathbf h_2$ 也已含 not 的信息；双向网络的优势是使各位置均能结合左右语境，不能把单向表示当成只看当前词。
+
+\textbf{3. 堆叠第二层。}以第一部分的状态作为第一层输出，第二层初始状态为零，并给定
+\[
+ W^{(2)}=\begin{bmatrix}1&0\\-.8&1\end{bmatrix},\qquad
+ \mathbf h_t^{(2)}=\tanh\!\left(W^{(2)}\mathbf h_t^{(1)}+.4\mathbf h_{t-1}^{(2)}\right).
+\]
+依次计算可得
+\begin{align*}
+ \mathbf h_1^{(2)}&=\tanh([.7616,-.6093])\approx[.642,-.544],\\
+ \mathbf h_2^{(2)}&=\tanh([.6844,.2021])\approx[.594,.199].
+\end{align*}
+\begin{center}
+\small
+\begin{tabular}{@{}l l c@{}}
+\toprule
+池化方式 & 第二层句向量（复算） & $p(\mathrm{positive})$（讲义给定） \\
+\midrule
+Last & $[.594,.199]$ & .388 \\
+Mean & $[.618,-.172]$ & .299 \\
+Max & $[.642,.199]$ & .376 \\
+\bottomrule
+\end{tabular}
+\end{center}
+这些给定概率均判为 negative；它们是讲义的说明例，不是本次训练得到的实验结果。
+
+\exercisequestion{SC4002-L10-E03}{问答 Seq2seq：两种输入位置与完整生成}
+\nopagebreak[4]
+\textbf{题目（pp.~40--46）。}问题拆为三个输入词元 \texttt{What, is, 2+2?}，答案为 \texttt{four <eos>}。Encoder 使用
+\[
+ \mathbf h_t=\tanh(.6\mathbf h_{t-1}+\mathbf e_t),\quad\mathbf h_0=\mathbf0,
+ \quad\mathbf e_1=[.2,0]^\top,\ \mathbf e_2=[0,.2]^\top,\ \mathbf e_3=[.8,.4]^\top.
+\]
+Decoder 初始状态 $\mathbf s_0=\mathbf h_3$，输入向量与递归为
+\[
+ \mathbf d_{\texttt{<bos>}}=[.8,-.8]^\top,\quad
+ \mathbf d_{\texttt{four}}=[-.8,.8]^\top,\quad
+ \mathbf s_j=\tanh(.6\mathbf s_{j-1}+\mathbf d_{y_{j-1}}).
+\]
+输出词表为 \texttt{[four, three, <eos>]}，$\mathbf z_j=A\mathbf s_j$，其中
+\[
+ A=\begin{bmatrix}2&0\\-2&0\\0&2\end{bmatrix},\qquad
+ \mathbf p_j=\operatorname{softmax}(\mathbf z_j).
+\]
+求 encoder 状态及 decoder 的两步贪心输出。现场版 pp.~45--46 重复同一步，此处只计算一次。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L10-T04}{固定上下文 Seq2seq}。
+
+\begin{workedsolution}
+\textbf{Encoder。}每步先相加，再逐分量取 $\tanh$：
+\begin{center}
+\begin{tabular}{@{}c l l l@{}}
+\toprule
+步 & 输入 & 预激活 $.6\mathbf h_{t-1}+\mathbf e_t$ & 状态 $\mathbf h_t$ \\
+\midrule
+1 & What & $[.2000,0]$ & $[.1974,0]$ \\
+2 & is & $[.1184,.2000]$ & $[.1179,.1974]$ \\
+3 & 2+2? & $[.8707,.5184]$ & $[.7017,.4765]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+因此 $\mathbf c=\mathbf h_3$、$\mathbf s_0=\mathbf c$。第一个输入词元是 \texttt{<bos>}，不是 $\mathbf c$。
+
+\textbf{Decoder 第一步。}将 $\mathbf c$ 作为旧状态，将 BOS 向量作为词输入：
+\begin{align*}
+ \mathbf s_1&=\tanh(.6[.7017,.4765]+[.8,-.8])
+               \approx[.8400,-.4731],\\
+ \mathbf z_1&\approx[1.6799,-1.6799,-.9463],\\
+ \mathbf p_1&\approx[.9033,.0314,.0654].
+\end{align*}
+最大项对应 four，选出第一个答案词。
+
+\textbf{Decoder 第二步。}保留 $\mathbf s_1$，将 four 的向量送入：
+\begin{align*}
+ \mathbf s_2&=\tanh(.6[.8400,-.4731]+[-.8,.8])
+              \approx[-.2877,.4747],\\
+ \mathbf z_2&\approx[-.5753,.5753,.9494],\\
+ \mathbf p_2&\approx[.1142,.3610,.5248].
+\end{align*}
+最大项为 \texttt{<eos>}，停止生成。输出为 \texttt{four <eos>}。本例的手工给定权重展示状态传递和输出机制，不能据此认定模型具有一般算术能力。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L10-E04}{BLEU-2：词串匹配与长度惩罚}
+\nopagebreak[4]
+\textbf{题目（pp.~51--52，Optional）。}参考译文与候选译文如下；按空格分词，不计标点，分别计算 1-gram、2-gram 精度和等权 BLEU-2。
+\begin{quote}\small
+参考：The guard arrived late because it was raining\\
+候选：The guard arrived late because of the rain
+\end{quote}
+\textbf{对应知识点：}\relatedtopic{SC4002-L10-T04}{Seq2seq 的 BLEU 评价}。
+
+\begin{workedsolution}
+候选含 8 个词，其中匹配的为 The、guard、arrived、late、because，共 5 个，因此 $p_1=5/8$。候选有 7 个 bigram，匹配的为
+\[
+ \texttt{The guard},\quad\texttt{guard arrived},\quad
+ \texttt{arrived late},\quad\texttt{late because},
+\]
+所以 $p_2=4/7$。若统一转为小写，候选中的第二个 the 也不能额外计分，因为参考中 the 只出现一次，匹配计数应截断。
+
+两句长度相同，$c=r=8$，故 $\mathrm{BP}=e^{1-r/c}=1$。等权几何平均给出
+\[
+ \boxed{\mathrm{BLEU}_2
+ =1\times\sqrt{\frac58\cdot\frac47}
+ =\sqrt{\frac5{14}}\approx0.5976.}
+\]
+按百分制展示约为 59.76。两种表达含义接近，但后半句措辞不同，词串重合指标不会给出满分。这是单句二阶示例，不应直接等同于完整语料上的四阶 BLEU。
+\end{workedsolution}
+\endgroup
