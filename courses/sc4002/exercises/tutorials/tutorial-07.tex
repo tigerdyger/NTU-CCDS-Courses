@@ -1,0 +1,217 @@
+% Tutorial set: 07; session date: 2026-10-21 (Week 10).
+% Source: Week10-tut.pdf pp. 1--2, Q1--Q3 and the linked Skip-gram Colab.
+% The source sheet is titled Tutorial - Word Vector, without a tutorial number.
+% Formulae and numerical answers checked; no official answer sheet supplied.
+% Colab source inspected on 2026-10-21; reference code syntax checked only.
+% No training executed. Notes await user review.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4002-TUT07}{Tutorial 07：Word Vectors and Language Modeling}
+\label{tutorial:SC4002-TUT07}
+
+\textbf{日期与来源：}2026-10-21（Week 10）；\texttt{Week10-tut.pdf} pp.~1--2，\emph{Tutorial -- Word Vector}。覆盖三道题与 Skip-gram 编程练习；公式与数值已核对，训练未运行。
+
+\exercisequestion{SC4002-TUT07-Q01}{Q1：Skip-gram 的训练目标与词向量评价}
+\nopagebreak[4]
+
+\textbf{题目（p.~1）。}对句子 \texttt{The cat sat on the mat.}，以 \texttt{sat} 为中心词、左右窗口半径为 1：列出训练词对；分别写出完整 Softmax 与负采样的最大化目标；指出更新的参数；根据给定向量寻找与 \texttt{cat} 最相似的词并评价结果；说明余弦相似度是否用于训练目标。
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L09-T02}{完整 Softmax Skip-gram}、\relatedtopic{SC4002-L09-T03}{Negative Sampling}。
+
+\textbf{1. 词对与完整 Softmax。}Skip-gram 从中心词预测邻词。这里原题的 target 指中心词，得到两个有方向的正词对
+\[
+ (\texttt{sat},\texttt{cat}),\qquad(\texttt{sat},\texttt{on}).
+\]
+令 $\mathbf v_c$ 为中心词向量，$\mathbf u_o$ 为上下文词向量，二者来自不同的参数表；词表为 $\mathcal V$。定义
+\[
+ s(c,o)=\mathbf u_o^\top\mathbf v_c,\qquad
+ P(o\mid c)=\frac{e^{s(c,o)}}{\sum_{w\in\mathcal V}e^{s(c,w)}}.
+\]
+给定中心词，模型将两个上下文位置作为独立预测目标，最大化 $P(\texttt{cat}\mid\texttt{sat})P(\texttt{on}\mid\texttt{sat})$，等价于最大化对数目标
+\[
+ \boxed{J_{\mathrm{softmax}}=
+ \log P(\texttt{cat}\mid\texttt{sat})+
+ \log P(\texttt{on}\mid\texttt{sat}).}
+\]
+此处的条件独立是模型假设；取对数因其严格单调而不改变最大值位置。
+
+\textbf{2. Negative sampling（负采样）。}对每个正词对 $(c,o)$，抽取 $K$ 个负上下文词 $n_1,\ldots,n_K$，用二分类任务区分真实与采样词对。正例标签为 1，负例标签为 0；随机采到的词并不代表它在所有语境下都不能与中心词共现。令 $\sigma(z)=1/(1+e^{-z})$，单个正词对的目标为
+\[
+ J_{c,o}=\log\sigma(s(c,o))+
+ \sum_{i=1}^{K}\log\sigma(-s(c,n_i)).
+\]
+本题两个正词对各自取负样本 $n_{o,i}$，得到
+\[
+ \boxed{J_{\mathrm{NS}}=
+ \sum_{o\in\{\texttt{cat},\texttt{on}\}}
+ \left[\log\sigma(\mathbf u_o^\top\mathbf v_{\texttt{sat}})
+ +\sum_{i=1}^{K}\log\sigma(-\mathbf u_{n_{o,i}}^\top\mathbf v_{\texttt{sat}})\right].}
+\]
+正项提高真实词对的得分，负项压低采样词对的得分。优化器若最小化损失，就使用 $L=-J_{\mathrm{NS}}$。这些二分类概率不要求在词表上和为 1。
+
+\textbf{3. 更新哪些参数。}对上述负采样目标，获得梯度的是中心表中的 $\mathbf v_{\texttt{sat}}$，以及上下文表中的 $\mathbf u_{\texttt{cat}}$、$\mathbf u_{\texttt{on}}$ 和被采到的 $\mathbf u_{n_{o,i}}$。更新 $\mathbf u_{\texttt{cat}}$ 不等于更新 $\mathbf v_{\texttt{cat}}$；未参与目标的其他向量没有来自本次损失的梯度。完整 Softmax 的分母则涉及全部上下文词向量。
+
+\textbf{4. 余弦相似度与结果。}对非零向量，
+\[
+ \cos(\mathbf a,\mathbf b)
+ =\frac{\mathbf a^\top\mathbf b}{\|\mathbf a\|_2\|\mathbf b\|_2}.
+\]
+按给定向量重算范数及与 \texttt{cat} 的相似度：
+\begin{center}
+\begin{tabular}{@{}l l r r@{}}
+\toprule
+词 & 给定向量 & L2 范数 & 与 cat 的余弦相似度 \\
+\midrule
+cat & $[0.5,1.0,-0.3]$ & 1.1576 & --- \\
+mat & $[0.6,0.8,-0.2]$ & 1.0198 & 0.9826 \\
+sat & $[-0.1,0.9,0.3]$ & 0.9539 & 0.6882 \\
+hat & $[0.6,1.0,-0.4]$ & 1.2329 & \textbf{0.9950} \\
+dog & $[-1.0,-0.5,0.8]$ & 1.3748 & $-0.7792$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+排除查询词本身，最相似的是 \textbf{hat}。结果没有很好地体现通常期待的 cat--dog 动物语义关系，但少数词不足以评价整个模型；语料覆盖与训练目标也会影响结果，增加轮数未必改善语义质量。原表 dog 的范数 1.46 有误，应为 $\sqrt{1.89}\approx1.3748$。
+
+\textbf{5. 训练与评价的指标。}标准 Skip-gram 的上述目标使用点积，没有直接使用余弦相似度：
+\[
+ \mathbf u^\top\mathbf v=\|\mathbf u\|\,\|\mathbf v\|\cos\theta.
+\]
+点积同时保留方向和长度的信息，用于学习共现得分；余弦相似度消除长度影响，侧重比较方向。训练目标与训练后的评价指标可以不同；这不排除另外设计使用归一化向量的模型。
+
+\exercisequestion{SC4002-TUT07-Q02}{Q2：词向量类比与距离口径}
+\nopagebreak[4]
+
+\textbf{题目（pp.~1--2）。}给定以下向量，分别寻找与 happy 的关系如同 (1) angry 与 calm、(2) peaceful 与 calm 的词。第一问用 ``opposite'' 描述关系，但仍需以给定向量做类比。
+\begin{center}
+\begin{tabular}{@{}l c @{\qquad} l c@{}}
+\toprule
+词 & 向量 & 词 & 向量 \\
+\midrule
+happy & $[6,4]$ & joyful & $[5,5]$ \\
+sad & $[1,2]$ & angry & $[2,6]$ \\
+calm & $[4,1]$ & peaceful & $[4,2]$ \\
+tense & $[1,5]$ & frustrated & $[2,5]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{对应讲义：}\relatedtopic{SC4002-L09-T05}{词向量评估}。
+
+将 $a\rightarrow b$ 的关系表示为 $\mathbf v_b-\mathbf v_a$，再施加到词 $c$ 上：
+\[
+ \mathbf r=\mathbf v_c+(\mathbf v_b-\mathbf v_a),\qquad
+ w^*=\arg\max_{w\in\mathcal C}\cos(\mathbf v_w,\mathbf r),
+\]
+其中 $\mathcal C$ 是候选词集合。本笔记沿用 Q1 的余弦相似度；下列两个余弦答案在保留或排除题干输入词时都不变。
+\begin{align*}
+ \mathbf r_1&=\mathbf v_{\text{happy}}+\mathbf v_{\text{angry}}-\mathbf v_{\text{calm}}
+ =[6,4]+[2,6]-[4,1]=\boxed{[4,9]},\\
+ \mathbf r_2&=\mathbf v_{\text{happy}}+\mathbf v_{\text{peaceful}}-\mathbf v_{\text{calm}}
+ =[6,4]+[4,2]-[4,1]=\boxed{[6,5]}.
+\end{align*}
+\begin{center}
+\begin{tabular}{@{}c c l l@{}}
+\toprule
+小问 & 目标向量 & 余弦相似度最高 & 次高候选 \\
+\midrule
+(1) & $[4,9]$ & frustrated：0.999289 & sad：0.998969 \\
+(2) & $[6,5]$ & joyful：0.995893 & happy：0.994309 \\
+\bottomrule
+\end{tabular}
+\end{center}
+因此按该口径，答案为 \textbf{frustrated、joyful}。第一问的 frustrated 与 sad 很接近，不能仅凭日常反义词直觉替代计算。
+
+\verify{原题没有指定最近邻度量或是否排除输入词，不能据此声称唯一的官方词语答案。}
+若改用欧氏距离并保留所有候选词，第一问最近的是 angry（距离 $\sqrt{13}$），第二问 happy 与 joyful 并列（距离均为 1）。若排除各小问的三个输入词，欧氏距离下第一问会改为 joyful。回答此类题应先写关系方向和目标向量，再注明选词口径。
+
+\exercisequestion{SC4002-TUT07-Q03}{Q3：句子概率与下一词预测}
+\nopagebreak[4]
+
+\textbf{题目（p.~2）。}对 \texttt{Jack loves climbing trees}：(1) 写出词序列概率；(2) 在窗口为 1 的 Markov assumption（马尔可夫假设）下改写；(3) 描述输入 \texttt{Jack loves} 到整个词表上的下一词概率分布的转换过程。
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L09-T06}{固定窗口神经语言模型}。
+
+\textbf{1. 精确分解与 Markov 近似。}分别用 $J,L,C,T$ 表示上述四个词，暂不加入句首／句尾标记。Chain rule（链式法则）给出
+\[
+ P(J,L,C,T)=P(J)P(L\mid J)P(C\mid J,L)P(T\mid J,L,C).
+\]
+这是精确分解，不要求词相互独立。窗口为 1 时，仅保留紧邻的前一个词，得到 bigram（二元语言模型）近似：
+\[
+ \boxed{P(J,L,C,T)\approx P(J)P(L\mid J)P(C\mid L)P(T\mid C).}
+\]
+\textbf{2. 两词上下文的神经网络。}第三小问明确输入 \texttt{Jack loves}，这里按两词窗口理解，不延用第二小问只保留 \texttt{loves} 的限制。流程为
+\begin{center}
+\small
+词 ID $\longrightarrow$ 查词嵌入 $\longrightarrow$ 按位置拼接
+$\longrightarrow$ 隐藏层 $\longrightarrow$ 词表得分与 Softmax
+\end{center}
+设词向量维度为 $d$、隐藏维度为 $H$、词表大小为 $N$：
+\begin{align*}
+ \mathbf x&=[\mathbf e_{\text{Jack}};\mathbf e_{\text{loves}}]\in\mathbb R^{2d},\\
+ \mathbf h&=f(W_1\mathbf x+\mathbf b_1)\in\mathbb R^H,
+ &W_1&\in\mathbb R^{H\times2d},\\
+ \mathbf z&=W_2\mathbf h+\mathbf b_2\in\mathbb R^N,
+ &W_2&\in\mathbb R^{N\times H},\\
+ P(w_j\mid J,L)&=\frac{e^{z_j}}{\sum_{k=1}^{N}e^{z_k}}.
+\end{align*}
+拼接保留词序，所得 $2d$ 维向量是上下文表示，无须对应某个词。若简单相加或平均，交换两个输入词会得到相同表示。输出层为每个词产生一个 logit，再由 Softmax 归一化；并非在词表中寻找一个最接近隐藏向量的词。
+
+训练时真实下一词为 climbing，单样本交叉熵为
+\[
+ L=-\log P(\texttt{climbing}\mid\texttt{Jack loves}).
+\]
+词嵌入与预测网络可共同更新。与 Q1 的双向邻词预测相比，此处语言模型只使用待预测词之前的上下文。
+
+\exercisequestion{SC4002-TUT07-C01}{编程练习：Skip-gram 负采样损失}
+\nopagebreak[4]
+
+\textbf{来源与任务。}原题 p.~2 的
+\href{https://colab.research.google.com/drive/1JItaiaN9mEjBg1gavnHi4Iy184ZVgVS2?usp=sharing}{Skip-gram Colab}，\texttt{Your Task} 要求补出负样本嵌入和训练损失。源码读取《白鲸》前 500 句并转小写，跳过含低频词（词频小于 3）的词对，左右窗口各取 5 个词。配置为 $D=30$、$B=256$、$K=10$、30 epochs；这些是源码设置，不是本次运行记录。
+
+\textbf{1. 两张表与正确的前向计算。}类中 \texttt{embedding\_v} 保存中心向量，\texttt{embedding\_u} 保存上下文向量；正、负上下文都从后者查表。输入中心词和正上下文的形状均为 $B\times1$，负样本为 $B\times K$。与 Q1 目标一致的参考实现如下：
+\par
+\begingroup\linespread{1}\fontsize{9}{11}\selectfont
+\begin{verbatim}
+def forward(self, center_words, target_words, negative_words):
+    center_embeds = self.embedding_v(center_words)
+    target_embeds = self.embedding_u(target_words)
+    neg_embeds = self.embedding_u(negative_words)
+
+    pos_score = (center_embeds * target_embeds).sum(-1).squeeze(1)
+    neg_score = neg_embeds.bmm(center_embeds.transpose(1, 2)).squeeze(-1)
+
+    log_objective = (
+        self.logsigmoid(pos_score)
+        + self.logsigmoid(-neg_score).sum(dim=1)
+    )
+    return -log_objective.mean()
+\end{verbatim}
+\endgroup
+\texttt{pos\_score} 的形状为 $B$，\texttt{neg\_score} 为 $B\times K$；先对每个负例计算 $\log\sigma(-s)$，再沿 $K$ 求和。最后对 batch 取平均并加负号，将最大化目标转成最小化损失。原代码在非线性变换前就把负例得分求和，不能只填空而保留那一步：
+\[
+ \sum_{i=1}^{K}\log\sigma(-s_i)
+ \neq\log\sigma\!\left(-\sum_{i=1}^{K}s_i\right).
+\]
+参考实现也不再依赖原代码中的外部变量 \texttt{negs}。
+
+\textbf{2. 负采样分布。}按词频 $f(w)$ 的 $3/4$ 次幂归一化：
+\[
+ P_n(w)=\frac{f(w)^{3/4}}{\sum_{w'}f(w')^{3/4}}.
+\]
+原式 \texttt{val / num\_total\_words ** alpha} 仅对总词数取幂；归一化后仍为普通词频比例。正确写法为
+\par
+\begingroup\linespread{1}\fontsize{9}{11}\selectfont
+\begin{verbatim}
+weights = {w: count ** 0.75 for w, count in word_count.items()
+           if w not in exclude}
+Z = sum(weights.values())
+noise_dist_normalized = {w: weight / Z for w, weight in weights.items()}
+\end{verbatim}
+\endgroup
+源码的采样函数还会拒绝与当前正上下文相同的词；因此实际抽样是在该分布上排除当前正例后重新归一化。负样本可重复出现。
+
+\textbf{3. 其他说明。}源码另有 \texttt{print(windows[1])u} 的末尾多余字符。notebook 保留的旧输出不视为修正代码的实验结果。训练后可用中心词表的向量，以余弦相似度查询近邻。
+\endgroup
