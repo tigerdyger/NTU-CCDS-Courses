@@ -1,0 +1,218 @@
+% Based on templates/tutorial.tex; source questions, not conversational checks.
+% Source: Part 2-Tutorial 2-Questions_v2.pdf, printed/PDF pp. 1--3, Q1--Q4.
+% Session: 2026-10-23, teaching Week 10. No official solution supplied.
+% Q3 uses the v2 classful assumptions and a consistent minimal topology.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2008-TUT06}{Tutorial 06：IP 转发、拓扑还原与最短路径}
+\label{tutorial:SC2008-TUT06}
+
+\exercisemeta
+  {SC2008-TUT06}
+  {2026-10-23（Week 10）}
+  {Part 2-Tutorial 2-Questions\_v2，Tutorial 2-2: Network Layer -- IP Routing and Routing Protocols；pp.~1--3（PDF pp.~1--3），Questions 1--4}
+  {已核对题目、地址与计算；未提供官方参考答案}
+  {已完成讨论；以下为整理后的解答}
+
+\linespread{1.1}\selectfont
+\setlength{\parskip}{0.3em}
+\setlength{\topsep}{0.3em}
+
+\exercisequestion{SC2008-TUT06-Q01}{透明交换机连接的三个以太网}
+\textbf{对应讲义：}\relatedtopic{SC2008-L06-T03}{ARP 与逐跳交付}；\relatedtopic{SC2008-L07-T01}{MAC 学习与转发}。
+
+\textbf{题目（p.~1，Figure Q1）。}三个 hub-based Ethernets（基于集线器的以太网）分别连接 transparent switch（透明交换机）的三个端口。A 所在 Hub 接 Port 1，B 所在 Hub 接 Port 2，第三个 Hub 接 Port 3。A、B 的配置如下；所有 ARP 缓存与交换机转发表初始为空。A 执行 \texttt{ping 192.168.222.222}，列出 A 发出或收到的以太网帧、用途及交换机动作。
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+主机 & IP 地址 & MAC 地址 & 简写 \\
+\midrule
+A & \texttt{192.168.111.111/16} & \texttt{00:24:81:AA:AA:AA} & $M_A$ \\
+B & \texttt{192.168.222.222/16} & \texttt{00:24:81:BB:BB:BB} & $M_B$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{checkedsolution}
+两台主机均属于 \texttt{192.168.0.0/16}，A 直接解析 B 的 MAC。下表记录一次成功的 Echo Request/Reply（回显请求/回复）；$M_{\rm br}=\texttt{FF:FF:FF:FF:FF:FF}$ 为广播 MAC。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}cl>{\raggedright\arraybackslash}p{4.6cm}X@{}}
+\toprule
+帧 & 源 MAC $\to$ 目的 MAC & 用途 & 交换机动作 \\
+\midrule
+1 & $M_A\to M_{\rm br}$ & ARP Request：查询 \texttt{192.168.222.222} & 从 Port 1 学习 $M_A\to1$；向 Port 2、3 泛洪。\\
+2 & $M_B\to M_A$ & ARP Reply：告知 B 的 IP--MAC 映射 & 从 Port 2 学习 $M_B\to2$；仅向 Port 1 转发。\\
+3 & $M_A\to M_B$ & ICMP Echo Request：A 请求 B 回复 & 刷新 $M_A\to1$；仅向 Port 2 转发。\\
+4 & $M_B\to M_A$ & ICMP Echo Reply：B 回复 A & 刷新 $M_B\to2$；仅向 Port 1 转发。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+交换机从\textbf{源 MAC 与入端口}学习，按\textbf{目的 MAC}转发；广播从除入端口外的其他端口发出。第二帧到达时已经知道 A 所在的端口，无须泛洪该单播。Hub 重复信号，不维护转发表。主机 ARP 缓存存储 IP$\to$MAC，交换机转发表存储 MAC$\to$端口。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT06-Q02}{路由器连接的不同 IP 子网}
+\textbf{对应讲义：}\relatedtopic{SC2008-L06-T03}{下一跳与重新封装}。
+
+\textbf{题目（pp.~1--2，Figure Q2）。}将三个 Hub 的中心连接设备换为路由器，并将其配置为各主机的默认网关。A、B 的 IP 数值和 MAC 与 Q1 相同，但前缀均改为 \texttt{/24}；所有 ARP 缓存初始为空。A 执行相同的 ping，列出 A 发出或收到的帧、用途及路由器动作。路由器相关接口为：
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+接口 & IP 地址 & MAC 地址 & 简写 \\
+\midrule
+朝向 A & \texttt{192.168.111.254/24} & \texttt{00:00:0C:D1:D1:D1} & $M_{R1}$ \\
+朝向 B & \texttt{192.168.222.254/24} & \texttt{00:00:0C:D2:D2:D2} & $M_{R2}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{checkedsolution}
+A 位于 \texttt{192.168.111.0/24}，B 位于 \texttt{192.168.222.0/24}。A 先解析\textbf{本地默认网关}的 MAC，再向它交付发往 B 的 IP 包。$M_{R1}$、$M_{R2}$ 是本题\emph{同一台路由器的两个接口}，与 Q3 的路由器编号无关。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}cl>{\raggedright\arraybackslash}p{4.6cm}X@{}}
+\toprule
+帧 & 源 MAC $\to$ 目的 MAC & 用途 & 路由器动作 \\
+\midrule
+1 & $M_A\to M_{\rm br}$ & ARP Request：查询 \texttt{192.168.111.254} & 学习 A 的 IP--MAC 映射；识别目标为本机接口，不转发该广播。\\
+2 & $M_{R1}\to M_A$ & ARP Reply：告知网关的 IP--MAC 映射 & 本机生成回复，从 A 侧接口发送。\\
+3 & $M_A\to M_{R1}$ & ICMP Echo Request；目的 IP 为 B & 解封装、查目的 IP 路由；在 B 网段解析 B 的 MAC，再重新封装转发。\\
+4 & $M_{R1}\to M_A$ & ICMP Echo Reply；源 IP 为 B & 从 B 侧收到回复后，查到 A 的路由，以 A 侧接口 MAC 重新封装发送。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{第三帧之后的中间过程。}路由器在 B 网段广播 ARP，B 单播回复；随后路由器以 $M_{R2}\to M_B$ 发送 Echo Request。B 从该 ARP 交互学到本地网关映射，以 $M_B\to M_{R2}$ 返回 Echo Reply。路由器此前已学到 A 的映射，最后发出表中第 4 帧。\textbf{B 网段上的这些帧不会到达 A，不另列入题目要求的 A 侧帧表。}
+
+\textbf{两层地址。}本题无 NAT：请求的源/目的 IP 始终为 A/B，回复为 B/A；每经过路由器，下一条以太网链路使用新的源/目的 MAC。IP 首部并非完全不变，例如转发时 TTL 会递减。ARP 报文中的 sender/target IP 是协议字段，ARP 本身不封装在 IP 包中。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT06-Q03}{从三条 traceroute 记录构造拓扑}
+\textbf{对应讲义：}\relatedtopic{SC2008-L06-T04}{traceroute}；\relatedtopic{SC2008-L07-T01}{接口、网段与双向路径}。
+
+\textbf{题目（p.~2）。}根据下列三条 trace-route 记录画出网络拓扑，标清所有网络地址。v2 明确规定：本题首段为 1--126、128--191、192--223 时，分别按历史 Class A/B/C 的 \texttt{/8}、\texttt{/16}、\texttt{/24} 边界确定网络。该假设仅用于本题；普通 CIDR 题仍使用给定前缀。
+
+\begin{center}
+\small\ttfamily
+\begin{tabular}{@{}lll@{}}
+\toprule
+\normalfont A $\to$ B & \normalfont C $\to$ A & \normalfont B $\to$ C \\
+\midrule
+155.69.8.10   & 200.20.80.12 & 196.19.5.104 \\
+10.203.20.10  & 170.105.10.21 & 130.21.80.90 \\
+130.21.10.30  & 80.90.10.3 & 90.80.120.10 \\
+196.19.5.5    & 155.69.8.12 & 170.105.10.20 \\
+              &             & 200.20.80.15 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{checkedsolution}
+\textbf{还原假设。}把每列最后一项视为已到达的目标主机，前面的地址视为沿途路由器朝向前一跳的接口；合并能够共享的设备，构造下图这张最简拓扑。真实 traceroute 的回报接口选择可能不同，三条记录也不能排除其他设备或链路，因此该图是一种一致解，而非唯一性证明。
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+主机 & IP 地址 & 所在网络 \\
+\midrule
+A & \texttt{155.69.8.12} & \texttt{155.69.0.0/16} \\
+B & \texttt{196.19.5.5} & \texttt{196.19.5.0/24} \\
+C & \texttt{200.20.80.15} & \texttt{200.20.80.0/24} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{连接过程。}A$\to$B 给出 R1、R2、R3 三台路由器，中间网段为 \texttt{10.0.0.0/8} 和 \texttt{130.21.0.0/16}。C$\to$A 给出 R4、R5、R1，中间为 \texttt{170.105.0.0/16} 和 \texttt{80.0.0.0/8}。B$\to$C 再补上 R2--R5 的 \texttt{90.0.0.0/8} 连接。
+
+\begin{center}
+\input{figures/tutorial06-traceroute-topology}
+
+{\footnotesize 根据 Q3 记录构造的最简拓扑；边上的标注为网络地址，R1--R5 为解答自定编号。}
+\end{center}
+
+\textbf{接口核对。}不同 IP 可能属于同一路由器，同一网段的接口也可能属于不同设备；下表结合路径位置归属接口，仅列记录中给出的地址。
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+路由器 & 已知接口 IP & 另一已知接口 IP \\
+\midrule
+R1 & \texttt{155.69.8.10}（朝 A） & \texttt{80.90.10.3}（朝 R5） \\
+R2 & \texttt{10.203.20.10}（朝 R1） & \texttt{130.21.80.90}（朝 R3） \\
+R3 & \texttt{130.21.10.30}（朝 R2） & \texttt{196.19.5.104}（朝 B） \\
+R4 & \texttt{200.20.80.12}（朝 C） & \texttt{170.105.10.20}（朝 R5） \\
+R5 & \texttt{170.105.10.21}（朝 R4） & \texttt{90.80.120.10}（朝 R2） \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+沿图逐条核验：
+\[
+\begin{aligned}
+ A\to B &: A\to R1\to R2\to R3\to B,\\
+ C\to A &: C\to R4\to R5\to R1\to A,\\
+ B\to C &: B\to R3\to R2\to R5\to R4\to C.
+\end{aligned}
+\]
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT06-Q04}{Dijkstra：从 A 出发的最低成本路由}
+\textbf{对应讲义：}\relatedtopic{SC2008-L07-T03}{Dijkstra 与最短路径树}。
+
+\textbf{题目（p.~3）。}对下图使用 Dijkstra 算法，求源节点 A 到所有其他节点的 least-cost routes（最低成本路由）。边为无向链路，数字是链路成本。
+
+\begin{center}
+\input{figures/tutorial06-dijkstra}
+
+{\footnotesize 根据 Q4 原图重绘；突出显示求得的最短路径树，其余链路与成本完整保留。}
+\end{center}
+
+\begin{checkedsolution}
+令 $N'$ 为已经确定最短距离的节点集合，$d(v)$ 为暂定距离，$p(v)$ 为前驱；起点 $d(A)=0$。每轮选取未确定节点中 $d$ 最小者 $u$，对其未确定邻居更新
+\[
+ d(v)\leftarrow\min\{d(v),\ d(u)+w(u,v)\}.
+\]
+若经过 $u$ 更便宜，则令 $p(v)=u$。所有链路成本为正，满足本题使用 Dijkstra 的条件。
+
+\begin{center}
+\small
+\begin{tabular}{@{}clcccc@{}}
+\toprule
+新确定 & $N'$ & $(d(B),p(B))$ & $(d(C),p(C))$ & $(d(D),p(D))$ & $(d(E),p(E))$ \\
+\midrule
+A & $\{A\}$ & $(3,A)$ & $(6,A)$ & $(\infty,-)$ & $(\infty,-)$ \\
+B & $\{A,B\}$ & $(3,A)$ & $(5,B)$ & $(10,B)$ & $(13,B)$ \\
+C & $\{A,B,C\}$ & $(3,A)$ & $(5,B)$ & $(9,C)$ & $(13,B)$ \\
+D & $\{A,B,C,D\}$ & $(3,A)$ & $(5,B)$ & $(9,C)$ & $(12,D)$ \\
+E & $\{A,B,C,D,E\}$ & $(3,A)$ & $(5,B)$ & $(9,C)$ & $(12,D)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+初始只利用 A 的直连边。确定 B 后，得到 $d(C)=\min(6,3+2)=5$、$d(D)=3+7=10$、$d(E)=3+10=13$；确定 C 后，$d(D)=\min(10,5+4)=9$；确定 D 后，$d(E)=\min(13,9+3)=12$。暂定距离可以下降，不能在第一次发现节点时就将其确定。
+
+\begin{center}
+\small
+\begin{tabular}{@{}cclc@{}}
+\toprule
+目的节点 & 最短成本 & 最短路径 & A 的下一跳 \\
+\midrule
+B & 3 & $A\to B$ & B \\
+C & 5 & $A\to B\to C$ & B \\
+D & 9 & $A\to B\to C\to D$ & B \\
+E & 12 & $A\to B\to C\to D\to E$ & B \\
+\bottomrule
+\end{tabular}
+\end{center}
+最短路径树由 AB、BC、CD、DE 组成。前驱是路径上紧邻目标之前的节点；下一跳是从 A 出发遇到的第一个节点，例如到 E 的前驱为 D，下一跳为 B。
+\end{checkedsolution}
+\endgroup

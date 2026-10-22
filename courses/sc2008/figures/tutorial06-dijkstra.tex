@@ -1,0 +1,20 @@
+% Original redraw of Part 2-Tutorial 2-Questions_v2.pdf, Q4, p. 3.
+% Undirected edges: AB=3, AC=6, BC=2, BD=7, BE=10, CD=4, DE=3.
+\begin{tikzpicture}[font=\small,
+  vertex/.style={circle,draw=noteBlue,fill=white,minimum size=8mm,thick},
+  cost/.style={fill=white,inner sep=2pt},
+  tree/.style={draw=noteBlue,very thick},
+  other/.style={draw=black!55,thin}]
+  \node[vertex] (a) at (0,0) {A};
+  \node[vertex] (b) at (3,0) {B};
+  \node[vertex] (c) at (1.5,2.1) {C};
+  \node[vertex] (d) at (4.5,2.1) {D};
+  \node[vertex] (e) at (6,0) {E};
+  \draw[tree] (a) -- node[cost,above]{3} (b);
+  \draw[other] (a) -- node[cost,left]{6} (c);
+  \draw[tree] (b) -- node[cost,left]{2} (c);
+  \draw[other] (b) -- node[cost,left]{7} (d);
+  \draw[other] (b) -- node[cost,above]{10} (e);
+  \draw[tree] (c) -- node[cost,above]{4} (d);
+  \draw[tree] (d) -- node[cost,right]{3} (e);
+\end{tikzpicture}

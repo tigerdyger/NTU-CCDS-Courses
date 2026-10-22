@@ -1,0 +1,25 @@
+% Original construction from Part 2-Tutorial 2-Questions_v2.pdf, Q3, p. 2.
+% Assumes replies use incoming interfaces; one consistent minimal topology.
+\begin{tikzpicture}[
+  yscale=0.82,
+  router/.style={circle,draw=noteBlue,thick,fill=noteBlue!5,minimum size=8mm},
+  host/.style={draw=noteBlue,rounded corners=2pt,fill=blue!3,minimum size=7mm},
+  network/.style={font=\footnotesize\ttfamily,fill=white,inner sep=2pt},
+  link/.style={thick,draw=noteBlue},font=\small]
+  \node[router] (r1) at (0,0) {R1};
+  \node[router] (r2) at (4.2,0) {R2};
+  \node[router] (r3) at (8.4,0) {R3};
+  \node[router] (r5) at (0,-2.3) {R5};
+  \node[router] (r4) at (4.2,-2.3) {R4};
+  \node[host] (a) at (0,1.6) {A};
+  \node[host] (b) at (8.4,-2.3) {B};
+  \node[host] (c) at (4.2,-4.1) {C};
+  \draw[link] (a) -- node[network,right]{155.69.0.0/16} (r1);
+  \draw[link] (r1) -- node[network,above]{10.0.0.0/8} (r2);
+  \draw[link] (r2) -- node[network,above]{130.21.0.0/16} (r3);
+  \draw[link] (r3) -- node[network,right]{196.19.5.0/24} (b);
+  \draw[link] (r1) -- node[network,left]{80.0.0.0/8} (r5);
+  \draw[link] (r2) -- node[network,sloped,above]{90.0.0.0/8} (r5);
+  \draw[link] (r5) -- node[network,below]{170.105.0.0/16} (r4);
+  \draw[link] (r4) -- node[network,right]{200.20.80.0/24} (c);
+\end{tikzpicture}
