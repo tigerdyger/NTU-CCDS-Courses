@@ -1,0 +1,17 @@
+% Original diagram based on Virtual Memory.pdf, slide 8.32, reference 7.
+\begin{tikzpicture}[font=\small,>=Latex,
+  frame/.style={draw=noteBlue,rounded corners=2pt,fill=blue!4,
+    minimum width=2.6cm,minimum height=1.0cm,align=center},
+  flow/.style={->,thick,noteBlue}]
+  \node[frame] (f1) at (0,0) {$F_1$: 页 $1$\\$R=1\to0$};
+  \node[frame] (f2) at (3.6,0) {$F_2$: 页 $2$\\$R=1\to0$};
+  \node[frame,fill=orange!15,draw=verifyOrange] (f3) at (7.2,0)
+    {$F_3$: 页 $3\to5$\\$R=0$，替换};
+  \node[frame] (f4) at (10.8,0) {$F_4$: 页 $4$\\$R=0$};
+  \draw[flow] (f1) -- node[above,font=\footnotesize]{跳过} (f2);
+  \draw[flow] (f2) -- node[above,font=\footnotesize]{跳过} (f3);
+  \draw[flow] (f3) -- node[above,font=\footnotesize]{前进} (f4);
+  \draw[flow] (f4.south) -- ++(0,-0.6) -| (f1.south);
+  \node[above=0.25cm of f1,font=\footnotesize,text=noteBlue]{扫描从这里开始};
+  \node[above=0.25cm of f4,font=\footnotesize,text=noteBlue]{替换后指针停这里};
+\end{tikzpicture}

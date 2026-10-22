@@ -1,0 +1,91 @@
+% Based on templates/lecture.tex; actual session 18, 2026-10-22 (Week 10).
+% Source: Virtual Memory.pdf, slides 8.17--8.32 (PDF pp. 17--32).
+% Videos are unavailable; the three-session boundary is the agreed study plan.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\section{第 18 节课：页面置换算法与 Belady 异常}
+\label{lecture:SC2005-L18}
+
+{\small 2026-10-22（第十教学周）。来源：\emph{Virtual Memory}，8.17--8.32（PDF pp.~17--32）；对应 Page Replacement Algorithms 与 Belady's Anomaly 视频标题，视频未读取。讲义与计算已核对，笔记待审阅；页框分配与抖动留到第 19 节。}
+
+\keyidea{缺页且没有空闲页框时，必须选择一个 victim page（被置换页）。FIFO 按装入顺序选择；OPT 作为理想参照，查看未来；LRU 用过去的访问预测近期需求；Clock 用引用位降低精确记录访问顺序的成本。}
+
+\lecturetopic{SC2005-L18-T01}{FIFO 与 Belady's anomaly}
+
+\textbf{来源：8.17--8.21。}Page-replacement algorithm（页面置换算法）的目标是在给定页框数量下减少 page faults（缺页）。比较算法时固定 reference string（页面访问序列）、初始状态和页框数量。初始为空时，首次装入也计为缺页；命中驻留页不需要置换。
+
+First-In-First-Out（先进先出，FIFO）淘汰当前驻留页中\textbf{最早装入内存}的一页。可用队列维护装入顺序：新页入队尾，需要置换时淘汰队首。\textbf{命中不改变队列顺序}，因此刚访问过的页仍可能因装入最早而被淘汰。
+
+Belady's anomaly（Belady 异常）指：\textbf{同一访问序列采用同一算法时，增加页框数量反而增加缺页次数}。FIFO 可能出现这一现象；讲义序列在三个页框下缺页 $9$ 次，四个页框下为 $10$ 次，见\relatedexercise{SC2005-L18-E01}{FIFO 的三页框与四页框对照}。更多页框会改变前面的命中和淘汰时机，FIFO 并不保证始终保留较小内存方案中的所有页面。
+
+讲义 8.18、8.21 的结论为 $\text{more frames}\not\Rightarrow\text{fewer page faults}$；缺页次数保持不变并不构成异常。
+
+\lecturetopic{SC2005-L18-T02}{OPT：以未来访问作为理想基准}
+
+\textbf{来源：8.22--8.23。}Optimal replacement（最优置换，OPT）淘汰\textbf{下一次访问距离当前最远}的驻留页；未来不再访问可视为距离无穷大。依据是下一次访问的位置，而非未来累计访问次数。
+
+OPT 对给定访问序列和页框数实现最少缺页，但运行中的 OS 通常无法预知未来访问，所以主要用作离线 benchmark（比较基准）。讲义四页框示例缺页 $6$ 次：第一次装入页 $5$ 时淘汰页 $4$，因为接下来依次访问 $1,2,3,4$。完整过程见\relatedexercise{SC2005-L18-E02}{OPT 与 LRU 对照}。
+
+\textbf{为什么增加页框不会使最优结果变差？}补充解释：更多页框至少可以容纳原来方案需要的页面，多出的空间不会限制可行选择，因此最少缺页次数不增加。讲义同时用 inclusion property（包含性质）描述 OPT：采用一致的并列候选处理规则时，小容量的驻留集合包含于大容量的驻留集合。
+
+\lecturetopic{SC2005-L18-T03}{LRU：最近访问顺序与实现代价}
+
+\textbf{来源：8.24--8.27。}Least Recently Used（最近最少使用，LRU）淘汰\textbf{上一次访问距离当前最久}的页，利用近期访问可能再次发生的局部性。每次访问都更新最近使用顺序，包括命中；它不按累计访问频率排序。讲义四页框示例缺页 $8$ 次，见\relatedexercise{SC2005-L18-E02}{OPT 与 LRU 对照}。
+
+\textbf{两种精确实现。}
+\begin{itemize}
+  \item \textbf{Counter implementation（计数器实现）：}逻辑时钟随每次内存引用递增，将时钟值写入被访问页的 time-of-use（最后访问时间）字段。置换时选择时间最小的页；每次访问要更新记录，选择 victim 时需要寻找最小值。
+  \item \textbf{Stack implementation（栈式实现）：}用双向链表维护页号，每次访问将对应节点移到顶部，底部就是 LRU 页。选择 victim 无需另行搜索，但每次访问都要维护顺序。\emph{移动的是页号记录，不是把页面内容搬到其他物理页框。}
+\end{itemize}
+
+例如顶部在左时，$[4,3,2,1]\xrightarrow{\text{访问 }1}[1,4,3,2]$。讲义 8.27 的图按最近使用顺序排列，与按固定物理页框排列的 8.24 图不同，但描述同一次 LRU 过程。
+
+\textbf{包含性质与无异常。}补充说明：LRU 用 $n$ 个页框保留最近访问的 $n$ 个不同页面，用 $n+1$ 个页框则再多保留一个。设访问到时刻 $t$ 后的驻留集合为 $S_n(t)$，初始为空并处理同一序列，则
+\[
+  S_n(t)\subseteq S_{n+1}(t).
+\]
+小容量能够命中的页，大容量也能命中，所以 LRU 的缺页次数随容量增加不会上升。FIFO 不满足这一保证。精确 LRU 的代价在于持续追踪每次内存引用，因而需要考虑较低成本的近似。
+
+\lecturetopic{SC2005-L18-T04}{Second-Chance 与 Clock}
+
+\textbf{来源：8.28--8.32。}Reference bit（引用位）$R$ 记录页面是否被访问过：硬件可在访问时置 $R=1$，置换算法扫描时将它清零。它只保留一位历史，无法确定精确访问先后或访问次数。$R$ 与上节的 dirty bit（脏位）作用不同：前者记录访问，后者记录修改。
+
+Second-Chance（第二次机会）从 FIFO 的候选顺序出发：遇到 $R=1$ 就清零并暂时跳过，遇到 $R=0$ 才淘汰。清零开始一轮新的观察，避免页面仅因曾被访问就一直受到保护。
+
+Clock（时钟算法）用环形页框队列与一个指针实现第二次机会。页框无需实际移动；指针表示下一位待检查候选。
+\begin{enumerate}
+  \item \textbf{命中：}将该页 $R$ 置为 $1$，指针不动。
+  \item \textbf{需要置换的缺页：}从指针处扫描；遇到 $R=1$，清零并前进；遇到 $R=0$，替换该页。
+  \item \textbf{替换后：}指针前进一格。若所有位都是 $1$，扫描一圈清零后可淘汰最初候选；本次选择退化为按队列顺序淘汰。
+\end{enumerate}
+
+\textbf{课程例图约定。}8.32 把\textbf{新装入页设为 $R=0$，之后命中才置为 $1$}；本讲和 Tutorial 09 均按此计算，不混用新页立即置 $1$ 的时序约定。扫描方向按图示取 $F_1\to F_2\to F_3\to F_4\to F_1$；原图正文的 \emph{upwards} 与箭头不一致。
+
+\begin{center}
+\input{figures/clock-second-chance}
+
+{\small 据讲义 8.32 原创重绘：第 7 步装入页 $5$ 时的扫描；完整轨迹见\relatedexercise{SC2005-L18-E03}{Clock 例题}。}
+\end{center}
+
+\textbf{算法对照。}下表的缺页数仅针对讲义同一序列、四个初始为空的页框，不表示所有程序中的固定排名。
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}Xr@{}}
+\toprule
+算法 & 淘汰依据 & 信息与代价 & 缺页数 \\
+\midrule
+FIFO & 最早装入 & 维护装入队列，可能有 Belady 异常 & 10 \\
+OPT & 下一次使用最晚 & 需要未来引用，作为理想基准 & 6 \\
+LRU & 上一次访问最早 & 精确维护访问时间或顺序，无 Belady 异常 & 8 \\
+Clock & 指针扫描遇到 $R=0$ & 一位访问历史，近似近期使用情况 & 8 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Clock 与 LRU 在本例的缺页数相同，但最后一步淘汰的页不同，不能把 Clock 当成精确 LRU。
+
+\textbf{一分钟回顾。}置换算法决定无空闲页框时留谁、换谁。FIFO 看装入顺序，命中不更新队列，可能出现页框更多却缺页更多的 Belady 异常。OPT 看未来，LRU 看最近过去；两者不会出现该异常。Clock 用引用位与循环扫描给页面第二次机会，以较少的维护信息近似近期使用情况；命中不移动指针，替换后指针前进。
+\endgroup
