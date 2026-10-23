@@ -1,0 +1,165 @@
+% Prepared from templates/tutorial.tex; Tutorial 5, 2026-10-23 (Week 10).
+% Source: Tutorial 5 - LogicalReasoning and FOL.pdf, one unnumbered PDF page.
+% Original question numbers are 4.1--4.4; no official solution supplied.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC3000-TUT05}{Tutorial 05：Logical Reasoning 与 First-Order Logic}
+\label{tutorial:SC3000-TUT05}
+
+\exercisemeta
+  {SC3000-TUT05}
+  {2026-10-23（第十周）}
+  {Tutorial 5 -- Logical Reasoning and First-Order Logic，PDF p.~1；原题号 4.1--4.4}
+  {真值表、推导与反模型已核对；未提供官方参考答案}
+  {已完成学习并要求整理（2026-10-23）}
+
+\setlength{\parskip}{0.4em}
+
+\noindent\begin{minipage}{\linewidth}
+\exercisequestion{SC3000-TUT05-Q01}{4.1：逻辑等价的两种证明方法}
+\textbf{对应讲义：}\relatedtopic{SC3000-L08-T01}{联结词与真值表}、\relatedtopic{SC3000-L08-T04}{等价变换}。
+
+\textbf{题目。}(a) 用真值表证明前两个等价关系；(b) 不使用真值表，用已知等价关系改写并证明第三个：
+\begin{align*}
+\text{(i)}\quad &(P\Rightarrow Q)\equiv(\neg P\lor Q),\\
+\text{(ii)}\quad &(P\Leftrightarrow Q)\equiv((P\Rightarrow Q)\land(Q\Rightarrow P)),\\
+\text{(iii)}\quad &(P\Leftrightarrow Q)\equiv((P\land Q)\lor(\neg P\land\neg Q)).
+\end{align*}
+\end{minipage}\par
+这里用 $\equiv$ 表示逻辑等价；原题用外层 $\Leftrightarrow$ 连接两式，要求证明其永真。
+
+\begin{checkedsolution}
+\textbf{(a) 枚举全部赋值。}条件命题仅在前件真、后件假时为假；双条件在两者真值相同时为真。
+\begin{center}
+\small
+\begin{tabular}{@{}cc|cc|ccc@{}}
+\toprule
+$P$ & $Q$ & $P\Rightarrow Q$ & $\neg P\lor Q$ & $Q\Rightarrow P$ & $(P\Rightarrow Q)\land(Q\Rightarrow P)$ & $P\Leftrightarrow Q$ \\
+\midrule
+T & T & T & T & T & T & T \\
+T & F & F & F & T & F & F \\
+F & T & T & T & F & F & F \\
+F & F & T & T & T & T & T \\
+\bottomrule
+\end{tabular}
+\end{center}
+(i) 对应两列均为 T、F、T、T；(ii) 对应两列均为 T、F、F、T。每组左右式逐行同真同假，故等价；左右式本身不必永远为真。
+
+\textbf{(b) 等价改写。}先使用 (ii)，再使用 (i) 消去两个条件符号，最后应用分配律：
+\begin{align*}
+P\Leftrightarrow Q
+&\equiv(P\Rightarrow Q)\land(Q\Rightarrow P)\\
+&\equiv(\neg P\lor Q)\land(\neg Q\lor P)\\
+&\equiv(\neg P\land\neg Q)\lor(\neg P\land P)
+       \lor(Q\land\neg Q)\lor(Q\land P)\\
+&\equiv(\neg P\land\neg Q)\lor(P\land Q).
+\end{align*}
+其中 $\neg P\land P$ 与 $Q\land\neg Q$ 恒假，可从析取中删去。结果表示两者同假或同真。
+\end{checkedsolution}
+
+\exercisequestion{SC3000-TUT05-Q02}{4.2：聚会事实与 Modus Ponens}
+\textbf{对应讲义：}\relatedtopic{SC3000-L08-T03}{可靠推理规则}。
+
+\textbf{题目。}Amy、Bob、Cal、Don、Eve 被邀请参加昨晚的聚会。Amy 和 Bob 都去时，Cal 一定去；Don 去时 Cal 不去，反过来 Cal 去时 Don 不去。已知 Amy 与 Eve 去了，且 Bob 会参加 Eve 参加的每场聚会。用命题逻辑及 Modus Ponens 判断 Don 是否参加。
+
+\begin{checkedsolution}
+令 $A,B,C,D,E$ 分别表示这五人参加了本次聚会，知识库为
+\[
+KB=\{(A\land B)\Rightarrow C,\ D\Rightarrow\neg C,
+       C\Rightarrow\neg D,\ A\land E,\ E\Rightarrow B\}.
+\]
+两条互斥规则逻辑等价，均表达 Cal 与 Don 不能同时参加。由 $A\land E$ 用 And-Elimination（合取消去）得到 $A,E$，再依次推导：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}cl>{\raggedright\arraybackslash}X@{}}
+\toprule
+步 & 新结论 & 依据 \\
+\midrule
+1 & $B$ & $E$ 与 $E\Rightarrow B$，Modus Ponens \\
+2 & $A\land B$ & $A$ 与 $B$，And-Introduction（合取引入） \\
+3 & $C$ & $A\land B$ 与 $(A\land B)\Rightarrow C$，Modus Ponens \\
+4 & $\neg D$ & $C$ 与 $C\Rightarrow\neg D$，Modus Ponens \\
+\bottomrule
+\end{tabularx}
+\end{center}
+因此 $KB\models\neg D$，Don 没有参加。每次肯定前件都要求规则及其前件已知；仅有结论不能反推前件。
+\end{checkedsolution}
+
+\exercisequestion{SC3000-TUT05-Q03}{4.3：自然语言、否定范围与量词顺序}
+\textbf{对应讲义：}\relatedtopic{SC3000-L09-T01}{谓词与对象}、\relatedtopic{SC3000-L09-T02}{量词与作用域}。
+
+\textbf{题目。}定义一致的词汇，将下列语句翻译成 FOL：
+\begin{enumerate}[label=(\roman*)]
+  \item 并非所有学生都同时修读 History 和 Biology。
+  \item 政治家能在有些时候欺骗所有人，也能在所有时候欺骗有些人，但不能在所有时候欺骗所有人。
+\end{enumerate}
+
+\begin{checkedsolution}
+\textbf{(i) 否定“所有学生都满足”。}定义 $Student(x)$ 为“$x$ 是学生”，$Takes(x,c)$ 为“$x$ 修读课程 $c$”；$History,Biology$ 为课程常量。则
+\begin{align*}
+&\neg\forall x\,[Student(x)\Rightarrow
+       (Takes(x,History)\land Takes(x,Biology))]\\
+\equiv{}&\exists x\,[Student(x)\land
+       \neg(Takes(x,History)\land Takes(x,Biology))]\\
+\equiv{}&\exists x\,[Student(x)\land
+       (\neg Takes(x,History)\lor\neg Takes(x,Biology))].
+\end{align*}
+只需存在一位至少有一门未修的学生；不要求两门都未修，也没有声称所有学生都不修。
+
+\textbf{(ii) 固定见证对象，再看量词范围。}定义 $Politician(p)$、$Person(x)$、$Time(t)$，分别表示政治家、人、时刻；$Fool(p,x,t)$ 表示 $p$ 在时刻 $t$ 欺骗了 $x$。本文将原句理解为对每位政治家的普遍陈述，并以 $Fool$ 关系表达题中的“能欺骗”，不额外引入模态逻辑。
+
+为使三个量词结构清晰，记 $\mathcal P,\mathcal H,\mathcal T$ 分别为政治家、人和时刻的集合。限制量词仅是普通 FOL 的缩写，例如
+\[
+\forall x\in\mathcal H\,\phi\ \equiv\ \forall x\,[Person(x)\Rightarrow\phi],\qquad
+\exists t\in\mathcal T\,\phi\ \equiv\ \exists t\,[Time(t)\land\phi].
+\]
+对每个 $p\in\mathcal P$，要求以下三式同时成立：
+\begin{align*}
+A(p)&=\exists t\in\mathcal T\;\forall x\in\mathcal H\;Fool(p,x,t),\\
+B(p)&=\exists x\in\mathcal H\;\forall t\in\mathcal T\;Fool(p,x,t),\\
+C(p)&=\neg\big(\forall x\in\mathcal H\;\forall t\in\mathcal T\;Fool(p,x,t)\big).
+\end{align*}
+完整句子为
+\[
+\boxed{\forall p\in\mathcal P\;[A(p)\land B(p)\land C(p)]}.
+\]
+$A(p)$ 要求一个对所有人共同适用的时刻；$B(p)$ 要求一个在所有时刻都适用的人；所选人物或时刻可以随 $p$ 改变。$C(p)$ 等价于
+\[
+\exists x\in\mathcal H\;\exists t\in\mathcal T\;\neg Fool(p,x,t),
+\]
+只需有某个人在某个时刻未被欺骗。这里采用“共同的某个时刻”和“固定的某个人”的读法；若把 $\exists$ 与 $\forall$ 交换，就允许见证随另一变量改变，含义不同。
+\end{checkedsolution}
+
+\exercisequestion{SC3000-TUT05-Q04}{4.4：共同见证、逻辑蕴含与反模型}
+\textbf{对应讲义：}\relatedtopic{SC3000-L08-T02}{逻辑蕴含}、\relatedtopic{SC3000-L09-T02}{量词顺序}。
+
+\textbf{题目。}考虑
+\begin{align*}
+\alpha&=\forall x\,[Boy(x)\Rightarrow\exists y\,(Girl(y)\land Likes(x,y))],\\
+\beta&=\exists y\,[Girl(y)\land\forall x\,(Boy(x)\Rightarrow Likes(x,y))].
+\end{align*}
+(a) 用简洁英文解释两式；(b) 判断是否等价，或哪个方向存在逻辑蕴含；(c) 说明如何用逻辑推理证明 $\alpha$ 是否蕴含 $\beta$，不要求详细形式证明。
+
+\begin{checkedsolution}
+\textbf{(a) 解释。}
+\begin{itemize}
+  \item $\alpha$：Every boy likes at least one girl. 每个男孩都有喜欢的女孩，可以因人而异。
+  \item $\beta$：There is at least one girl whom every boy likes. 存在同一位女孩，所有男孩都喜欢她。
+\end{itemize}
+
+\textbf{(b) 蕴含方向。}$\beta\models\alpha$：取 $\beta$ 保证存在的女孩 $g$；对任意男孩，都可以用同一位 $g$ 满足 $\alpha$ 的存在要求。反方向不成立，故两式不等价。
+
+\textbf{(c) 构造反模型。}令论域为 $\{a,b,c,d\}$，男孩集合为 $\{a,b\}$，女孩集合为 $\{c,d\}$，且 $Likes=\{(a,c),(b,d)\}$，其他喜欢关系均为假：
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+ & 女孩 $c$ & 女孩 $d$ \\
+\midrule
+男孩 $a$ & 喜欢 & 不喜欢 \\
+男孩 $b$ & 不喜欢 & 喜欢 \\
+\bottomrule
+\end{tabular}
+\end{center}
+每个男孩都有喜欢的女孩，故 $\alpha$ 真；没有一位女孩被两个男孩共同喜欢，故 $\beta$ 假。这一个反模型就足以证明 $\alpha\not\models\beta$。
+\end{checkedsolution}
+\endgroup
