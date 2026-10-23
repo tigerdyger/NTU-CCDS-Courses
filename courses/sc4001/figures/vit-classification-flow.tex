@@ -1,0 +1,16 @@
+% Original schematic based on 10_transformers.pdf pp. 18--25.
+\begin{tikzpicture}[
+  font=\small,>=Stealth,
+  box/.style={draw=noteBlue,fill=noteBlue!4,rounded corners,
+    text width=3.7cm,minimum height=1.65cm,align=center,inner sep=5pt},
+  flow/.style={->,thick,noteBlue}
+]
+\node[box] (image) at (0,0)
+  {图像 $H\times W\times C$\\切块、展平\\$N\times(P^2C)$};
+\node[box] (tokens) at (5,0)
+  {共享线性投影\\加入 class token 与位置\\$(N+1)\times D$};
+\node[box] (encoder) at (10,0)
+  {Transformer encoder\\取 class token 输出\\分类头 $\to$ 类别};
+\draw[flow] (image) -- (tokens);
+\draw[flow] (tokens) -- (encoder);
+\end{tikzpicture}

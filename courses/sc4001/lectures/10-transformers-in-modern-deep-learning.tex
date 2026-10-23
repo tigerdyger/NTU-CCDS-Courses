@@ -1,0 +1,226 @@
+% Actual class: 10, Week 10, 2026-10-23.
+% Source: 10_transformers.pdf pp. 1--73; 10_pulse_checking.pdf pp. 1--5.
+% Six public video caption tracks read in full; no claim of video-frame review.
+% Prepared from templates/lecture.tex; numerical examples stored separately.
+
+\section{第 10 节课：现代深度学习中的 Transformer}
+\label{lecture:SC4001-L10}
+
+\lecturemeta
+  {SC4001-L10}
+  {2026-10-23（第十周）}
+  {10\_transformers：Transformers in Modern Deep Learning}
+  {pp.~1--73；10\_pulse\_checking pp.~1--5 用于概念核对}
+  {10\_transformers\_part1--6，约 125 分钟；六份完整英文字幕与讲义核对，未逐帧观看}
+  {已讲解并订正；笔记与数值例题已核对，待审阅}
+
+上一讲介绍 attention 与 encoder--decoder 的基本信息流。本讲说明同一类模块如何用于理解文本、识别图像和生成文本，再解决生成的缓存开销、任务适配与位置表示问题。
+
+\Needspace{10\baselineskip}
+\lecturetopic{SC4001-L10-T01}{BERT：从上下文恢复词，再适配理解任务}
+
+\textbf{来源：}pp.~5--16，视频 Part 1。
+
+\subsubsection{预训练：把原始文本变成监督信号}
+
+BERT（Bidirectional Encoder Representations from Transformers）只使用 encoder。Bidirectional（双向）指一个位置可同时读取左右两侧上下文。例如将 \emph{I like eating durian} 中的 \emph{eating} 替换为 \texttt{[MASK]}，模型利用其余词恢复原词；标签由原始文本自动提供。
+
+Masked language modelling（MLM，掩码语言建模）先选定预测位置集合 $M$，再构造受扰动的输入。最终层在位置 $i$ 给出 $h_i^{(L)}\in\mathbb R^{1\times D}$，通过词表输出层得到
+\[
+ u_i=h_i^{(L)}E^\top+b,\qquad p_i=\operatorname{softmax}(u_i),\qquad
+ \mathcal L_{\rm MLM}=-\frac1{|M|}\sum_{i\in M}\log p_i(x_i).
+\]
+这里 $E\in\mathbb R^{C\times D}$ 为词嵌入矩阵，$C$ 是词表大小；输入嵌入与输出投影共享 $E$，称为 weight tying（权重绑定）。$x_i$ 始终是原始 token。若正确词 \emph{eating} 的预测概率为 $0.72$，该位置损失为 $-\ln0.72\approx0.329$。
+
+随机选取约 $15\%$ 的可预测 token；\textbf{在这些选中位置中}，$80\%$ 替换为 \texttt{[MASK]}，$10\%$ 替换为随机词，$10\%$ 保持原样。三类都计算恢复原词的损失。混合输入方式减轻预训练时出现 \texttt{[MASK]}、下游使用时没有它的差异。未选中的位置没有直接的 MLM 预测损失，但仍通过上下文参与计算。
+
+\subsubsection{微调：用表示完成有标签任务}
+
+在输入前加入特殊 token \texttt{[CLS]}，以其最终层表示连接一个小型 classifier（分类头），例如预测句子的情感类别。使用有标签数据时，\textbf{BERT 与分类头一起更新}。\texttt{[CLS]} 输出是上下文向量，并非一段文字摘要。
+
+全局双向 attention 适合理解完整输入，但标准 attention 的分数矩阵随长度呈平方增长。追加文本还可能改变旧位置的表示，因此这种结构不直接满足自回归生成中复用旧表示的条件。
+
+\lecturetopic{SC4001-L10-T02}{ViT：把图像块作为 token 做分类}
+
+\textbf{来源：}pp.~17--29，视频 Part 2。
+
+\subsubsection{图像如何进入 encoder}
+
+Vision Transformer（ViT，视觉 Transformer）将图像转成 patch tokens（图像块词元）。设图像为 $H\times W\times C$，非重叠 patch 大小为 $P\times P$，且 $H,W$ 均可被 $P$ 整除，则
+\[
+ N=\frac{HW}{P^2},\qquad x_p^{(i)}\in\mathbb R^{1\times P^2C},\qquad
+ E\in\mathbb R^{P^2C\times D}.
+\]
+展平仅重排 patch 的像素值；随后所有 patch 共用同一个可训练线性投影 $E$，产生 $D$ 维 embedding。加入可学习的 class token 和位置嵌入：
+\[
+ Z_0=[x_{\rm class};\,x_p^{(1)}E;\,\ldots;\,x_p^{(N)}E]+E_{\rm pos}
+ \in\mathbb R^{(N+1)\times D}.
+\]
+$x_{\rm class}$ 是各图像共享的初始参数向量，经过 attention 后才成为与图像相关的表示；它不是输入标签。$E_{\rm pos}$ 为各位置提供空间身份。
+
+\begin{center}
+\input{figures/vit-classification-flow}
+\end{center}
+{\small 原创示意，依据 pp.~18--25；块内 attention、MLP 和残差连接见下式。}
+
+\subsubsection{编码与分类，以及和 CNN 的差别}
+
+原始 ViT 使用 pre-norm（前归一化），每一块按顺序计算
+\[
+ Z'_\ell=Z_{\ell-1}+\operatorname{MSA}(\operatorname{LN}(Z_{\ell-1})),\qquad
+ Z_\ell=Z'_\ell+\operatorname{MLP}(\operatorname{LN}(Z'_\ell)).
+\]
+MSA 在各 token 之间交换信息；MLP 对各 token 独立使用同一组参数。最终取 class token 对应的行，$y=\operatorname{LN}(Z_L[0])$，送入分类头。维度例见\relatedexercise{SC4001-L10-E01}{图像切块与 token 数量}。
+
+原始 ViT 的 MLP 使用 GELU（高斯误差线性单元）：它是平滑非线性，允许小的负输出。讲义还介绍现代模型中的 SwiGLU（Swish 门控线性单元），其关键是以 Swish 激活的一条投影分支乘上另一条分支；它是门控结构，不能把单独的 Swish 曲线等同于完整 SwiGLU。
+
+CNN 内置 locality（局部性）、二维邻域结构及卷积的 translation equivariance（平移等变性）。ViT 的 self-attention 是全局的，MLP 的“局部”仅指逐 token 处理；切块与位置编码使整个 ViT 并不天然具有严格的图像平移等变性。
+
+ViT 的图像归纳偏置较弱，通常需要更多数据学习空间关系。讲义原始实验中，ImageNet 约 100 万张图像时不如 CNN，约 1400 万张时相当，JFT 约 3 亿张时超过比较的 BiT。该结论描述特定实验，不是所有数据规模和架构下的必然排序。
+
+\lecturetopic{SC4001-L10-T03}{GPT：把前缀变成下一个 token 的概率}
+
+\textbf{来源：}pp.~30--40，视频 Part 3。
+
+\subsubsection{预测目标决定因果约束}
+
+GPT（Generative Pre-trained Transformer）采用 decoder-only 结构，没有另一个 encoder 供 cross-attention 读取。输入、提示词与已经生成的内容都属于同一条 token 序列。位置 $t$ 的表示用于预测 $x_{t+1}$，因此每层 self-attention 都必须限制可见范围：
+\[
+ A=\operatorname{softmax}_{\rm row}\!\left(\frac{QK^\top}{\sqrt{d_k}}+M\right),
+ \qquad M_{ij}=\begin{cases}0,&j\le i,\\-\infty,&j>i.\end{cases}
+\]
+未来位置经 softmax 后权重为零。训练目标为
+\[
+ \mathcal L=-\sum_t\log P(x_{t+1}\mid x_{1:t}).
+\]
+训练时完整文本已知，可用右移目标和 causal mask（因果掩码）并行计算各位置损失；生成时未来 token 未知，必须逐步扩展前缀。推理中的逐步生成不更新模型参数。
+
+\subsubsection{从隐藏表示到实际输出}
+
+给定前缀长度 $t$，取最后位置的表示 $h_t^{(L)}\in\mathbb R^{1\times D}$，以词表投影输出分数：
+\[
+ u_t=h_t^{(L)}W_{\rm out}+b\in\mathbb R^{1\times C},\qquad
+ P(x_{t+1}\mid x_{1:t})=\operatorname{softmax}(u_t).
+\]
+随后 greedy decoding（贪心解码）选最大概率 token，或 sampling（采样）按分布抽取。选取最后一行保留其 $D$ 个特征；这里不需要压平整个序列，也不在词表中寻找与 attention 的 $V$ 最近的词。
+
+Temperature（温度）在 softmax 前缩放 logits：
+\[
+ p_j(\tau)=\frac{\exp(u_j/\tau)}{\sum_k\exp(u_k/\tau)},\qquad \tau>0.
+\]
+较小 $\tau$ 使概率更集中，较大 $\tau$ 使其更平坦；固定 logits 时，正温度不改变候选排序，因而不改变贪心选择。它主要控制采样的随机性，例见\relatedexercise{SC4001-L10-E02}{温度与词表概率}。
+
+\lecturetopic{SC4001-L10-T04}{KV cache：复用前缀计算，控制缓存内存}
+
+\textbf{来源：}pp.~41--49，视频 Part 4。
+
+\subsubsection{为什么旧 K、V 可以复用}
+
+在参数固定的因果模型中，旧位置无法读取新加入的 token，所以追加内容不会改变旧位置已经算出的表示。KV cache（键值缓存）在\textbf{每一层}保存已有 token 的 $K,V$；每个解码步骤仅为新 token 计算该层的 $q_t,k_t,v_t$，并把新 $k_t,v_t$ 接入缓存：
+\[
+ y_t=\operatorname{softmax}\!\left(\frac{q_tK_{1:t}^\top}{\sqrt{d_k}}\right)V_{1:t}.
+\]
+旧 query 对应的输出已经计算完；新 query 只需读取所有 key/value，故无需缓存旧 $Q$。通常先进行 prefill（提示词预填充），再逐 token 解码。缓存省去旧位置的重复计算，新 query 仍需与越来越长的历史匹配。
+
+\subsubsection{内存由 K/V 头数决定}
+
+设 $L$ 层、batch size 为 $B$、缓存长度 $T$、K/V 头数 $H_{\rm kv}$、每头 key/value 维数 $d_k,d_v$，每个数占 $s$ 字节，则
+\[
+ \text{KV bytes}=LBH_{\rm kv}T(d_k+d_v)s.
+\]
+若 $d_k=d_v=d_h$，即 $2LBH_{\rm kv}Td_hs$。这是随上下文增长的缓存，不包含模型权重或其他运行内存。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\toprule
+结构 & K/V 头数 & 共享方式 \\
+\midrule
+MHA & $H_{\rm kv}=H_q$ & 每个 query head 有自己的 K/V head \\
+GQA & $1<H_{\rm kv}<H_q$ & 每组 query heads 共享一个 K/V head \\
+MQA & $H_{\rm kv}=1$ & 所有 query heads 共享一组 K/V \\
+\bottomrule
+\end{tabularx}
+\end{center}
+GQA（分组查询注意力）与 MQA（多查询注意力）减少 K/V 存储及读取开销；query heads 仍可不同，因此共享 K/V 不意味着相同注意力权重。共享程度也需权衡模型质量。完整内存计算见\relatedexercise{SC4001-L10-E03}{MHA 与 GQA 的缓存开销}。
+
+\lecturetopic{SC4001-L10-T05}{任务适配：上下文引导与参数训练}
+
+\textbf{来源：}pp.~50--60，视频 Part 5。
+
+\subsubsection{先区分是否发生参数更新}
+
+分类、翻译和问答都可以写成文本续写任务。In-context learning（ICL，上下文学习）把几个示例放进 prompt，借助上下文引导当前回答；\textbf{普通 few-shot prompting 仅在推理时提供输入，不做反向传播或权重更新}。效果可能依赖示例顺序、措辞、格式和上下文长度。
+
+Instruction tuning（指令微调）则以“指令及输入 $\to$ 期望回答”的数据进行训练，优化回答 token 的预测损失，使模型学会遵循指令。之后能 zero-shot 使用，并不意味着它从未接受过训练。
+
+Chain-of-thought（CoT，思维链）让输出包含中间推理步骤；既可通过提示引导，也可用含步骤的数据训练。生成的解释不自动保证结论正确或忠实反映内部计算。
+
+\subsubsection{PEFT：少量可训练参数放在哪里}
+
+Full fine-tuning（全参数微调）更新整个模型。Parameter-efficient fine-tuning（PEFT，参数高效微调）通常冻结预训练参数，仅训练小部分新增参数，以减少梯度、优化器状态及任务专属存储成本。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+方法 & 可训练部分及位置 & 对模型的作用 \\
+\midrule
+Prompt tuning & 输入端的连续 soft prompt 向量 & 与 token embeddings 拼接，引导模型 \\
+Prefix tuning & 各层的连续前缀，常为 prefix K/V & 在层内注入可学习上下文 \\
+Adapters & 插入 Transformer 块的小型模块 & 以降维、非线性、升维变换适配表示 \\
+LoRA & 权重旁的低秩更新矩阵 & 改变指定线性映射的有效权重 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Soft prompt 是训练参数，不必对应可读词语；它与手写自然语言 prompt 不同。Prefix K/V 是学到的参数，而 KV cache 是当前序列计算出的中间结果。冻结主干也不意味着完全省去经过主干的前向及梯度传播。
+
+\subsubsection{LoRA：冻结原权重，学习低秩增量}
+
+按讲义的行向量约定，对于 $W_0\in\mathbb R^{D\times D}$，
+\[
+ \widetilde W=W_0+\Delta W,\qquad
+ \Delta W=AB,\quad A\in\mathbb R^{D\times r},\ B\in\mathbb R^{r\times D},\ r\ll D,
+\]
+\[
+ X\widetilde W=XW_0+XAB.
+\]
+训练只更新 $A,B$，不更新 $W_0$；单个方阵映射的可训练参数由 $D^2$ 降为 $2Dr$。低秩约束施加在\emph{更新量}，不要求 $W_0$ 本身低秩。训练后可以把 $AB$ 合并入有效权重用于推理。
+
+Instruction tuning 描述训练任务和数据，LoRA 描述如何更新参数，二者可以结合使用。
+
+\lecturetopic{SC4001-L10-T06}{RoPE：让注意力显式携带相对位置信息}
+
+\textbf{来源：}pp.~61--69，视频 Part 6。
+
+\subsubsection{先投影，再按位置旋转 Q、K}
+
+此前的位置编码在输入 embedding 上加位置向量。Rotary Positional Embedding（RoPE，旋转位置嵌入）则在 $Q=XW_Q,K=XW_K$ 之后、attention 点积之前旋转各位置的 query 与 key；本讲版本不旋转 $V$。
+
+将每头的偶数个特征维 $d_k$ 分成二维对。位置 $p$ 的第 $m$ 对分量乘以旋转矩阵：
+\[
+ \begin{pmatrix}\widetilde q_{p,2m}\\\widetilde q_{p,2m+1}\end{pmatrix}
+ =R(p\theta_m)\begin{pmatrix}q_{p,2m}\\q_{p,2m+1}\end{pmatrix},\qquad
+ \theta_m=10000^{-2m/d_k},\quad m=0,\ldots,d_k/2-1,
+\]
+\[
+ R(\phi)=\begin{pmatrix}\cos\phi&-\sin\phi\\\sin\phi&\cos\phi\end{pmatrix}.
+\]
+对应的 key 分量使用相同频率与其自身位置。不同维度对具有不同频率，旋转保持各对的长度。这里 $p$ 是 token 位置，$m$ 是特征对编号。
+
+\subsubsection{相对位置来自旋转矩阵的乘法}
+
+为书写点积，将单个 query/key 视为列向量。记 $R_p$ 为所有二维旋转组成的分块矩阵，则
+\[
+ \widetilde q_i^\top\widetilde k_j
+ =(R_iq_i)^\top(R_jk_j)
+ =q_i^\top R_i^\top R_jk_j
+ =q_i^\top R_{j-i}k_j.
+\]
+这是因为每一对都满足 $R(a)^\top R(b)=R(b-a)$。位置 $5,8$ 与位置 $15,18$ 的位移均为 $3$，具有相同相对旋转；\textbf{分数仍取决于 $q_i,k_j$ 的内容}。计算注意力时用旋转后的 Q/K 求分数、缩放、softmax，再加权原来的 $V$；因果模型仍需 causal mask。
+
+RoPE 无需学习位置表，可在更远位置计算旋转，但可计算不等于可靠泛化。超出训练上下文长度时，位置模式可能陌生而降低质量；旋转角变化本身不会使向量范数发散。
+
+\subsection{一分钟回顾}
+
+BERT 用双向 encoder 恢复选定位置的原词；ViT 将图像块嵌入后由 encoder 的 class token 表示分类。GPT 以因果约束学习下一 token 概率，训练可并行、生成须逐步进行。KV cache 复用各层旧 K/V，GQA 通过共享 K/V heads 降低内存。普通 prompting 不改参数，PEFT 用少量可训练参数适配模型；LoRA 冻结原权重、学习低秩增量。RoPE 旋转 Q/K，使点积中的位置因素取决于相对位移，同时保留内容相关性。

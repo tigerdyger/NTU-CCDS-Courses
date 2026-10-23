@@ -1,0 +1,79 @@
+% Source: 10_transformers.pdf pp. 19--25, 39, 48--49, 72; video Part 2.
+% Prepared from templates/lecture-example.tex; no conversational check records.
+
+\exercisegroup{SC4001-L10-EX}{第 10 讲：现代深度学习中的 Transformer}
+
+\exercisemeta
+  {SC4001-L10-EX}
+  {2026-10-23}
+  {10\_transformers：图像切块示例、p.~39 温度例、pp.~48--49 缓存例}
+  {维度、概率与字节数已独立复算；缓存采用 MiB/GiB 单位}
+  {已整理，待审阅}
+
+\Needspace{9\baselineskip}
+\exercisequestion{SC4001-L10-E01}{ViT 的图像切块与 token 数量}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L10-T02}{ViT 输入与分类}。
+
+\textbf{题目（pp.~19--25、72 及视频 Part 2）。}将一张 $224\times224$ 的 RGB 图像切成非重叠的 $16\times16$ patches。求 patch 数量、每个展平 patch 的维数，以及加入 class token 后的序列形状。以 $D$ 表示投影后的 embedding 维数。
+
+\begin{workedsolution}
+每边 $224/16=14$ 个 patches，故
+\[
+ N=14^2=196,\qquad P^2C=16^2\times3=768.
+\]
+展平后的矩阵为 $196\times768$，共享投影 $E\in\mathbb R^{768\times D}$ 将它映射为 $196\times D$。加入 class token 后，共 $197$ 个 tokens，输入 encoder 的矩阵为 $197\times D$；位置嵌入形状也为 $197\times D$。
+
+最后使用 class token 对应的 $D$ 维表示做分类。$D$ 是模型选择的宽度，即使恰好取 $768$，线性投影仍是可训练映射，并非自动成为恒等变换。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L10-E02}{温度如何改变下一 token 的概率}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L10-T03}{GPT 的采样分布}。
+
+\textbf{题目（p.~39）。}三个候选 token 的 logits 为 $[2,1,0]$。分别计算 $\tau=0.5,1,2$ 时的 softmax，并说明温度趋近 $0$ 时的变化。
+
+\begin{workedsolution}
+逐项除以 $\tau$ 后再做 softmax，例如 $\tau=1$ 时第一项为 $e^2/(e^2+e+1)$：
+\begin{center}
+\begin{tabular}{@{}ccc@{}}
+\toprule
+$\tau$ & 缩放后 logits & 概率（保留三位小数） \\
+\midrule
+$0.5$ & $[4,2,0]$ & $[0.867,0.117,0.016]$ \\
+$1$ & $[2,1,0]$ & $[0.665,0.245,0.090]$ \\
+$2$ & $[1,0.5,0]$ & $[0.506,0.307,0.186]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+正温度不改变 logits 的大小次序，所以贪心选择始终为第一个 token。升温增加从其他候选采样的机会。在本例唯一最大 logit 的条件下，$\tau\to0^+$ 时分布趋近 $[1,0,0]$；这是极限，不是直接在公式里除以零。舍入后各概率之和可能略偏离 $1$。
+\end{workedsolution}
+
+\Needspace{10\baselineskip}
+\exercisequestion{SC4001-L10-E03}{MHA 与 GQA 的 KV cache 开销}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L10-T04}{缓存内存与 K/V 共享}。
+
+\textbf{题目（pp.~48--49）。}沿用讲义的 Llama-2 70B 尺寸：$L=80$ 层、$H_q=64$ 个 query heads、$T=4096$、每头 $d_k=d_v=128$、$B=1$。比较假设不使用 GQA 的 MHA 与使用 $H_{\rm kv}=8$ 的 GQA，计算 FP32 缓存；再计算 GQA 使用 FP16 的结果。
+
+\begin{workedsolution}
+每层需缓存的数值个数为 $2BH_{\rm kv}Td_h$。MHA 为
+\[
+ 2\times64\times4096\times128=67\,108\,864\ \text{个数}.
+\]
+FP32 每个数占 $4$ 字节，故每层 $268\,435\,456$ bytes，即 $256$ MiB；全模型 $80\times256$ MiB $=20$ GiB。
+
+GQA 只存储 $8$ 组 K/V，数值个数及内存均为前者的 $8/64=1/8$：
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+配置 & 每层数值个数 & 每层缓存 & $80$ 层总缓存 \\
+\midrule
+MHA，FP32 & $67\,108\,864$ & $256$ MiB & $20$ GiB \\
+GQA，FP32 & $8\,388\,608$ & $32$ MiB & $2.5$ GiB \\
+GQA，FP16 & $8\,388\,608$ & $16$ MiB & $1.25$ GiB \\
+\bottomrule
+\end{tabular}
+\end{center}
+这里 $1$ MiB $=2^{20}$ bytes，$1$ GiB $=2^{30}$ bytes；讲义写作 MB/GB 的数值实际使用二进制单位。不使用 GQA 的一行是对照假设，不是该模型的实际配置。以上均只计算 KV cache，不包括模型权重、其他激活或额外内存管理开销。
+\end{workedsolution}
