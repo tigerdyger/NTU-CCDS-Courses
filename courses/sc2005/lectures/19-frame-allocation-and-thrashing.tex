@@ -1,0 +1,93 @@
+% Based on templates/lecture.tex; actual session 19, 2026-10-23 (Week 10).
+% Virtual Memory.pdf, slides 8.33--8.50; videos unavailable, titles only.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 19 节课：页框分配与抖动控制}
+\label{lecture:SC2005-L19}
+
+\lecturemeta
+  {SC2005-L19}
+  {2026-10-23（第十教学周）}
+  {Virtual Memory，Part 8}
+  {8.33--8.50（PDF pp.~33--50）；完成 Week 9/10 三节学习计划}
+  {Frame Allocation、Thrashing，仅按标题对应；视频未读取}
+  {已完成学习并要求整理；讲义与例图已核对；三节划分为学习安排}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\keyidea{页面置换决定换出哪一页，页框分配决定各进程能驻留多少页。若同时运行的进程所需页面超过内存承载能力，频繁调页会拖低 CPU 利用率。工作集估计近期页面需求，缺页率控制则根据实际缺页情况调整分配；内存不足时需要减少同时驻留的进程。}
+
+\lecturetopic{SC2005-L19-T01}{页框分配：数量与置换范围}
+
+\textbf{来源：8.33--8.37。}给每个进程较少的页框，可以容纳更多进程，但可能增加缺页；当页框已足够容纳常用页面时，继续增加的收益会减小。需要分别决定两个问题：
+\begin{itemize}
+  \item \textbf{分配数量是否变化？}Fixed allocation（固定分配）让每个进程在运行期间保持固定页框配额，可平均分配或按进程大小等比例分配。Variable allocation（可变分配）允许配额随运行情况调整。
+  \item \textbf{从哪些页面中选 victim？}Local replacement（局部置换）只在缺页进程自己的驻留页中选；Global replacement（全局置换）允许从全局可置换页中选，可能取走其他进程的页框，也可能仍选到本进程的页。
+\end{itemize}
+
+固定配额下，进程用满页框后需以新页替换旧页；\emph{固定的是数量，页面内容仍会改变}。局部置换限制的是候选范围，OS 仍可另行调整该进程的页框配额。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+分配方式 & Local replacement & Global replacement \\
+\midrule
+Fixed & 配额不变，在自己的页框中置换 & 讲义模型中不可组合：直接取走其他进程的页框会改变双方配额 \\
+Variable & OS 可调整配额；需要置换时仍只选自己的页 & 可跨进程选择 victim，页框数量随之变化 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+全局置换有利于调配页框，但某个进程的表现会受其他进程影响；局部置换隔离了直接抢占页框的影响，却可能让低需求进程保留暂时用不上的容量。讲义 8.36 的\relatedexercise{SC2005-L19-E01}{局部与全局置换例题}使用同一组访问时间，展示候选范围如何改变最终选择。
+
+\lecturetopic{SC2005-L19-T02}{Thrashing：调页过多为何使 CPU 闲下来}
+
+\textbf{来源：8.38--8.40。}当进程没有足够页框容纳当前频繁使用的页面时，刚换出的页很快又被访问，造成反复换入换出。Thrashing（抖动）指系统把大量时间用于调页，有效执行进展很少。
+
+\begin{center}
+\input{figures/thrashing-utilization}
+
+{\small 据讲义 8.39 原创重绘；曲线仅表示定性趋势。}
+\end{center}
+
+缺页使进程等待磁盘 I/O，CPU 利用率下降。若 OS 因此继续增加 multiprogramming degree（同时驻留的进程数），每个进程可用的页框可能更少，缺页进一步加剧，形成恶性循环。\textbf{抖动时增加进程通常不能解决低 CPU 利用率。}接下来的两种方法都用于判断内存需求，并控制进程的驻留规模。
+
+\lecturetopic{SC2005-L19-T03}{Working-set model：从局部性估计需求}
+
+\textbf{来源：8.41--8.46。}程序的访问通常具有 locality（局部性）：\textbf{时间局部性}表示刚访问的数据或指令可能很快再次访问；\textbf{空间局部性}表示邻近地址可能接着被访问。例如循环累加 \texttt{sum += a[i]} 中，反复使用 \texttt{sum} 和循环指令体现时间局部性，依次读取数组元素和执行相邻指令体现空间局部性。
+
+进程在某个阶段往往集中访问一小组页面，进入新阶段时，这组页面也会变化。Working set（工作集）用最近的访问历史估计当前需要驻留的页面。设窗口 $\Delta$ 覆盖最近 $\Delta$ 次页面引用，定义
+\[
+  WS_i(t,\Delta)=\{\text{进程 }i\text{ 在时刻 }t\text{ 之前窗口内访问过的不同页面}\},
+  \qquad WSS_i(t,\Delta)=|WS_i(t,\Delta)|.
+\]
+其中 $WSS_i$ 为 working-set size（工作集大小）。重复引用同一页只计一次，因此\textbf{窗口长度不等于工作集大小}。工作集描述近期需求，实际 resident set（驻留集）描述此刻已在内存中的页面，两者不必相同。讲义 $\Delta=10$ 的两时刻计算见\relatedexercise{SC2005-L19-E02}{滑动窗口与工作集}。
+
+\textbf{局部性转换。}进入新阶段时，尚未驻留的页面会带来一段缺页高峰；调入新工作集后，缺页率可以回落。短暂高峰本身不足以说明持续抖动。
+
+若同时驻留的进程共有 $n$ 个，估计总需求为
+\[
+  D=\sum_{i=1}^{n}WSS_i,\qquad m=\text{可供这些进程使用的物理页框总数}.
+\]
+当 $D>m$ 时，内存无法同时容纳估计出的工作集，讲义以此判断存在抖动压力。OS 应挂起部分进程、换出其页面，释放页框，使剩余进程获得足够容量；之后资源允许时再恢复。\textbf{挂起保留进程，区别于终止进程。}$D\leq m$ 也不意味着完全没有缺页，首次访问和局部性变化仍可能触发调页。
+
+\lecturetopic{SC2005-L19-T04}{Page-fault frequency：按缺页率反馈调整}
+
+\textbf{来源：8.47--8.48。}Page-fault frequency（缺页率，PFF）控制为进程设定可接受的缺页率区间。记当前测得的缺页率为 $f$，下界为 $L$，上界为 $U$：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+测量结果 & 调整方式 \\
+\midrule
+$f>U$ & 增加该进程的页框；若没有可用页框，考虑挂起部分进程以释放容量 \\
+$L\leq f\leq U$ & 保持当前分配 \\
+$f<L$ & 可回收该进程的部分页框，供其他进程使用 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+工作集方法观察“最近用了哪些页”，PFF 方法观察“缺页是否过于频繁”。两者都支持动态调整页框和驻留进程数，目标是在调页开销与并发程度之间取得平衡。
+
+\textbf{一分钟回顾。}虚拟内存允许页面按需驻留；缺页时调入，内存满时选择 victim。固定或可变分配决定页框数量是否变化，局部或全局置换决定候选范围。抖动源于有效工作所需页面得不到足够驻留空间。工作集按最近 $\Delta$ 次引用中的不同页面估计需求，PFF 按缺页率反馈调整；总内存不足时挂起部分进程，降低并发压力。
+\endgroup

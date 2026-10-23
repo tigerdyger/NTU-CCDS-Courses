@@ -1,0 +1,70 @@
+% Source examples from Virtual Memory.pdf, slides 8.36 and 8.44.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2005-L19-EX}{第 19 讲：置换范围与工作集}
+
+\exercisemeta
+  {SC2005-L19-EX}
+  {2026-10-23}
+  {Virtual Memory 8.36、8.44（PDF pp.~36、44）}
+  {原图页面、时间戳与两个引用窗口已核对}
+  {已完成学习并要求整理}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\exercisequestion{SC2005-L19-E01}{同一次缺页：局部与全局选择}
+\textbf{题目与来源。}讲义 8.36：进程 A 访问尚未驻留的 A6，无空闲页框。下表列出原图的所有驻留页及最后访问时间，以“页号：时间戳”表示；时间越小，最后一次访问越早。采用 LRU 选择 victim，分别考虑局部和全局置换。对应\relatedtopic{SC2005-L19-T01}{页框分配与置换范围}。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lc>{\raggedright\arraybackslash}X@{}}
+\toprule
+进程 & 页框数 & 驻留页及最后访问时间 \\
+\midrule
+A & 6 & A0:10，A1:7，A2:5，A3:4，A4:6，A5:3 \\
+B & 7 & B0:9，B1:4，B2:6，B3:2，B4:5，B5:6，B6:12 \\
+C & 3 & C1:3，C2:5，C3:6 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{checkedsolution}
+局部置换只检查 A 的六页，最小时间戳为 $3$，故用 A6 替换 A5。全局置换检查全部十六页，最小时间戳为 $2$，故用 A6 替换 B3。
+\begin{center}
+\begin{tabular}{@{}llccc@{}}
+\toprule
+方式 & 替换 & A 的页框数 & B 的页框数 & C 的页框数 \\
+\midrule
+Local & A5 $\to$ A6 & 6 & 7 & 3 \\
+Global & B3 $\to$ A6 & 7 & 6 & 3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+两种方案都只替换一页，系统总页框数不变。全局方案将一份容量从 B 转给 A；局部方案本次不改变配额，但不能据此推断 OS 永远不能调整配额。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-L19-E02}{十次引用中有多少个不同页面}
+\textbf{题目与来源。}讲义 8.44：窗口长度 $\Delta=10$，两个时刻对应的最近十次页面引用如下。求工作集与工作集大小。对应\relatedtopic{SC2005-L19-T03}{Working-set model}。
+\begin{center}
+\begin{tabular}{@{}cl@{}}
+\toprule
+时刻 & 最近十次引用，按发生先后排列 \\
+\midrule
+$t_1$ & $2,6,1,5,7,7,7,7,5,1$ \\
+$t_2$ & $3,4,4,4,3,4,3,4,4,4$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{checkedsolution}
+对每个窗口取不同页号组成集合，不重复计数：
+\[
+  WS(t_1,10)=\{1,2,5,6,7\},\quad WSS(t_1,10)=5;
+\]
+\[
+  WS(t_2,10)=\{3,4\},\quad WSS(t_2,10)=2.
+\]
+窗口长度相同，工作集大小仍可变化。$t_2$ 的十次访问集中于两页，说明这一时刻的近期需求比 $t_1$ 更集中；这两个集合属于同一进程的不同时刻，不能把 $5+2$ 当成系统某一时刻的总需求 $D$。
+\end{checkedsolution}
+\endgroup

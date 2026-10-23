@@ -4,13 +4,19 @@
 \begingroup
 \renewcommand{\recordid}[1]{}
 \renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
-\linespread{1.15}\selectfont
-\setlength{\parskip}{0.4em}
-
 \section{第 18 节课：页面置换算法与 Belady 异常}
 \label{lecture:SC2005-L18}
 
-{\small 2026-10-22（第十教学周）。来源：\emph{Virtual Memory}，8.17--8.32（PDF pp.~17--32）；对应 Page Replacement Algorithms 与 Belady's Anomaly 视频标题，视频未读取。讲义与计算已核对，笔记待审阅；页框分配与抖动留到第 19 节。}
+\lecturemeta
+  {SC2005-L18}
+  {2026-10-22（第十教学周）}
+  {Virtual Memory，Part 8}
+  {8.17--8.32（PDF pp.~17--32）；页面置换算法与 Belady 异常}
+  {Page Replacement Algorithms、Belady's Anomaly，仅按标题对应；视频未读取}
+  {已完成学习与笔记审阅；讲义、例图与计算已核对}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
 
 \keyidea{缺页且没有空闲页框时，必须选择一个 victim page（被置换页）。FIFO 按装入顺序选择；OPT 作为理想参照，查看未来；LRU 用过去的访问预测近期需求；Clock 用引用位降低精确记录访问顺序的成本。}
 

@@ -1,0 +1,11 @@
+% Original schematic based on Virtual Memory.pdf, slide 8.39.
+\begin{tikzpicture}[font=\small,>=Latex]
+  \draw[->] (0,0) -- (9.6,0) node[right]{并发程度};
+  \draw[->] (0,0) -- (0,2.7) node[above]{CPU 利用率};
+  \draw[noteBlue,very thick] (0.3,0.3)
+    .. controls (2.0,0.9) and (3.4,2.25) .. (4.9,2.3)
+    .. controls (6.0,2.3) and (5.8,0.5) .. (7.3,0.35)
+    .. controls (7.9,0.27) and (8.5,0.22) .. (9.0,0.2);
+  \node[text=noteBlue] at (3.2,2.65) {增加并发，有助于利用 CPU};
+  \draw[->,verifyOrange] (7.4,1.8) node[right,align=left]{抖动：频繁调页\\有效执行减少} -- (6.3,0.8);
+\end{tikzpicture}
