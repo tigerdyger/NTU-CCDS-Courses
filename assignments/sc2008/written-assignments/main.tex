@@ -358,4 +358,357 @@ Preferred DNS server & \texttt{192.168.40.2} \\
 选 \textbf{\texttt{192.168.40.70}}。\textbf{目的 MAC 指向当前链路的下一跳，目的 IP 指向最终服务器。}Router R 换用 Sales 链路的 MAC 地址封装并转发；本题无 NAT，IP 目的地址保持不变。
 \end{checkedsolution}
 
+% Written assignment: SC2008-HW03
+% Source: Online Interactive Exercise 3, user-supplied case pages, routing
+% tables and simulated terminal output; cases #2100--#2102 and BGP scenarios.
+% Completion/check date: 2026-10-24. Title after the colon is a topic summary.
+\clearpage
+\section{Online Interactive Exercise 3：OSPF、RIP 与 BGP}
+\label{homework:SC2008-HW03}
+\exercisemeta
+  {SC2008-HW03}
+  {2026-10-24}
+  {交互练习 3：校园夜班路由案例、模拟输出及 Night report}
+  {已完成；按题面、输出与计算核对}
+  {已确认完成}
+
+本题组通过校园网络的故障排查，区分区域内最短路、距离向量更新、跨 AS 路由策略与前缀匹配。题目依主题合并整理，保留判断条件及选项；网络与地址均来自模拟场景。相关课程内容见 Lecture 07（Routing）与 Tutorial 06。
+
+\subsection{Shift handover：先认清路由来源}
+
+\exercisequestion{SC2008-HW03-Q01}{四类路由的匹配}
+\textbf{题目。}为下列四种情形选择路由来源。共同选项：Static route、RIP、OSPF、BGP。
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}Xl@{}}
+\toprule
+场景条件 & 对应选项 \\
+\midrule
+骨干路由器共享各条链路及其 cost 的地图 & OSPF \\
+旧实验楼路由器仅向邻居交换目的网络的距离 & RIP \\
+R-BORDER 与 North（AS 20）、East（AS 30）交换路由 & BGP \\
+管理员手动指定 DC 的访客 Wi-Fi 流量送往 G1 & Static route \\
+\bottomrule
+\end{tabularx}
+\end{center}
+OSPF 属于 link-state（链路状态）协议；RIP 属于 distance-vector（距离向量）协议；本题的 BGP 负责自治系统之间的路由；静态路由由管理员配置。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q02}{为什么不能把跨组织选路当成内部最短路？}
+\textbf{题目。}Dev 的设想忽略了什么？选项：OSPF 超过 15 跳便失效；OSPF 计算太慢；BGP 总能找到比 OSPF 更低 cost 的路径；North 和 East 是独立组织，不愿共享内部链路，且各有自己的策略。
+\begin{checkedsolution}
+选\textbf{独立组织与独立策略}。跨 AS 交换可达性时，各组织保留内部拓扑与政策；BGP 不以全网链路 cost 最小为统一目标。15 的有效距离上限属于 RIP。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q03}{静态路由为什么仍指向故障网关？}
+\textbf{题目。}G1 已失效，DC 为什么还使用它？选项：先等数据包 TTL 耗尽；OSPF 尚未泛洪完成；G2 要等 16 次失败才接管；到 G1 的静态路由不会自动适应故障。
+\begin{checkedsolution}
+选\textbf{静态路由不会自动适应本题的故障}。题中没有配置跟踪检测与备用切换机制，DC 仍按手工设置把流量交给 G1。实际系统可以为静态路由添加此类机制，不能把题面概括成所有静态路由都永不撤销。
+\end{checkedsolution}
+
+\subsection{OSPF：由链路地图得到最短路径}
+
+\textbf{场景。}R-SCI 的 \texttt{show ip ospf database} 给出 Area 0 的下图。边无方向，数字为链路 cost；蓝线标出故障前从 SCI 到 DC 的最短路。图按页面链路表重绘。
+\begin{center}
+\begin{tikzpicture}[
+  r/.style={draw=noteBlue,rounded corners=2pt,minimum width=1.1cm,minimum height=0.55cm,font=\small\bfseries,fill=white},
+  cost/.style={font=\small,fill=white,inner sep=2pt},
+  chosen/.style={very thick,draw=noteBlue},
+  edge/.style={thick,draw=black!55}
+]
+  \node[r] (sci) at (0,0) {SCI};
+  \node[r] (lib) at (3,1.3) {LIB};
+  \node[r] (eng) at (6,0) {ENG};
+  \node[r] (hall) at (6,2.6) {HALL};
+  \node[r] (dc) at (9,1.3) {DC};
+  \draw[chosen] (sci) -- node[cost,above] {3} (lib);
+  \draw[edge] (sci) -- node[cost,below] {12} (eng);
+  \draw[chosen] (lib) -- node[cost,above] {4} (eng);
+  \draw[edge] (lib) -- node[cost,above] {2} (hall);
+  \draw[chosen] (eng) -- node[cost,below] {3} (dc);
+  \draw[edge] (hall) -- node[cost,above] {10} (dc);
+\end{tikzpicture}
+\end{center}
+初始路由表将数据中心 \texttt{10.50.0.0/24} 记为 \texttt{[110/10]}，下一跳为 LIB 的 \texttt{10.0.13.2}，出口 \texttt{Gi0/1}。110 是管理距离，10 是 OSPF 路径总代价。\texttt{traceroute 10.50.0.20} 依次得到 LIB、ENG、DC、目标服务器。
+
+\exercisequestion{SC2008-HW03-Q04}{Hello 邻居与 LSA 泛洪}
+\textbf{题目。}(a) SCI 发 Hello 时，哪些路由器能作为其直接邻居回应？选项：DC、LIB、HALL、ENG，多选。
+(b) SCI 不直连 HALL，为何知道 HALL--DC 的 cost 为 10？选项：HALL 的 LSA 被区域内路由器泛洪；SCI 用 ping 测量；LIB 告诉 SCI 自己到 DC 的距离；管理员输入整张地图。
+\begin{checkedsolution}
+(a) 选 \textbf{LIB、ENG}，它们与 SCI 直接相连。
+(b) 选 \textbf{LSA 泛洪}。HALL 在 LSA（链路状态通告）中描述自身链路，信息逐跳传播到同一区域的路由器。Hello 发现邻居，LSA 传播区域拓扑。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q05}{逐步运行 Dijkstra}
+\textbf{题目。}以 SCI 为源点，初始 $D(\mathrm{LIB})=3$、$D(\mathrm{ENG})=12$，HALL 与 DC 为 $\infty$。每次从未 settled 的节点选距离最小者，再更新其邻居。经 LIB 到 ENG 的代价从 $\{7,19,4,12\}$ 中选择；经 ENG 到 DC 的代价从 $\{22,15,10,3\}$ 中选择。
+\begin{checkedsolution}
+更新规则为 $D(v)\leftarrow\min\{D(v),D(u)+c(u,v)\}$。下表每行表示确定该节点并完成邻居更新后的状态。
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrl@{}}
+\toprule
+本轮确定 & LIB & ENG & HALL & DC & 关键更新 \\
+\midrule
+SCI（0） & 3 & 12 & $\infty$ & $\infty$ & 初始直连距离 \\
+LIB（3） & 3 & 7 & 5 & $\infty$ & ENG：$3+4=7$；HALL：$3+2=5$ \\
+HALL（5） & 3 & 7 & 5 & 15 & DC：$5+10=15$ \\
+ENG（7） & 3 & 7 & 5 & 10 & DC：$7+3=10<15$ \\
+DC（10） & 3 & 7 & 5 & 10 & 完成 \\
+\bottomrule
+\end{tabular}
+\end{center}
+确定顺序为 \textbf{SCI、LIB、HALL、ENG、DC}。最终 DC 的前驱是 ENG，ENG 的前驱是 LIB，回溯得到最短路 \textbf{SCI $\to$ LIB $\to$ ENG $\to$ DC}，总代价为 10。
+\textbf{确定顺序与最终路径不同}：先确定 HALL，只说明已求得去 HALL 的最短距离。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q06}{检查“捷径”：局部便宜与全程便宜}
+\textbf{题目。}Dev 的捷径总代价选项为 $5,15,12,10$；随后判断其问题：跳数更多；形成环路；与 Dijkstra 总会相同；便宜链路后面可能接昂贵链路，必须比较整条路径的 cost。
+\begin{checkedsolution}
+代价选 \textbf{15}，原因选\textbf{比较整条路径 cost}。由已知地图可核对三条路径：
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+路径 & 总代价 \\
+\midrule
+SCI $\to$ LIB $\to$ ENG $\to$ DC & $3+4+3=10$ \\
+SCI $\to$ ENG $\to$ DC & $12+3=15$ \\
+SCI $\to$ LIB $\to$ HALL $\to$ DC & $3+2+10=15$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+局部贪便宜的问题可由 LIB 出发的选择看出：去 HALL 的 cost 2 虽小于去 ENG 的 4，后续到 DC 却分别为 10 和 3。Dijkstra 比较源点起的累计距离，并持续执行松弛更新。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q07}{下一跳与 RIP 的不同选择}
+\textbf{题目。}(a) SCI 的路由表应为 DC 记录哪个下一跳？选项：HALL、DC、ENG、LIB。
+(b) 若改用 RIP 的 hop count，下列哪条路被选中：SCI--ENG--DC；SCI--LIB--ENG--DC；SCI--LIB--HALL--DC？
+\begin{checkedsolution}
+(a) 选 \textbf{LIB}，它是 OSPF 最短路上紧邻 SCI 的下一跳。
+(b) 选 \textbf{SCI--ENG--DC}，仅需 2 跳，另两条均为 3 跳。本问按跳数比较，不使用图中的 OSPF cost。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q08}{LIB--ENG 断开后的等价多路径}
+\textbf{题目。}仅 LIB--ENG 链路断开，其他链路不变，所有路由器均已收到更新。SCI 到 DC 的新最小 cost 是 $15,10,14,22$ 中哪个？下一跳从 ENG、HALL、LIB 中多选，并用路由表确认。
+\begin{checkedsolution}
+选 \textbf{15}，下一跳为 \textbf{ENG、LIB}。两条剩余最短路分别为 SCI--ENG--DC（$12+3$）和 SCI--LIB--HALL--DC（$3+2+10$）。HALL 不直连 SCI，不能填作它的下一跳。
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+目的网络 & 距离字段 & 下一跳 & 出口 \\
+\midrule
+\texttt{10.50.0.0/24} & \texttt{[110/15]} & \texttt{10.0.13.2}（LIB） & \texttt{Gi0/1} \\
+同上 & \texttt{[110/15]} & \texttt{10.0.15.2}（ENG） & \texttt{Gi0/2} \\
+\bottomrule
+\end{tabular}
+\end{center}
+模拟的 \texttt{show ip route} 输出与此一致，这是 ECMP（等价多路径）。同时保留两条路由，不等于每两个数据包必然交替发送。
+\end{checkedsolution}
+
+\subsection{RIP：过时距离、环路与毒性逆转}
+
+\textbf{场景。}Kumar 的 PC 为 \texttt{10.30.4.25}，目标服务器为 \texttt{10.30.9.10}。初次 \texttt{tracert} 显示 Y $\to$ X $\to$ W $\to$ X $\to$ W $\to\cdots$，直至 30 跳上限；未到达服务器。重复的 W--X 表明转发环路。不同 TTL 的探测包在不同位置到期，并非一个包无限存活；\texttt{Trace complete} 只表示探测结束。
+
+\exercisequestion{SC2008-HW03-Q09}{根据邻居通告更新 Y 的距离}
+\textbf{题目。}故障前，链路 metric 为 Y--X：1，Y--V：3。X 通报 NetZ：2、NetQ：5；V 通报 NetQ：1。
+Y 对 NetZ 的选项：4 via V、3 via X、Unreachable、2 via X。对 NetQ 的选项：2 via V、6 via X、5 via X、4 via V。
+\begin{checkedsolution}
+按本题给定 metric 相加：$D_Y(d)=\min_v\{c(Y,v)+D_v(d)\}$。
+NetZ 选 \textbf{3 via X}，因为 $1+2=3$；NetQ 比较经 X 的 $1+5=6$ 与经 V 的 $3+1=4$，选 \textbf{4 via V}。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q10}{Count to infinity 与终止条件}
+\textbf{题目。}W 原先直达 NetZ；该链路失效后，X 仍通告旧距离 2，且该旧路径依赖 W。W--X 的 metric 为 1。仅用基本 RIP 更新规则，W 记录什么？选项：Unreachable、1 direct、3 via X、2 via X。
+之后距离增长何时停止？选项：链路修好；达到 16；永不停止；达到 15。
+\begin{checkedsolution}
+W 误选 \textbf{3 via X}（$1+2$）。X 又把 W 通报的距离加 1；两者互相依赖过时信息，使距离逐步增长，这就是 count to infinity（计数到无穷）。
+
+RIP 在 \textbf{16} 停止把该目的地视为可达：最大有效距离为 15，16 表示不可达。
+\textbf{距离达到 16} 约束路由收敛过程；\textbf{TTL 耗尽} 丢弃正在绕圈的数据包，两者不能混为一谈。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q11}{Poisoned reverse 应向谁“报毒”？}
+\textbf{题目。}故障前 X 经 W 到 NetZ，经 Y 到 NetY、NetQ。启用 poisoned reverse 后，X 向 W、向 Y 发更新时，各应把哪些目的地报为 16？每问均从 NetQ、NetZ、W--X link、NetY 中多选。
+\begin{checkedsolution}
+\textbf{向某邻居通告时，把经该邻居到达的目的网络报为 16。}
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+更新接收者 & 报为 16 的目的网络 & 作用 \\
+\midrule
+W & NetZ & 阻止 W 误把 X 当成去 NetZ 的出口 \\
+Y & NetY、NetQ & 阻止 Y 把这些目的流量交回 X \\
+\bottomrule
+\end{tabular}
+\end{center}
+这里“报毒”的对象是目的网络路由，不是把 W--X 这条物理链路本身宣布断开。该规则防止本题的两节点环路，不能据此保证消除任意多节点环路。
+
+重放故障后的实测页面路径为 Y $\to$ X $\to$ W，随后 W 返回 \texttt{Destination net unreachable}。环路消失，但故障链路并未修好，服务器仍不可达。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q12}{距离上限与恢复 NetG 的方案}
+\textbf{题目。}V 通报 NetG 的距离为 13，Y--V 的 metric 为 3。Y 如何处理？选项：13 via V；15（最大值）；16 via V；$3+13=16$，视为不可达。
+哪些改动有帮助？选项：把 Y--V 从 3 降为 1；在 Y 启用 poisoned reverse；旧楼改用 OSPF；RIP 更新频率加倍，多选。
+\begin{checkedsolution}
+选\textbf{不可达}。不能把 16 安装为有效转发距离，也不能擅自截成 15。
+改动选\textbf{降低 metric}和\textbf{改用 OSPF}：前者使 $1+13=14<16$；后者不受 RIP 的 15 距离上限限制。毒性逆转解决环路问题，加快更新影响信息传播速度，都不改变 16 的含义。
+\end{checkedsolution}
+
+\subsection{BGP：组织边界、通告方向与选路策略}
+
+\textbf{场景。}校园为 AS 10，持有模拟前缀 \texttt{198.18.4.0/22}；提供商 North 为 AS 20、East 为 AS 30；云端为 AS 60，前缀为 \texttt{198.51.100.0/24}。North 经 Transit 40 到云端，East 的已知路径直接经过 AS 60。
+
+\exercisequestion{SC2008-HW03-Q13}{AS 类型与商业关系}
+\textbf{题目。}(a) 校园原先只连接 North，是 transit、stub、multihomed 还是 peering AS？
+(b) 新增 East 后仍只承载自身流量，是 peering、multihomed non-transit、transit，还是仍为 stub？
+(c) 校园付费给 North 以到达互联网其他部分，关系是 iBGP、customer/provider transit，还是 peering？
+\begin{checkedsolution}
+依次选 \textbf{stub AS}、\textbf{multihomed non-transit AS}、\textbf{customer and provider (transit)}。
+单一外部连接对应 stub；多个外部连接对应 multihomed；是否替其他 AS 中转决定是否 transit。North 向校园提供中转服务，并不表示校园也向 North 提供中转。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q14}{包含自身 AS 的通告}
+\textbf{题目。}East 通告校园前缀，AS path 为 \texttt{30 60 40 20 10}，R-BORDER 为何拒绝？选项：East 尚无发送权限；前缀属于私有地址；路径含本方 AS 10，可能形成环路；五个 AS 太长。
+\begin{checkedsolution}
+选\textbf{路径含自身 AS 10}。普通 BGP 环路检查拒绝此类通告；路径长度为 5 本身不构成拒绝理由。页面日志明确显示 \texttt{contains our AS 10. Denied.}
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q15}{相同前缀的最佳路由}
+\textbf{题目。}两条云端路由均通过环路检查，且本题其他选路条件相同：
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+来源 & Next Hop & AS path & Local preference \\
+\midrule
+North & \texttt{192.0.2.1} & \texttt{20 40 60} & 100 \\
+East & \texttt{192.0.2.5} & \texttt{30 60} & 100 \\
+\bottomrule
+\end{tabular}
+\end{center}
+选项：East；两边各一半；North；两个提供商冲突，均不用。
+\begin{checkedsolution}
+选 \textbf{East}。local preference 相同后，在本题条件下比较 AS path 长度，$2<3$。两条候选路由不等于自动均分流量。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q16}{内部传播与向外追加 AS 编号}
+\textbf{题目。}(a) 核心路由器如何学到 R-BORDER 从 East 收到的路由？选项：East 与每台校园路由器建 eBGP；R-BORDER 通过 iBGP 传播；OSPF 泛洪 AS path；DC 用 RIP 查询。
+(b) North 将校园路由传给 Transit 40，后者收到的 AS path 是 \texttt{40 20 10}、\texttt{10 20}、\texttt{10} 还是 \texttt{20 10}？
+\begin{checkedsolution}
+(a) 选 \textbf{iBGP}。eBGP 用于 AS 之间，iBGP 将 BGP 路由传播给同一 AS 内的 BGP 路由器；OSPF 可支持内部下一跳可达性，但不传播 BGP AS path。
+(b) 选 \textbf{\texttt{20 10}}。North 向外发送时前置自身 AS 20；接收方 40 尚未加入这条路径。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q17}{Export policy：避免意外成为中转 AS}
+\textbf{题目。}(a) North 若学到“经校园可达云端”，会怎样？选项：必定判环路并拒绝；通告不影响流量；可能将云端流量交给校园，使校园成为 transit；校园流量变快。
+(b) 为保持 non-transit，向 North 的 export policy 应包含：只含从 East 学来的路由；什么都不发；只发本方 \texttt{198.18.4.0/22}；所有已知路由。
+\begin{checkedsolution}
+(a) 选\textbf{可能成为 transit}：North 一旦采用该路由，流量可走 North $\to$ Campus $\to$ East $\to$ Cloud。
+(b) 选\textbf{只通告本方前缀}。这样保留校园的外部可达性，同时不为两个提供商提供中转服务。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q18}{Import policy：优先使用包月提供商}
+\textbf{题目。}East 改为按 GB 收费，North 为固定费用。要求校园出站云端流量优先走 North，如何设置从两家收到的路由的 local preference？
+\begin{checkedsolution}
+取 \textbf{North = 200，East = 100}。关键是前者更高，数值并非唯一。
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+来源 & Local preference & AS path & 页面验证结果 \\
+\midrule
+North & 200 & \texttt{20 40 60} & \texttt{*>}：有效且最佳 \\
+East & 100 & \texttt{30 60} & \texttt{*}：有效候选 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Local preference 优先于 AS path 长度}，所以较长的 North 路径获选。
+Import policy 决定本方如何使用收到的路由；export policy 决定向邻居通告什么。提高本地优先级不能命令外部网络怎样选择入站路径。
+\end{checkedsolution}
+
+\subsection{更具体前缀：合法归属不等于自动获胜}
+
+\textbf{证据。}Transit 40 的 looking glass（外部路由观测点）给出两条不同前缀的最佳路由：
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+前缀 & AS path & Origin AS & 地址范围 \\
+\midrule
+\texttt{198.18.4.0/22} & \texttt{20 10} & 10 & \texttt{198.18.4.0--198.18.7.255} \\
+\texttt{198.18.5.0/24} & \texttt{70 77} & 77 & \texttt{198.18.5.0--198.18.5.255} \\
+\bottomrule
+\end{tabular}
+\end{center}
+第二个前缀包含在校园的地址块内，题目将其描述为错误通告；它经 AS 77 的提供商 Carrier 70 传播。
+
+\exercisequestion{SC2008-HW03-Q19}{为什么流量被送往 AS 77？}
+\textbf{题目。}(a) 用户访问 \texttt{198.18.5.20}，两条前缀都包含它，应选：交替走两条；AS path 短者；校园 \texttt{/22}；AS 77 的 \texttt{/24}。
+(b) 原因为：AS path 更短；AS 77 设置了更高 local preference；较新通告替换旧通告；longest prefix match，\texttt{/24} 更具体。
+\begin{checkedsolution}
+(a) 选 \textbf{\texttt{198.18.5.0/24}，去 AS 77}；(b) 选\textbf{最长前缀匹配}。
+\textbf{BGP 为每个前缀选择路由；数据包转发时，在匹配的前缀中选最长者。}两条不同前缀各自有 best 路由并不矛盾，\texttt{/24} 也不会因校园 \texttt{/22} 的归属真实就自动失效。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q20}{当晚可以独立实施的缓解措施}
+\textbf{题目。}(a) 校园能独立做什么来缓解？选项：撤回再发布 \texttt{/22}；把 \texttt{/22} 的 AS path 加长；提高 R-BORDER 的 local preference；自己也发布 \texttt{198.18.5.0/24}。
+(b) 是否所有网络都会马上恢复？选项：会，因为本方真实；会，因为最新通告总赢；不会，靠近 AS 77 的网络仍可能选它的 \texttt{/24}。
+\begin{checkedsolution}
+选\textbf{自己也通告该 \texttt{/24}}，但\textbf{不能保证全部网络立即恢复}。
+相同前缀长度消除了对方在最长匹配上的优势，外部网络仍按自己的 BGP 策略及路径属性选路。真实身份或发布时间较新都不是普通 BGP 中自动获胜的条件。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q21}{长期防护：授权与过滤配合}
+\textbf{题目。}哪些措施有帮助？多选：发布 RPKI 记录，只授权 AS 10 起源校园前缀；提高本方 local preference；在 \texttt{/22} 路径中重复 AS 10 多次；请 Carrier 70 过滤错误通告；关闭校园 BGP 等待事态结束。
+\begin{checkedsolution}
+选\textbf{RPKI 授权}与\textbf{上游过滤}。前者提供可验证的起源授权，后者在传播处阻断错误路由。其余措施既不能消除错误 \texttt{/24} 的更具体优势，也不能控制远端选路；关闭 BGP 还会损害本方可达性。
+
+\textbf{实现边界。}ROA（路由起源授权）需配合其他网络的 ROV（起源验证）和无效路由过滤，发布记录本身不会强制全球丢弃错误通告。若继续发布本方 \texttt{/24}，也应为该公告配置相应授权，例如另建一条 AS 10 的 \texttt{/24} ROA。这是对操作条件的补充，依据 \href{https://rpki.readthedocs.io/en/latest/rpki/using-rpki-data.html}{RPKI 文档：Using RPKI Data}。
+\end{checkedsolution}
+
+\subsection{Night report：原因与措施对照}
+
+\exercisequestion{SC2008-HW03-Q22}{Part 1：每个事件的原因}
+\textbf{题目。}将五个事件与原因匹配。共同选项：OSPF lowest total cost、Count to infinity、BGP loop check、Longest prefix match、Static routes don't adapt、Local preference。
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}Xl@{}}
+\toprule
+事件 & 对应原因 \\
+\midrule
+实验室流量先去 LIB，没有直接走光纤去 ENG & OSPF lowest total cost \\
+旧楼流量在 W、X 间循环，直到包的 TTL 耗尽 & Count to infinity \\
+R-BORDER 拒绝包含本方 AS 的校园前缀通告 & BGP loop check \\
+海外用户被送到 AS 77 & Longest prefix match \\
+访客 Wi-Fi 持续使用故障网关 G1 & Static routes don't adapt \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Local preference 对应后来优先 North 的策略，不用于这五项匹配。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW03-Q23}{Part 2：怎样防止同类问题？}
+\textbf{题目。}为五个问题匹配措施。共同选项：Poisoned reverse、Export only our own prefix、RPKI and filtering、Local preference、Move to OSPF、Longer AS path。
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}Xl@{}}
+\toprule
+问题 & 对应措施 \\
+\midrule
+旧楼的两路由器环路 & Poisoned reverse \\
+校园意外为 North 向 East 中转 & Export only our own prefix \\
+校园前缀的错误起源通告传播 & RPKI and filtering \\
+出站流量使用按 GB 收费的提供商 & Local preference \\
+旧楼无法使用超过 RIP 有效距离上限的路由 & Move to OSPF \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Longer AS path 不用于本题匹配。防环路、选择出口、限制对外通告与验证地址授权分别解决不同问题，不能互相替代。
+\end{checkedsolution}
+
 \end{document}
