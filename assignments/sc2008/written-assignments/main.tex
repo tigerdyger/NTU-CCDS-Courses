@@ -229,4 +229,133 @@ LAN 可用范围为 \texttt{.1--.126}，排除已占用的 \texttt{.1} 后可选
 A 占 \texttt{.32--.63}、D 占 \texttt{.0--.127}，均与 X 重叠；B 只有 14 个可用地址，不够 25 个。
 \end{checkedsolution}
 
+% Written assignment: SC2008-HW02
+% Source: completed case #1042 web pages and simulated command outputs,
+% supplied in the conversation; completion/check date: 2026-10-24.
+\clearpage
+\section{Online Interactive Exercise 2：Sales server unreachable}
+\label{homework:SC2008-HW02}
+\exercisemeta
+  {SC2008-HW02}
+  {2026-10-24}
+  {交互练习案例 \#1042；题面、网络图及模拟命令输出}
+  {已完成；依据页面反馈与地址计算核对}
+  {已确认完成}
+
+\subsection{故障场景与排查证据}
+
+Engineering 员工 Mei Lin 的笔记本由承包商手动配置。她无法访问服务器 \texttt{192.168.40.70}，但打印和上网正常。以下为练习中的模拟网络与测试。
+
+\texttt{ipconfig} 显示：笔记本 IP 为 \texttt{192.168.40.10}，掩码为 \texttt{255.255.255.0}（\texttt{/24}），默认网关为 \texttt{192.168.40.1}。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+检查 & 页面显示的结果 \\
+\midrule
+\texttt{ping 192.168.40.70} & 四次 \texttt{Destination host unreachable}，消息来自笔记本自身 \texttt{192.168.40.10}。\\
+\texttt{ping 192.168.40.20} & 打印机正常回复，四次均成功。\\
+\texttt{ping 8.8.8.8} & 外网目标正常回复，四次均成功。\\
+\texttt{arp -a} & 有网关 \texttt{.1} 和打印机 \texttt{.20} 的动态记录，没有服务器 \texttt{.70} 的记录。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+第一条 ping 虽显示 \texttt{Received = 4, Lost = 0}，收到的仍是不可达消息，不能据此判断服务器连通。
+
+\textbf{实际拓扑。}下图中 \texttt{.x} 均指 \texttt{192.168.40.x}；Router R 通过三个接口连接各 LAN。
+\begin{center}
+\begin{tikzpicture}[
+  lan/.style={draw=noteBlue,rounded corners=2pt,text width=4.25cm,align=center,inner sep=5pt,font=\small},
+  port/.style={font=\small,fill=white,inner sep=2pt},
+  line/.style={thick,draw=noteBlue}
+]
+  \node[lan] (eng) at (0,0) {\textbf{Engineering LAN}\\\texttt{192.168.40.0/26}\\范围 \texttt{.0--.63}\\笔记本 \texttt{.10}（误设 \texttt{/24}）\\打印机 \texttt{.20}；DNS \texttt{.2}};
+  \node[lan] (sales) at (5.15,0) {\textbf{Sales LAN}\\\texttt{192.168.40.64/27}\\范围 \texttt{.64--.95}\\服务器 \texttt{.70}\\Sales PC \texttt{.80}};
+  \node[lan] (support) at (10.3,0) {\textbf{Support LAN}\\\texttt{192.168.40.96/28}\\范围 \texttt{.96--.111}\\Support PC \texttt{.100}\\\strut};
+  \node[draw=noteBlue,rounded corners=2pt,inner sep=6pt,font=\small\bfseries] (router) at (5.15,-2.1) {Router R};
+  \draw[line] (eng.south) |- (router.west);
+  \draw[line] (sales.south) -- (router.north);
+  \draw[line] (support.south) |- (router.east);
+  \node[port] at (1.35,-2.1) {接口 \texttt{.1}};
+  \node[port,right] at (5.15,-1.5) {接口 \texttt{.65}};
+  \node[port] at (8.9,-2.1) {接口 \texttt{.97}};
+\end{tikzpicture}
+\end{center}
+
+\subsection{诊断与修复}
+
+\exercisequestion{SC2008-HW02-Q01}{先做测试，再判断故障位置}
+\textbf{题目。}面对上述故障，如何回应？选项：Let me run a few tests on your laptop；The Sales server must be down。
+\begin{checkedsolution}
+选 \textbf{Let me run a few tests on your laptop}。客户端配置也可能导致故障，应先检查配置与连通性。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW02-Q02}{当前掩码算出哪个网络地址？}
+\textbf{题目。}服务器 \texttt{192.168.40.70} 按当前 \texttt{/24} 掩码计算，网络地址是哪个？选项：\texttt{192.168.40.70}、\texttt{192.168.40.64}、\texttt{192.168.40.0}。
+\begin{checkedsolution}
+选 \textbf{\texttt{192.168.40.0}}。逐位 AND 后，前三段保留，最后一段清零；笔记本 \texttt{.10} 也得到同一网络地址。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW02-Q03}{笔记本怎样决定发送路径？}
+\textbf{题目。}根据上述计算，笔记本会作何判断？选项：\texttt{.70} is remote, send it to the gateway；\texttt{.70} is local, send it directly。
+\begin{checkedsolution}
+选 \textbf{local，直接发送}。错误的 \texttt{/24} 让笔记本把 \texttt{.70} 判断为本地地址，尝试直接取得服务器 MAC。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW02-Q04}{服务器实际上在哪个 LAN？}
+\textbf{题目。}在 Engineering、Sales、Support 三个 LAN 中，选择 \texttt{192.168.40.70} 实际所在的 LAN。
+\begin{checkedsolution}
+选 \textbf{Sales LAN：\texttt{192.168.40.64/27}}。\texttt{.70} 属于 \texttt{.64--.95}，不在 Engineering 的 \texttt{.0--.63} 内，访问它需经过 Router R。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW02-Q05}{修复前，ARP 查询哪个 IP？}
+\textbf{题目。}笔记本误认为 \texttt{.70} 在本地，发送前会用 ARP 查询哪个 IP 的 MAC？选项如下：
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item \texttt{255.255.255.255}（所有设备）；
+  \item \texttt{192.168.40.70}（服务器）；
+  \item \texttt{192.168.40.65}（Router R 的 Sales 接口）；
+  \item \texttt{192.168.40.1}（本机默认网关）。
+\end{enumerate}
+\begin{checkedsolution}
+选 \textbf{B：\texttt{192.168.40.70}}。ARP 查询的目标 IP 为 \texttt{.70}，以太网目的 MAC 为广播地址 \texttt{ff:ff:ff:ff:ff:ff}。按本题普通路由转发设置，ARP 广播只在 Engineering LAN 内传播，无法到达 Sales 服务器；所以笔记本无法解析服务器 MAC，报告不可达。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW02-Q06}{修正 IPv4 配置并验证}
+\textbf{题目。}在 IPv4 Properties 中手动填写 IP、掩码、默认网关及首选 DNS，然后再次测试服务器。
+\begin{checkedsolution}
+根据笔记本所在的 \textbf{Engineering LAN} 填写：
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+字段 & 正确值 \\
+\midrule
+IP address & \texttt{192.168.40.10} \\
+Subnet mask & \textbf{\texttt{255.255.255.192}}（\texttt{/26}）\\
+Default gateway & \texttt{192.168.40.1} \\
+Preferred DNS server & \texttt{192.168.40.2} \\
+\bottomrule
+\end{tabular}
+\end{center}
+故障修正点是掩码，IP 与网关保持不变。DNS 来自拓扑图；直接 ping 数字 IP 无需名称解析。
+
+比较最后一段：$10\mathbin{\&}192=0$，$70\mathbin{\&}192=64$。结果不同，笔记本将发往 \texttt{.70} 的包交给网关 \texttt{.1}。这只判断目标是否属于本地子网；Sales 的实际前缀仍是图中的 \texttt{/27}。
+
+重新运行 \texttt{ipconfig} 核对配置，再运行 \texttt{ping 192.168.40.70}；连通的判据是收到来自 \texttt{.70} 的 Echo Reply。窗口里的旧输出不会随配置修改而刷新。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW02-Q07}{修复后，首跳数据帧的目的 MAC}
+\textbf{题目。}修复后，笔记本承载 IP 包的数据帧，其目的 MAC 属于谁？选项：The Sales server；Router R (its \texttt{.1} interface)；Broadcast \texttt{ff-ff-ff-ff-ff-ff}。
+\begin{checkedsolution}
+选 \textbf{Router R 的 \texttt{.1} 接口}，已有 ARP 表给出其 MAC 为 \texttt{00-1b-54-a3-20-01}。题目问的是承载 IP 包的数据帧；若无网关 MAC 缓存，发送前另需 ARP 查询。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW02-Q08}{帧内 IP 包的目的地址}
+\textbf{题目。}帧内 IP 包的目的 IP 是哪个？选项：\texttt{192.168.40.70}（服务器）；\texttt{192.168.40.1}（网关）。
+\begin{checkedsolution}
+选 \textbf{\texttt{192.168.40.70}}。\textbf{目的 MAC 指向当前链路的下一跳，目的 IP 指向最终服务器。}Router R 换用 Sales 链路的 MAC 地址封装并转发；本题无 NAT，IP 目的地址保持不变。
+\end{checkedsolution}
+
 \end{document}
