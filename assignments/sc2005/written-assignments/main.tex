@@ -912,4 +912,105 @@ Paging 使用固定大小的页框，进程最后一页可能未用满，空余�
   \item 若页大小为 $2^b$ bytes，低 $b$ 位是 offset，其余高位是 page number；不要把页号当成物理页框号。
 \end{itemize}
 
+% Written assignment: SC2005-HW06
+% Source: user-supplied NTULearn Lecture Quiz 6, Questions 1--5;
+% Virtual Memory, slides 8.4--8.7, 8.14--8.28, 8.38--8.40.
+% Completion/check date: 2026-10-24. No grades or LMS export included.
+\section{Lecture Quiz 6}
+\label{homework:SC2005-HW06}
+
+\exercisemeta
+  {SC2005-HW06}
+  {2026-10-24}
+  {NTULearn Lecture Quiz 6；Virtual Memory 8.4--8.7、8.14--8.28、8.38--8.40}
+  {五道题已完成，并根据讲义与平台反馈核对}
+  {是（2026-10-24）}
+
+\exercisequestion{SC2005-HW06-Q01}{Question 1：Virtual Memory 的优势}
+
+\textbf{题干：} Which of the following is a benefit of virtual memory support?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Logical address space of a process can be much larger than available memory.
+  \item Degree of multiprogramming is decreased.
+  \item More I/O is needed to load each user program into memory.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L17-T01}
+
+\begin{checkedsolution}
+Virtual memory（虚拟内存）允许进程仅有部分页面驻留时执行，将 logical address space（逻辑地址空间）与实际可用物理内存容量解耦，因此前者可以大得多。按需装入不要求一次加载整个程序，也可让更多进程同时驻留部分页面；降低多道程序程度或增加装入 I/O 均不是题目所问的优势。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW06-Q02}{Question 2：启动阶段的缺页率}
+
+\textbf{题干：} On a system with demand-paging, a process will experience a high page fault rate when
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item the capacity of backing store is too small.
+  \item the process begins execution.
+  \item the FIFO page replacement is used.
+\end{enumerate}
+
+\textbf{正确答案：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L17-T01}
+
+\begin{checkedsolution}
+Demand paging（按需调页）下，进程刚开始执行时所需页面尚未驻留，首次访问会集中触发 page faults（缺页）；讲义 8.7 的纯按需模型把初始页表项均设为不驻留。所需页面逐渐装入后，缺页率通常下降。Backing store（后备存储）的容量影响可保存的数据量，不能直接推出高缺页率；FIFO 的实际表现还取决于访问序列与可用页框数。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW06-Q03}{Question 3：Belady's Anomaly}
+
+\textbf{题干：} Which of the following page replacement algorithms suffers from Belady's anomaly?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item FIFO
+  \item Optimal
+  \item LRU
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L18-T01,T02,T03}
+
+\begin{checkedsolution}
+Belady 异常指固定页面访问序列和置换算法，增加页框后，缺页次数反而增加。FIFO 可能出现该现象：讲义的同一序列在 3 个页框下缺页 9 次，在 4 个页框下缺页 10 次。OPT 与 LRU 不会出现这一异常；缺页次数保持不变也不属于异常。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW06-Q04}{Question 4：Page-out 是否总是必要？}
+
+\textbf{题干：} Which of the following statements about page replacement is \textbf{not true}?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item When there is a page fault and memory is full, two page transfers (one for the page-out and one for page-in) are always required.
+  \item If we have a reference to page $p$, then any references to page $p$ that immediately follow will never cause a page fault.
+  \item When a page is first loaded into the memory, its reference bit is initialized to 0. When a page in the memory is referenced again, its reference bit is set to 1.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L17-T04}，\texttt{SC2005-L18-T04}
+
+\begin{checkedsolution}
+本题选错误叙述，A 错在 \textbf{always}。若 victim page（被置换页）未被修改，且后备副本仍然有效，可以直接丢弃内存副本并读入新页，无需写回旧页。只有需要保存修改的 dirty page（脏页）才要写回；讲义 8.14 因此写的是两次传输 \emph{may be necessary}，8.16 用 dirty bit（脏位）区分是否需要写回。
+
+B 按连续访问序列 $p,p,p,\ldots$ 理解：第一次访问完成后，页面已经驻留；在没有其他事件将其移出的模型中，紧接着的访问均命中。C 按讲义 8.28 的初始化约定理解：$R$ 初始为 0，实际访问使其置 1。Reference bit（引用位）记录访问，dirty bit 记录修改，二者作用不同。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW06-Q05}{Question 5：缓解 Thrashing}
+
+\textbf{题干：} Which of the following actions will alleviate thrashing situation?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Enlarging the size of paging disk
+  \item Enlarging memory
+  \item Installing a fast CPU
+\end{enumerate}
+
+\textbf{正确答案：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L19-T02,T03}
+
+\begin{checkedsolution}
+Thrashing（抖动）源于可用页框不足以容纳当前频繁访问的页面，导致反复换入换出。增加物理内存可提供更多页框、提高工作集驻留能力，从而缓解抖动。增大 paging disk（分页磁盘）只增加后备容量；更快的 CPU 也不能补足物理页框。课程中的另一种处理办法是挂起部分进程，降低同时驻留的总需求。
+\end{checkedsolution}
+
 \end{document}
