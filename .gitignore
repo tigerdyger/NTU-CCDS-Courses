@@ -34,6 +34,9 @@ courses/*/lms-exports/
 # SC4061 Lab2 uses the same explicit public allowlist.
 /assignments/sc4061/programming-assignments/lab-02/*
 
+# SC3000 Lab2 keeps assessed code, traces, and reports private by default.
+/assignments/sc3000/programming-assignments/lab-02/*
+
 # Large raw media should never be committed to this notes repository
 *.m4a
 *.mov

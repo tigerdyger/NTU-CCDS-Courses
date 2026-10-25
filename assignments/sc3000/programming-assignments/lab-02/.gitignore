@@ -1,0 +1,4 @@
+# Only reviewed project documentation is eligible for publication.
+*
+!/.gitignore
+!/README.md
