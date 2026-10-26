@@ -1,0 +1,13 @@
+# Only reviewed notes, the source patch and its small regression check are public.
+# Keep full xv6 trees, original backups, screenshots and build outputs local.
+*
+!.gitignore
+!.gitattributes
+!README.md
+!implementation-notes.md
+!code/
+!code/README.md
+!code/LICENSE
+!code/lab4.patch
+!code/tests/
+!code/tests/syscall-signatures.c

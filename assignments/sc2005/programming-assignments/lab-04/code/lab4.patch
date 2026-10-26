@@ -1,0 +1,251 @@
+diff --git a/kernel/exec.c b/kernel/exec.c
+index 6d7c452..fb1e0d3 100644
+--- a/kernel/exec.c
++++ b/kernel/exec.c
+@@ -124,6 +124,7 @@ exec(char *path, char **argv)
+   oldpagetable = p->pagetable;
+   p->pagetable = pagetable;
+   p->sz = sz;
++  p->heap_start = sz;
+   p->trapframe->epc = elf.entry;  // initial program counter = main
+   p->trapframe->sp = sp; // initial stack pointer
+   proc_freepagetable(oldpagetable, oldsz);
+diff --git a/kernel/proc.c b/kernel/proc.c
+index d280acf..fb26240 100644
+--- a/kernel/proc.c
++++ b/kernel/proc.c
+@@ -124,6 +124,7 @@ allocproc(void)
+ found:
+   p->pid = allocpid();
+   p->state = USED;
++  p->heap_start = 0;
+ 
+   // Allocate a trapframe page.
+   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+@@ -162,6 +163,7 @@ freeproc(struct proc *p)
+     proc_freepagetable(p->pagetable, p->sz);
+   p->pagetable = 0;
+   p->sz = 0;
++  p->heap_start = 0;
+   p->pid = 0;
+   p->parent = 0;
+   p->name[0] = 0;
+@@ -241,6 +243,7 @@ userinit(void)
+   // and data into it.
+   uvmfirst(p->pagetable, initcode, sizeof(initcode));
+   p->sz = PGSIZE;
++  p->heap_start = PGSIZE;
+ 
+   // prepare for the very first "return" from kernel to user.
+   p->trapframe->epc = 0;      // user program counter
+@@ -295,6 +298,7 @@ fork(void)
+     return -1;
+   }
+   np->sz = p->sz;
++  np->heap_start = p->heap_start;
+ 
+   // copy saved user registers.
+   *(np->trapframe) = *(p->trapframe);
+diff --git a/kernel/proc.h b/kernel/proc.h
+index d021857..fca5ac4 100644
+--- a/kernel/proc.h
++++ b/kernel/proc.h
+@@ -98,6 +98,7 @@ struct proc {
+   // these are private to the process, so p->lock need not be held.
+   uint64 kstack;               // Virtual address of kernel stack
+   uint64 sz;                   // Size of process memory (bytes)
++  uint64 heap_start;
+   pagetable_t pagetable;       // User page table
+   struct trapframe *trapframe; // data page for trampoline.S
+   struct context context;      // swtch() here to run process
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index ed65409..b9b213b 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -101,6 +101,8 @@ extern uint64 sys_unlink(void);
+ extern uint64 sys_link(void);
+ extern uint64 sys_mkdir(void);
+ extern uint64 sys_close(void);
++extern uint64 sys_countvp(void);
++extern uint64 sys_countpp(void);
+ 
+ // An array mapping syscall numbers from syscall.h
+ // to the function that handles the system call.
+@@ -126,6 +128,8 @@ static uint64 (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_countvp] sys_countvp,
++[SYS_countpp] sys_countpp,
+ };
+ 
+ void
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index bc5f356..58fa506 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -20,3 +20,5 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_countvp 22
++#define SYS_countpp 23
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index 3b4d5bd..9d5ee7d 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -38,13 +38,27 @@ sys_wait(void)
+ uint64
+ sys_sbrk(void)
+ {
+-  uint64 addr;
+   int n;
++  struct proc *p = myproc();
++  uint64 addr = p->sz;
+ 
+   argint(0, &n);
+-  addr = myproc()->sz;
+-  if(growproc(n) < 0)
+-    return -1;
++
++  if(n > 0){
++    uint64 newsz = addr + (uint64)n;
++    if(newsz < addr || newsz >= TRAPFRAME)
++      return -1;
++
++    p->sz = newsz;
++  } else if(n < 0){
++    uint64 shrink = (uint64)(-(long)n);
++    if(addr < p->heap_start ||
++       shrink > addr - p->heap_start)
++      return -1;
++
++    p->sz = uvmdealloc(p->pagetable, addr, addr - shrink);
++  }
++
+   return addr;
+ }
+ 
+@@ -91,3 +105,27 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++uint64
++sys_countvp(void)
++{
++  struct proc *p = myproc();
++  return PGROUNDUP(p->sz) / PGSIZE;
++}
++
++uint64
++sys_countpp(void)
++{
++  struct proc *p = myproc();
++  int count = 0;
++
++  for(uint64 va = 0; va < p->sz; va += PGSIZE){
++    pte_t *pte = walk(p->pagetable, va, 0);
++
++    if(pte != 0 && (*pte & PTE_V) && (*pte & (PTE_R | PTE_W | PTE_X))){
++      count++;
++    }
++  }
++
++  return count;
++}
+diff --git a/kernel/trap.c b/kernel/trap.c
+index d454a7d..a134dec 100644
+--- a/kernel/trap.c
++++ b/kernel/trap.c
+@@ -67,6 +67,36 @@ usertrap(void)
+     syscall();
+   } else if((which_dev = devintr()) != 0){
+     // ok
++  } else if(r_scause() == 13 || r_scause() == 15){
++    uint64 addr = r_stval();
++
++    if(addr < p->heap_start || addr >= p->sz || addr >= TRAPFRAME){
++      setkilled(p);
++    } else {
++      uint64 va = PGROUNDDOWN(addr);
++      pte_t *pte = walk(p->pagetable, va, 0);
++
++      if(pte != 0 && (*pte & PTE_V)){
++        setkilled(p);
++      } else {
++        char *mem = kalloc();
++
++        if(mem == 0){
++          setkilled(p);
++        } else {
++          memset(mem, 0, PGSIZE);
++
++          if(mappages(p->pagetable, va, PGSIZE, (uint64)mem, PTE_R | PTE_W | PTE_U) != 0){
++            kfree(mem);
++            setkilled(p);
++          }
++        }
++      }
++    }
++
++    if(killed(p)){
++      printf("page fault: pid=%d cause=%d va=%p\n", p->pid, (int)r_scause(), (void *)addr);
++    }
+   } else {
+     printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
+     printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
+diff --git a/kernel/vm.c b/kernel/vm.c
+index 62421a2..592b109 100644
+--- a/kernel/vm.c
++++ b/kernel/vm.c
+@@ -185,9 +185,9 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
+ 
+   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
+     if((pte = walk(pagetable, a, 0)) == 0)
+-      panic("uvmunmap: walk");
++      continue;
+     if((*pte & PTE_V) == 0)
+-      panic("uvmunmap: not mapped");
++      continue;
+     if(PTE_FLAGS(*pte) == PTE_V)
+       panic("uvmunmap: not a leaf");
+     if(do_free){
+diff --git a/user/lazytest.c b/user/lazytest.c
+index fe41820..c79e8e7 100644
+--- a/user/lazytest.c
++++ b/user/lazytest.c
+@@ -3,15 +3,6 @@
+ 
+ #define SBRK_ERROR ((char *)-1)
+ 
+-int countvp(void) {
+-  // TODO implement as syscall
+-  return 0;
+-}
+-int countpp(void) {
+-  // TODO implement as syscall
+-  return 0;
+-}
+-
+ int
+ main(int argc, char *argv[])
+ {
+@@ -60,6 +51,6 @@ main(int argc, char *argv[])
+   } else {
+     printf("Error: PP count did not increase correctly\n");
+   }
+-  
++
+   exit(0);
+ }
+diff --git a/user/usys.pl b/user/usys.pl
+index 01e426e..56f971b 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -36,3 +36,5 @@ entry("getpid");
+ entry("sbrk");
+ entry("sleep");
+ entry("uptime");
++entry("countvp");
++entry("countpp");
