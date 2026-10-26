@@ -1,0 +1,20 @@
+% Original redraw of Week 11 Default_Logic.pptx, slide 64.
+% Each node shows In first, Out second. Only unused applicable defaults branch.
+\begin{tikzpicture}[
+ >=Latex,
+ state/.style={draw=noteBlue,rounded corners=2pt,align=center,
+   text width=5.1cm,inner sep=6pt,font=\small},
+ edge/.style={->,thick,noteBlue}
+]
+ \node[state,text width=3.1cm] (root) at (0,0)
+   {$In=Cn(\varnothing)$\\$Out=\varnothing$};
+ \node[state] (left) at (-3.25,-2.35)
+   {$In=Cn(\{\neg q\})$\\$Out=\{\neg p\}$\\成功且封闭：得到 extension};
+ \node[state] (right) at (3.25,-2.35)
+   {$In=Cn(\{r\})$\\$Out=\{\neg q\}$\\成功，尚未封闭};
+ \node[state,draw=ntuRed] (failed) at (3.25,-4.8)
+   {$In=Cn(\{r,\neg q\})$\\$Out=\{\neg q,\neg p\}$\\失败：$\neg q\in In\cap Out$};
+ \draw[edge] (root) -- node[midway,left,font=\small]{$\delta_1$} (left);
+ \draw[edge] (root) -- node[midway,right,font=\small]{$\delta_2$} (right);
+ \draw[edge] (right) -- node[right,font=\small]{$\delta_1$} (failed);
+\end{tikzpicture}

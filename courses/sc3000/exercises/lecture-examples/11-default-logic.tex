@@ -1,0 +1,120 @@
+% Based on templates/lecture-example.tex; actual lecture SC3000-L10.
+% Source: Week 11 Default_Logic.pptx, slides 28--41, 56--58, 64.
+% Worked examples paraphrased; intermediate checks and figure reconstructed.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC3000-L10-EX}{第 10 讲：Default Logic}
+
+\textbf{日期与来源：}2026-10-26；Week 11 -- Default Logic，原始 slides 28--41、56--58、64，结合视频字幕核对。以下保留讲义例题的条件与结论，补全闭包、适用性和一致性检查。
+
+\exercisequestion{SC3000-L10-E01}{Tweety：用 Reiter 方法验证候选 extension}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L10-T01}{默认规则}；\relatedtopic{SC3000-L10-T02}{Extension 与 Reiter 方法}。
+
+\textbf{题目（slides 28--31）。}给定 $\Phi=\{Bird(Tweety),Cat(Sylvester)\}$ 和默认规则 $\frac{Bird(x):Fly(x)}{Fly(x)}$，检验候选
+\[
+ E=Cn\bigl(\Phi\cup\{Fly(Tweety)\}\bigr).
+\]
+
+\begin{workedsolution}
+从 $F_0=Cn(\Phi)$ 开始。将 $x$ 实例化为 Tweety：$F_0\vdash Bird(Tweety)$，且 $E\nvdash\neg Fly(Tweety)$，因此可以加入 $Fly(Tweety)$。
+
+对 Sylvester，$F_0$ 和后续结果均不能推出 $Bird(Sylvester)$，先决条件不成立；仅有 $Cat(Sylvester)$ 也不自动推出 $\neg Bird(Sylvester)$ 或 $\neg Fly(Sylvester)$。没有其他可增加的结论，故
+\[
+ F_*=Cn\bigl(\Phi\cup\{Fly(Tweety)\}\bigr)=E.
+\]
+候选通过验证。若后来把 $\neg Fly(Tweety)$ 加入事实，这条默认就被阻止，原有默认结论必须重新评估，不能原样保留再追加相反事实。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L10-E02}{Nixon Diamond：两套扩展与两种推理标准}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L10-T02}{多个 extension 与推理方式}。
+\par\nopagebreak[4]
+\textbf{题目（slides 32--41）。}在课件的玩具模型中，已知 $\Phi=\{Quaker(Nixon),Republican(Nixon)\}$，并采用
+\[
+ d_Q=\frac{Quaker(x):Pacifist(x)}{Pacifist(x)},\qquad
+ d_R=\frac{Republican(x):\neg Pacifist(x)}{\neg Pacifist(x)}.
+\]
+求 extension，并判断关于 Nixon 是否为和平主义者的审慎与容许性结论。规则仅作为逻辑例题的设定，不作现实群体概括。
+
+\begin{workedsolution}
+简记 $P=Pacifist(Nixon)$。候选及其检查为：
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+候选 & 可使用的规则 & 被阻止的规则 \\
+\midrule
+$E_+=Cn(\Phi\cup\{P\})$ & $d_Q$ 的前提成立，且没有 $\neg P$。 & $d_R$ 的 justification 为 $\neg P$，被候选中的 $P$ 阻止。\\
+$E_-=Cn(\Phi\cup\{\neg P\})$ & $d_R$ 的前提成立，且没有 $P$。 & $d_Q$ 的 justification 为 $P$，被候选中的 $\neg P$ 阻止。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+两者都能从 $\Phi$ 按 Reiter 方法构造回来，故都是 extension。若候选两种结论都不含，则两条默认都获许可，构造结果与候选不符；若候选同时含 $P,\neg P$，则两条默认均被阻止，同样无法构造回来。
+
+$P$ 与 $\neg P$ 各自都在某个 extension 中，故分别获得 credulous 支持；没有一个出现在全部 extension 中，故两者都不是 skeptical 结论。两套 extension 必须分别考察，不能合并为 $P\land\neg P$。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L10-E03}{过程顺序：成功、封闭与早先假设的冲突}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L10-T03}{Makinson、In/Out 与过程状态}。
+
+\textbf{题目（slides 56--58）。}给定 $\Phi=\{\alpha\}$，以及
+\[
+ \delta_1=\frac{\alpha:\neg\beta}{\eta},\qquad
+ \delta_2=\frac{\top:\gamma}{\beta}.
+\]
+$\alpha,\beta,\gamma,\eta$ 为不同命题，未给出其他关系。分析 $(\delta_1)$、$(\delta_1,\delta_2)$、$(\delta_2)$，找出 extension。
+
+\begin{workedsolution}
+\textbf{先用 $\delta_1$。}当前可推出 $\alpha$，不能推出 $\beta$，因此规则可用：
+\[
+ In(\delta_1)=Cn(\{\alpha,\eta\}),\qquad Out(\delta_1)=\{\beta\}.
+\]
+二者无交集，故 successful；但 $\delta_2$ 的先决条件恒真，且没有 $\neg\gamma$，仍可应用，因此尚未 closed。
+
+\textbf{继续用 $\delta_2$。}加入结论 $\beta$，并记录 $\neg\gamma$：
+\[
+ In(\delta_1,\delta_2)=Cn(\{\alpha,\eta,\beta\}),\qquad
+ Out(\delta_1,\delta_2)=\{\beta,\neg\gamma\}.
+\]
+两条规则都已使用，过程 closed，但 $\beta\in In\cap Out$，不 successful。第二步推翻了第一步依赖的 justification $\neg\beta$。尽管 In 内没有直接出现 $\beta,\neg\beta$ 这一对矛盾，整体推理仍失败。
+
+\textbf{改为先用 $\delta_2$。}得到
+\[
+ In(\delta_2)=Cn(\{\alpha,\beta\}),\qquad Out(\delta_2)=\{\neg\gamma\}.
+\]
+没有交集，过程 successful；已有 $\beta$ 阻止 $\delta_1$ 的 justification $\neg\beta$，因此 closed。唯一 extension 为
+\[
+ \boxed{E=Cn(\{\alpha,\beta\})}.
+\]
+结论要同时满足“没有推翻依据”和“没有漏掉仍可用的规则”。仅停在第一步的成功前缀，并不足以得到 extension。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L10-E04}{过程树：局部可用的规则为何可能走向失败}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L10-T04}{过程树}；\relatedtopic{SC3000-L10-T03}{成功与封闭}。
+
+\textbf{题目（slide 64）。}已知事实为空，规则为
+\[
+ \delta_1=\frac{\top:p}{\neg q},\qquad
+ \delta_2=\frac{\top:q}{r}.
+\]
+构造过程树，标注 In、Out 和叶节点状态，求所有 extension。
+
+\begin{workedsolution}
+根节点两条规则都可用。每个节点的第一行记录 In，第二行记录 Out；以下根据课件第 64 页重绘，并统一用 $Cn$ 表示闭包。
+
+\begin{center}
+\input{figures/default-process-tree}
+\end{center}
+
+\textbf{左支。}使用 $\delta_1$ 后，In 包含 $\neg q$，Out 为 $\{\neg p\}$，没有冲突；$\delta_2$ 的 justification $q$ 已被 $\neg q$ 阻止。该节点 successful 且 closed，给出 $Cn(\{\neg q\})$。
+
+\textbf{右支。}使用 $\delta_2$ 后，In 为 $Cn(\{r\})$，Out 为 $\{\neg q\}$，暂时成功；但 $\delta_1$ 仍可用，尚未封闭。继续应用后推出 $\neg q$，恰好落入先前的 Out，因此失败。
+
+两条初始分支已穷尽，唯一 extension 为 $\boxed{Cn(\{\neg q\})}$。中间节点出现过的 $r$ 只属于失败路线，不能据此声称某个 extension 支持 $r$。
+\end{workedsolution}
+\endgroup

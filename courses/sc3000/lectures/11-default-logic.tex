@@ -1,0 +1,100 @@
+% Based on templates/lecture.tex; actual regular lecture SC3000-L10, Week 11.
+% Source: Week 11 Default_Logic.pptx, original slides 2--66 of 67.
+% Transcript: 81525 - 0_1tlcmxhd - PID 117.txt; full lecture, no timestamps.
+% Verification: source formulas checked; explanations and concept checks completed.
+% Corrections: s15 unsupported HasWings entails Fly; s52 invalid rule sequence.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
+\section{第 10 节课：Default Logic}
+\label{lecture:SC3000-L10}
+
+\textbf{日期与资料：}2026-10-26（Week 11）；Week 11 -- Default Logic，原始 slides 2--66，结合配套视频字幕。正课编号承接上一讲 First-Order Logic；重复展开的页面合并整理，例题按原始公式核对并补全推理。
+
+Default logic（默认逻辑）处理信息不完整时的可撤回判断：已有事实支持某个条件，且没有发现反证时，可以采用默认结论；新信息可能使该结论失效。本讲依次讨论规则的许可条件、最终信念集合，以及如何检查并搜索这些集合。
+
+\lecturetopic{SC3000-L10-T01}{默认规则：有条件地使用可撤回结论}
+
+\textbf{Monotonic 与 non-monotonic reasoning。}经典逻辑的推导具有 monotonicity（单调性）：若 $\Gamma\vdash\varphi$ 且 $\Gamma\subseteq\Gamma'$，则 $\Gamma'\vdash\varphi$。默认推理允许撤回旧结论，因而是 non-monotonic（非单调）的。例如看到孩子使用手机，暂时判断在玩游戏；得知他在上网课后，应撤回依赖旧假设的判断。经典逻辑也能推出未明确写出的结论，但不会自动赋予普通蕴含“通常成立、允许例外”的含义。
+
+一条 default rule（默认规则）写作
+\[
+ \delta=\frac{\alpha:\beta_1,\ldots,\beta_n}{\gamma}.
+\]
+Prerequisite（先决条件）$\alpha$ 必须可推导；每个 justification（合理性条件）$\beta_i$ 都不能受到相关信念中 $\neg\beta_i$ 的反驳；满足条件后加入 consequent（结论）$\gamma$。\textbf{不要求先证明 $\beta_i$，也不自动把 $\beta_i$ 加入知识库。}多个 justification 分别检查；Reiter 方法中检查所用的信念集合在下一节明确。
+
+以课件的 $\frac{Bird(x):HasWings(x)}{Fly(x)}$ 为例，应用于 Tweety 要求可推出 $Bird(Tweety)$，且不能推出 $\neg HasWings(Tweety)$。普通蕴含 $Bird(x)\land HasWings(x)\Rightarrow Fly(x)$ 则要求两个前提都已得到支持。规则被阻止，仅说明不能据此推出 $Fly$，不自动推出 $\neg Fly$。
+
+\textbf{规则类型。}Normal default（正规默认）的 justification 与结论相同；课件将 justification 蕴含结论的形式称为 semi-normal default（半正规默认）：
+\[
+ \text{normal: }\frac{\alpha:\gamma}{\gamma},\qquad
+ \text{semi-normal: }\frac{\alpha:\beta}{\gamma},\quad\beta\vdash\gamma.
+\]
+正规默认是半正规默认的特例。第 15 页以 $HasWings\vdash Fly$ 举例，但未给出支持该蕴含的条件；仅有“有翅膀”不能保证“会飞”，不能直接据此认定该例满足半正规条件。
+
+含变量的规则称为 open default（开放默认）；用具体对象替换所有变量后，得到 closed / ground default（封闭／实例化默认）。例如 $x\leftarrow Tweety$。后面的执行过程使用具体的 ground rules；这一分类与 normal / semi-normal 的分类依据不同。
+
+\lecturetopic{SC3000-L10-T02}{Extension：检查最终结果与推理依据是否一致}
+
+Default theory（默认理论）记作 $T=\langle\Delta,\Phi\rangle$：$\Phi$ 是已知事实与普通逻辑知识，$\Delta$ 是默认规则。$Cn(S)$ 表示 $S$ 的 deductive closure（演绎闭包），包含 $S$ 及其全部经典逻辑后果。Extension（扩展）是一套能够按默认规则从已知知识构造、又不推翻自身默认依据的完整信念集合；一般理论可有零个、一个或多个 extension。
+
+\textbf{Reiter 的 guess-and-check（猜测并验证）。}用 $E$ 表示候选 extension，用 $F$ 表示正在构造的结果：
+\begin{enumerate}
+ \item 猜测 $E$，从 $F_0=Cn(\Phi)$ 开始。
+ \item 对尚未使用的具体规则 $\frac{\alpha:\beta_1,\ldots,\beta_n}{\gamma}$，要求
+ \[
+   F_k\vdash\alpha,\qquad E\nvdash\neg\beta_i\quad(\text{每个 }i).
+ \]
+ \item 满足条件便加入结论，并取闭包：$F_{k+1}=Cn(F_k\cup\{\gamma\})$；继续直至不能增加结论。
+ \item 最终构造的集合与候选相等，即 $F_*=E$，候选才是 extension。
+\end{enumerate}
+先决条件必须由当前构造提供支持；justification 则对\emph{最终候选}检查，以防后续结论推翻早先假设。课件算法中省略书写的经典逻辑后果，在这里用 $Cn$ 显式保留。完整检验见\relatedexercise{SC3000-L10-E01}{Tweety 的 extension}。
+
+\textbf{多个 extension 的推理方式。}Skeptical reasoning（审慎推理）只接受所有 extension 都支持的结论；credulous reasoning（容许性推理）接受至少一个 extension 支持的结论。\relatedexercise{SC3000-L10-E02}{Nixon Diamond}分别得到支持 $P$ 和支持 $\neg P$ 的两个 extension：两者都可分别获得容许性支持，却不能把两个集合合并后声称 $P\land\neg P$ 成立。这两种标准不表示概率，也不自动决定现实中哪个结论为真。
+
+\lecturetopic{SC3000-L10-T03}{Makinson 与过程：记录结论和使用过的假设}
+
+\textbf{构造思路。}Makinson 方法从已知知识出发，选择当前可应用且未用过的默认规则，加入其结论，并检查新知识是否仍与\emph{所有已用规则（包括刚应用的规则）}的 justification 相容。若新结论推翻了其中一个假设，这条分支失败，需要尝试其他执行顺序；不能将失败前的任意前缀直接当成 extension。它与 Reiter 方法刻画相同的 extensions，区别在构造方式；避免预先猜测最终集合并不保证结果唯一。
+
+将不重复的具体默认规则序列记作 $\Pi=(\delta_1,\ldots,\delta_m)$，$\Pi[k]$ 表示前 $k$ 步。设 $\gamma_\delta$ 为规则结论，则
+\begin{align*}
+ In(\Pi)&=Cn\bigl(\Phi\cup\{\gamma_\delta:\delta\text{ 出现在 }\Pi\}\bigr),\\
+ Out(\Pi)&=\{\neg\beta:\beta\text{ 是 }\Pi\text{ 中某条规则的 justification}\}.
+\end{align*}
+In 记录已经推出的知识；Out 记录为了维护既有推理，\emph{不能被推出}的公式。Out 是约束，不是已证明为假的事实，也不并入 In。例如应用 $\frac{\alpha:\neg\beta}{\eta}$ 后，In 加入 $\eta$，Out 记录 $\beta$；若后面推出 $\beta$，就破坏了这条规则的依据。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+术语 & 判断条件 \\
+\midrule
+Process（过程） & 每一步的规则都对该步之前的 In 可应用：先决条件成立，justification 的否定不可推出。\\
+Successful（成功） & $In(\Pi)\cap Out(\Pi)=\varnothing$，最终结论没有推翻已用规则的假设。\\
+Closed（封闭） & 对最终 In 仍可应用的规则都已经用过，没有尚可继续的规则。被阻止的规则无需使用。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Extension 对应 successful 且 closed 的过程的 In。}逐步可应用不保证全局成功；成功也不保证已经推完。后续结论可能与早先 justification 冲突，即便 In 本身没有直接包含一对正反公式。三种状态的区别见\relatedexercise{SC3000-L10-E03}{过程顺序与 In/Out 检查}。
+
+\textbf{课件小例与勘误（slides 50--52）。}设 $\Phi=\{\alpha\}$，$\delta_1=\frac{\alpha:\neg\beta}{\neg\beta}$，$\delta_2=\frac{\beta:\gamma}{\gamma}$。序列 $(\delta_1)$ 得到 $In=Cn(\{\alpha,\neg\beta\})$、$Out=\{\beta\}$，成功且封闭。第 52 页的 $(\delta_2,\delta_1)$ 在第一步就缺少 $\beta$，不是合法 process，不能当作等价执行顺序。单纯按序列公式计算其集合，也必须计入 $\delta_2$ 的结论和 justification。
+
+\lecturetopic{SC3000-L10-T04}{Process tree：系统地搜索可接受结果}
+
+Process tree（过程树）把不同执行顺序展开为分支。一条从根出发的路径对应一个过程，节点记录该路径的 In 与 Out；同一条具体规则在路径上不重复使用。
+
+根节点为 $In=Cn(\Phi)$、$Out=\varnothing$。对每条尚未使用且对当前 In 可应用的规则 $\delta=\frac{\alpha:\beta_1,\ldots,\beta_n}{\gamma}$，建立一条标记为 $\delta$ 的边，并更新子节点：
+\[
+ In'=Cn(In\cup\{\gamma\}),\qquad
+ Out'=Out\cup\{\neg\beta_1,\ldots,\neg\beta_n\}.
+\]
+若交集非空，标为 failed leaf（失败叶节点），停止展开；若成功但仍有规则可用，继续分支；成功且封闭的叶节点给出 extension。某个中间节点的结论可能只属于失败分支，不能直接当成最终推理结果。完整树及逐节点验证见\relatedexercise{SC3000-L10-E04}{过程树例题}。
+
+课件最后使用 $T=(W,D)$，其中 $W$ 对应此前的 $\Phi$、$D$ 对应 $\Delta$；图中的 $Th$ 与这里的 $Cn$ 都表示演绎闭包。$\top$ 是恒真式；即使 $\Phi=\varnothing$，$Cn(\varnothing)$ 仍包含经典逻辑恒真式。
+
+\subsection{一分钟回顾}
+
+默认规则要求先决条件可推导、justification 没有相反证据，再加入结论；新知识可能使这些推理需要撤回。Reiter 用当前构造检查先决条件，用候选 extension 检查 justification，并验证能否构造回候选。过程方法以 In 记录结论、Out 记录不可推翻的约束；只有成功且封闭的过程才给出 extension。过程树展开不同选择，排除失败分支；多个 extension 下再区分审慎与容许性推理。
+\endgroup
