@@ -6,6 +6,11 @@
 \newcommand{\academicyear}{AY2026--27 Semester 1}
 \input{../../shared/preamble}
 
+% Keep technical cross-reference IDs in source and the course map, not prose.
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
 \begin{document}
 \maketitle
 \coursenotestoc

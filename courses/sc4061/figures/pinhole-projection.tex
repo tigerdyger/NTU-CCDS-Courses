@@ -1,0 +1,16 @@
+% Original schematic based on LEC07 Imaging Geometry - 2026, pp. 10--11.
+\begin{tikzpicture}[x=1.05cm,y=1cm,>=Latex,font=\small]
+  \fill[noteBlue!5] (0,0) -- (5.8,2.6) -- (5.8,0) -- cycle;
+  \draw[->] (-.35,0) -- (6.6,0) node[right] {$Z_c$};
+  \draw[->] (0,-.1) -- (0,3) node[above] {$X_c$};
+  \draw[very thick,green!45!black] (2,-.16) -- (2,2.5);
+  \node[above,align=center] at (2,2.5) {虚拟成像平面\\$Z_c=f$};
+  \draw[dashed,thick] (0,0) -- (5.8,2.6);
+  \draw[<->,noteBlue,thick] (5.8,.03) -- node[right] {$X_c$} (5.8,2.57);
+  \draw[<->,ntuRed,thick] (2,.03) -- node[left] {$x$} (2,.867);
+  \fill[noteBlue] (5.8,2.6) circle (2pt) node[above right] {$P_c$};
+  \fill[ntuRed] (2,.897) circle (2pt) node[above left] {$p$};
+  \fill (0,0) circle (1.6pt) node[below left] {$O$};
+  \draw[<->] (0,-.4) -- node[below] {$f$} (2,-.4);
+  \draw[<->] (0,-1) -- node[below] {$Z_c$} (5.8,-1);
+\end{tikzpicture}

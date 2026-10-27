@@ -1,0 +1,153 @@
+% Actual class: 11, 2026-10-27 (Week 11).
+% Source: LEC07 Imaging Geometry - 2026, PDF pp. 1--24.
+% Supplement: Flipping Session, PDF pp. 5--7, 10--14; transcripts 79745, 79746.
+% Boundary: introduction and imaging model only; calibration starts at PDF p. 25.
+
+\section{第 11 节课：Imaging Geometry：坐标变换与投影}
+\label{lecture:SC4061-L11}
+
+\lecturemeta
+  {SC4061-L11}
+  {2026-10-27}
+  {LEC07 Imaging Geometry -- 2026；Flipping Session}
+  {主讲义 pp.~1--24；翻转课堂 pp.~5--7、10--14}
+  {字幕 79745（Introduction）、79746（Camera Imaging Geometry）}
+  {学习范围已确认（2026-10-27）}
+
+\subsection{本讲主线}
+
+Imaging geometry（成像几何）描述一个三维场景点如何落到二维图像中，是机器人定位、三维重建与增强现实的基础。本讲先建立正向映射；下一讲再讨论如何通过 calibration（标定）求出未知参数。
+\[
+  \boxed{\text{World}\ \longrightarrow\ \text{Camera}\
+    \longrightarrow\ \text{Image}\ \longrightarrow\ \text{Pixel}}
+\]
+三维位置与二维投影不能直接混用。下文以 $P_w,P_c$ 表示世界、相机坐标，以 $(x,y)$ 表示图像平面的物理坐标，以 $(u,v)$ 表示讲义中的像素坐标 $(x_{\mathrm{im}},y_{\mathrm{im}})$。
+
+\lecturetopic{SC4061-L11-T01}{坐标系与 World-to-Camera 刚体变换}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{3.1cm}X@{}}
+  \toprule
+  坐标系 & 表示 & 原点与作用 \\
+  \midrule
+  World frame（世界） & $(X_w,Y_w,Z_w)$ & 场景中选定的参考系，描述物体位置。\\
+  Camera frame（相机） & $(X_c,Y_c,Z_c)$ & 以光心为原点，$Z_c$ 沿光轴，描述相机视角下的位置。\\
+  Image frame（图像） & $(x,y)$，如 mm & 以主点为原点，描述成像平面上的物理偏移。\\
+  Pixel frame（像素） & $(u,v)$，pixel & 按图像的像素原点和轴方向记录位置。\\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+世界坐标与相机坐标通过 rigid transformation（刚体变换）连接：
+\[
+  \boxed{P_c=RP_w+t},\qquad
+  R\in\mathbb R^{3\times3},\quad t\in\mathbb R^3.
+\]
+$R$ 是 rotation matrix（旋转矩阵），$t$ 是 translation vector（平移向量）；刚体变换不改变物体的形状和尺度。旋转矩阵虽有九个元素，但只有三个独立旋转自由度；加上三个平移自由度，共六自由度。
+
+此表达式按\textbf{先旋转、后平移}计算，通常 $RP_w+t\ne R(P_w+t)$。完整反例见\relatedexercise{SC4061-L11-E01}{旋转与平移的顺序}。$t$ 是上述映射中的平移项，不应直接当作相机在世界坐标系中的位置。
+
+在世界点末尾补 $1$，便能把平移并入矩阵乘法：
+\[
+  P_w^h=\begin{bmatrix}X_w&Y_w&Z_w&1\end{bmatrix}^{T},
+  \qquad
+  P_c=\underbrace{[R\mid t]}_{3\times4}P_w^h.
+\]
+末尾的 $1$ 使矩阵最后一列产生加法项 $t$；它不是新增的物理空间维度。
+
+\lecturetopic{SC4061-L11-T02}{透视投影：Camera-to-Image}
+
+\subsubsection*{针孔模型与相似三角形}
+
+Pinhole camera model（针孔相机模型）将空间点沿经过光心的射线投到成像平面。真实针孔后方的成像为倒像；讲义采用光心前方的\emph{虚拟成像平面}，以正号形式表达投影。设焦距为 $f$，对相机前方 $Z_c>0$ 的点，由相似三角形得
+\[
+  \frac{x}{f}=\frac{X_c}{Z_c},\quad
+  \frac{y}{f}=\frac{Y_c}{Z_c}
+  \quad\Longrightarrow\quad
+  \boxed{x=f\frac{X_c}{Z_c},\qquad y=f\frac{Y_c}{Z_c}}.
+\]
+$x,y$ 与 $f$ 使用相同长度单位，$X_c,Y_c,Z_c$ 必须彼此同单位。固定横向位置时，深度越大，投影越靠近主点；固定空间点时，焦距越大，投影偏移越大。
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/pinhole-projection}
+  \caption{针孔投影的原创截面示意，依据主讲义 pp.~10--11。两个三角形共用光心处的角，故 $x/f=X_c/Z_c$；纵向坐标同理。}
+  \label{fig:sc4061-l11-projection}
+\end{figure}
+
+同一条过光心的射线上，$(X_c,Y_c,Z_c)$ 与其正倍数具有相同的 $X_c/Z_c,Y_c/Z_c$，因此投到同一点。\textbf{单个图像点在没有额外约束时不能唯一决定三维深度。}这是多个不同空间点的投影重合，不是这些空间点本身相同。
+
+\subsubsection*{齐次表示仍需归一化}
+
+引入 homogeneous coordinates（齐次坐标），把投影写为
+\[
+  k\begin{bmatrix}x\\y\\1\end{bmatrix}
+  =\underbrace{\begin{bmatrix}f&0&0\\0&f&0\\0&0&1\end{bmatrix}}_{F}
+   \begin{bmatrix}X_c\\Y_c\\Z_c\end{bmatrix}.
+\]
+第三行给出 $k=Z_c$；前两行除以第三行恢复普通二维坐标。线性的是齐次矩阵乘法，欧氏坐标中的透视映射仍包含除以深度的非线性步骤。$Z_c=0$ 时不能按上述公式得到有限图像坐标。
+
+\lecturetopic{SC4061-L11-T03}{像素尺寸、主点与 Image-to-Pixel 转换}
+
+图像坐标转为像素坐标，需要同时处理单位、原点和轴方向。令 $s_x,s_y$ 为像素的有效物理尺寸（如 mm/pixel），$(o_x,o_y)$ 为图像原点在像素坐标系中的位置，讲义称为 image centre（图像中心），对应模型的 principal point（主点）。
+
+\begin{center}
+\input{figures/image-pixel-axes}
+\end{center}
+
+主讲义 pp.~17--18 的两组坐标轴方向相反，因此
+\[
+  x=-(u-o_x)s_x,\quad y=-(v-o_y)s_y
+  \quad\Longleftrightarrow\quad
+  \boxed{u=-\frac{x}{s_x}+o_x,\qquad v=-\frac{y}{s_y}+o_y}.
+\]
+负号处理轴方向，除以 $s_x,s_y$ 将长度换为像素数，加上 $o_x,o_y$ 则转换原点。该映射可以给出亚像素坐标，并不要求立即取整。
+
+其矩阵形式为
+\[
+  \begin{bmatrix}u\\v\\1\end{bmatrix}
+  =\underbrace{\begin{bmatrix}-1/s_x&0&o_x\\0&-1/s_y&o_y\\0&0&1\end{bmatrix}}_{A}
+   \begin{bmatrix}x\\y\\1\end{bmatrix}.
+\]
+
+当 $X_c,Y_c$ 不变而 $Z_c$ 加倍时，$(x,y)$ 减半；在像素坐标中则是\textbf{相对主点的偏移}减半：
+\[
+  (u'-o_x,\ v'-o_y)=\tfrac12(u-o_x,\ v-o_y).
+\]
+完整三段计算见\relatedexercise{SC4061-L11-E02}{从世界坐标到像素}。投影落在图像范围外时仍有数学坐标，但不代表传感器实际记录了该点。
+
+\lecturetopic{SC4061-L11-T04}{内外参与统一投影矩阵}
+
+\subsubsection*{按信息流组合三个矩阵}
+
+将前述关系串联，注意矩阵从右向左作用：
+\[
+  k\begin{bmatrix}u\\v\\1\end{bmatrix}
+   =AF[R\mid t]P_w^h
+   =\underbrace{K[R\mid t]}_{M}P_w^h,
+  \qquad
+  K=AF=\begin{bmatrix}-f/s_x&0&o_x\\0&-f/s_y&o_y\\0&0&1\end{bmatrix}.
+\]
+\begin{itemize}
+  \item \textbf{Intrinsic parameters（内参）：}描述相机内部的投影与像素换算，如焦距、像素尺寸和主点位置，组成 $K$。
+  \item \textbf{Extrinsic parameters（外参）：}描述世界坐标系与相机坐标系的关系，组成 $[R\mid t]$。仅移动或转动相机、保持内部设置不变时，改变的是外参。
+\end{itemize}
+模型中 $f,s_x,s_y$ 通过两个比值 $f/s_x,f/s_y$ 出现，不能把三个物理量直接当作三个独立可辨识的内参。
+
+\textbf{符号约定。}以上 $K$ 沿用主讲义的反向坐标轴。翻转课堂 p.~14 另给正对角的 $K$；该题应直接使用题给矩阵，不额外添加负号，见\relatedexercise{SC4061-L11-E03}{构造与使用投影矩阵}。
+
+\subsubsection*{齐次输出与整体尺度}
+
+$M$ 是 $3\times4$ projection matrix（投影矩阵）。若
+$MP_w^h=(a,b,c)^T$，则
+\[
+  \boxed{(u,v)=(a/c,b/c)},\qquad c\ne0.
+\]
+一般投影矩阵有十二个元素，但 $M$ 与任意非零倍数 $\alpha M$ 给出相同像素坐标，因此只有 $12-1=11$ 个自由度。这是\emph{一般}投影矩阵的计数；已固定内参或加入零 skew（轴倾斜项）等约束时，独立自由度会减少。
+
+固定尺度可选择一个非零矩阵元素归一化为 $1$。讲义采用 $m_{34}=1$ 的写法，要求原来的 $m_{34}\ne0$；该元素为零时应选择其他非零元素，不表示投影模型失效。
+
+\subsection{一分钟回顾}
+
+世界点先经 $RP_w+t$ 转到相机坐标，再按 $x=fX_c/Z_c,\ y=fY_c/Z_c$ 投影，最后根据像素尺寸、主点和轴方向转换为 $(u,v)$。三段合并为 $k(u,v,1)^T=K[R\mid t]P_w^h$；矩阵输出必须归一化。内参描述相机内部成像，外参描述相机与世界的相对位置和方向。透视投影不能保留唯一深度，整体缩放投影矩阵也不会改变成像位置。

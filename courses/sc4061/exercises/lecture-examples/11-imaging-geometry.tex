@@ -1,0 +1,157 @@
+% Related lecture: SC4061-L11.
+% Source: LEC07 Imaging Geometry - Flipping Session, file pp. 11, 13--14.
+% Original lecture examples; conversational checks and miniature quizzes excluded.
+% Source pages visually checked and numerical calculations independently verified.
+
+\exercisegroup{SC4061-L11-EX}{第 11 讲：成像几何}
+
+\exercisemeta
+  {SC4061-L11-EX}
+  {2026-10-27}
+  {LEC07 Imaging Geometry -- Flipping Session，文件 pp.~11、13--14}
+  {题干与计算已按原页核对；单位假设与坐标约定已注明}
+  {学习范围已确认（2026-10-27）}
+
+\exercisequestion{SC4061-L11-E01}{旋转与平移的先后顺序}
+\nopagebreak[4]
+
+\textbf{来源：}翻转课文件 p.~11，Peer-Instruction Question 2。
+\textbf{对应：}\relatedtopic{SC4061-L11-T01}{世界坐标到相机坐标}。
+
+\textbf{题目。}在同一固定坐标系中，点与平移向量分别为
+$\bm P=(1,0,0)^T$、$\bm T=(1,0,0)^T$。
+令 $R$ 表示绕 $Z$ 轴逆时针旋转 $90^\circ$
+（从 $+Z$ 端看向原点）。比较先旋转后平移与先平移后旋转的结果，
+判断两种操作能否任意交换顺序。
+
+\begin{checkedsolution}
+使用列向量与右手旋转约定，
+\[
+  R=\begin{bmatrix}0&-1&0\\1&0&0\\0&0&1\end{bmatrix}.
+\]
+先旋转后平移为
+\[
+  R\bm P+\bm T
+  =\begin{bmatrix}0\\1\\0\end{bmatrix}
+   +\begin{bmatrix}1\\0\\0\end{bmatrix}
+  =\boxed{\begin{bmatrix}1\\1\\0\end{bmatrix}}.
+\]
+先平移后旋转为
+\[
+  R(\bm P+\bm T)
+  =R\begin{bmatrix}2\\0\\0\end{bmatrix}
+  =\boxed{\begin{bmatrix}0\\2\\0\end{bmatrix}}.
+\]
+后一操作把平移向量也旋转为 $R\bm T$，因此通常不等于前者。
+两者相同的条件是 $R\bm T=\bm T$，例如平移沿旋转轴方向；
+不能由这些特殊情形推出一般可交换。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L11-E02}{从世界坐标到像素坐标}
+\nopagebreak[4]
+
+\textbf{来源：}翻转课文件 p.~13，Peer-Instruction Question 4。
+\textbf{对应：}\relatedtopic{SC4061-L11-T01}{外部坐标变换}、
+\relatedtopic{SC4061-L11-T02}{透视投影}、
+\relatedtopic{SC4061-L11-T03}{图像平面到像素坐标}、
+\relatedtopic{SC4061-L11-T04}{相机内参与外参}。
+
+\textbf{题目。}相机满足 $\bm P_c=R\bm P_w+\bm T$，给定
+\[
+  \bm P_w=\begin{bmatrix}2\\1\\10\end{bmatrix},\qquad
+  R=I,\qquad
+  \bm T=\begin{bmatrix}1\\-1\\0\end{bmatrix},\qquad
+  f=20\,\mathrm{mm},
+\]
+\[
+  s_x=s_y=0.01\,\mathrm{mm/pixel},\qquad
+  (o_x,o_y)=(320,240)\ \mathrm{pixel}.
+\]
+求相机坐标、以毫米计的图像平面坐标与像素坐标；
+再求仅将 $Z_c$ 加倍后的像素坐标，并区分题中的内参和外参。
+采用该页示意图的约定：像素轴与图像平面的对应轴方向相反，故
+$u=o_x-x/s_x$、$v=o_y-y/s_y$。
+
+\begin{checkedsolution}
+\textbf{单位说明：}原页未注明 $\bm P_w$ 与 $\bm T$ 的长度单位。
+本解假设二者使用同一长度单位，不额外假定为毫米。
+
+先完成外部坐标变换：
+\[
+  \bm P_c=R\bm P_w+\bm T
+  =\boxed{\begin{bmatrix}3\\0\\10\end{bmatrix}}.
+\]
+因为 $X_c/Z_c$、$Y_c/Z_c$ 无量纲，结合以毫米计的焦距得到
+\[
+  x=f\frac{X_c}{Z_c}=20\frac3{10}=6\,\mathrm{mm},\qquad
+  y=f\frac{Y_c}{Z_c}=0.
+\]
+再按轴方向、像素尺寸和主点偏移换算：
+\[
+  u=320-\frac6{0.01}=-280,\qquad
+  v=240-\frac0{0.01}=240,
+  \qquad \boxed{(u,v)=(-280,240)}.
+\]
+负坐标是该模型下的有效投影结果；按左上角为像素原点的图示，它落在记录区域左侧。
+
+当 $Z_c$ 从 10 加倍到 20 时，$x$ 变为 $3\,\mathrm{mm}$，$y$ 仍为零，因此
+\[
+  \boxed{(u',v')=(320-300,240)=(20,240)}.
+\]
+一般地，深度加倍使\emph{相对主点的偏移}减半：
+\[
+  u'-o_x=\frac{u-o_x}{2},\qquad
+  v'-o_y=\frac{v-o_y}{2}.
+\]
+它不要求像素坐标本身减半。
+
+Intrinsic parameters（内参）为 $f,s_x,s_y,o_x,o_y$，
+extrinsic parameters（外参）为 $R,\bm T$；$\bm P_w$ 是场景点。
+这里 $\bm T$ 是 world-to-camera 变换中的平移项，
+不能直接当作相机中心在世界坐标中的位置。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L11-E03}{构造投影矩阵与齐次归一化}
+\nopagebreak[4]
+
+\textbf{来源：}翻转课文件 p.~14，Peer-Instruction Question 5。
+\textbf{对应：}\relatedtopic{SC4061-L11-T04}{组合投影矩阵与自由度}。
+
+\textbf{题目。}给定
+\[
+  K=\begin{bmatrix}500&0&320\\0&500&240\\0&0&1\end{bmatrix},
+  \qquad R=I,\qquad
+  \bm t=\begin{bmatrix}1\\0\\0\end{bmatrix}.
+\]
+构造 $M=K[R\mid\bm t]$，并求世界点 $\bm P_w=(1,2,5)^T$ 的像素坐标。
+解释一般 $3\times4$ 投影矩阵为何有 11 个独立自由度，
+以及将本题 $M$ 的每个元素乘以 3 是否改变投影结果。
+
+\begin{checkedsolution}
+本题\emph{直接指定} $K$ 的前两个对角元素为正，采用的是相应的坐标约定；
+按题给矩阵运算，不再额外添加上一题的轴向负号。
+\[
+  M=K[R\mid\bm t]
+   =\boxed{\begin{bmatrix}
+       500&0&320&500\\
+       0&500&240&0\\
+       0&0&1&0
+     \end{bmatrix}}.
+\]
+将世界点补成齐次坐标后，
+\[
+  M\begin{bmatrix}1\\2\\5\\1\end{bmatrix}
+   =\begin{bmatrix}2600\\2200\\5\end{bmatrix}.
+\]
+末分量为 5，须先做齐次归一化，才得到像素坐标：
+\[
+  \boxed{(u,v)=\left(\frac{2600}{5},\frac{2200}{5}\right)=(520,440)}.
+\]
+若把矩阵整体乘以 3，结果为 $(7800,6600,15)^T$，
+除以末分量后仍为 $(520,440)$。
+一般地，任意非零公共尺度 $\lambda$ 都满足 $M\sim\lambda M$；
+因此一般满秩 $3\times4$ 投影矩阵的 12 个元素只对应
+$12-1=\boxed{11}$ 个独立自由度。
+此处讨论的是\emph{一般矩阵}；若内参 $K$ 已固定，
+可变化的刚体外参只有旋转 3 个和平移 3 个自由度。
+\end{checkedsolution}
