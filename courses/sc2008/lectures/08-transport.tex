@@ -1,0 +1,193 @@
+% Based on templates/lecture.tex. Actual notes lecture 08; 2026-10-27, Week 11.
+% Recorded: SC2008_M2-L4_Transport.pdf, PDF pp. 1--86.
+% Part I: PDF 1--44 = printed 1--44; Part II: PDF 45--86 = printed 1--42.
+% Recorded PDF 87--92 is explicitly optional, not examined or covered in lecture.
+% Live: SC2008 Lecture Week 11.pdf, PDF pp. 1--69; optional reference pp. 70--73.
+% Transcripts 81045 and 81046 cover recorded Parts I and II; no timestamps.
+% Sources and numerical examples checked; typeset notes await user review.
+% Conversational checks and learner responses are excluded.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
+\section{第 08 节课：Transport Layer}
+\label{lecture:SC2008-L08}
+
+\textbf{日期与资料：}2026-10-27（Week 11）。录播M2-L4 Transport的PDF pp.~1--86，字幕81045、81046依次对应其Part I、II；现场Week 11的主体为pp.~1--69，pp.~70--73为参考附页。以下页码均指PDF页码。第08节沿用实际学习顺序，Week 11为教学周。CUBIC、BBR、QUIC仅作理解，不考；录播pp.~87--92的旧版算法附录不属本次授课范围。
+
+IP与路由把packet送到目标主机接口；transport layer（运输层）进一步服务于两端程序。以文件上传为主线：先确定通信端点，再建立字节顺序与丢失恢复，随后控制发送量，最后由应用判断文件是否保存成功。
+
+\lecturetopic{SC2008-L08-T01}{程序端点、TCP/UDP与socket}
+
+\textbf{端点与分发。}Port（端口号）为16位，范围0--65535；0--1023为well-known ports（熟知端口），例如DNS 53、HTTP 80、HTTPS 443、SSH 22。客户端通常使用操作系统分配的临时端口。IPv4首部的Protocol字段先区分TCP（6）、UDP（17）等，再根据端口及协议的连接信息分发给通信端点。Multiplexing（多路复用）让多个程序共用下层服务；demultiplexing（多路分解）把到达数据分给对应端点。
+
+TCP用\textbf{源IP、源端口、目的IP、目的端口}这四元组区分连接。多个客户端可同时连接服务器的8080端口；NAT可能改写远端看到的IP或端口。端口不等同于物理插口，也不表示服务器只能处理一位客户端。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}p{2.1cm}XX@{}}
+\toprule
+服务 & TCP & UDP \\
+\midrule
+数据形式 & 可靠、有序byte stream（字节流）；不保留应用消息边界 & 独立datagram（数据报）；保留数据报边界 \\
+连接与恢复 & 握手、确认、重传、去重和按序交付 & 无内置握手、ACK、重传或顺序保证 \\
+发送控制 & 提供流量控制和拥塞控制 & 上层应用或协议自行承担所需控制 \\
+首部 & 最少20 B，带选项最多60 B & 固定8 B \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+UDP首部由四个16位字段组成：源端口、目的端口、length（含首部的数据报长度）、checksum（校验和）。TCP首部还包含32位sequence/acknowledgement numbers、控制标志、接收窗口及可选项；header length以4 B为单位。校验和用于发现损坏，不会自行纠错。TCP段或UDP数据报外面再封装IP包与链路帧；IP本身仍是best-effort（尽力而为）服务。
+
+\textbf{按应用选择服务。}文件、邮件和HTTP/1.1、HTTP/2需要完整数据，适合TCP。简单DNS查询常用UDP，由应用决定超时重试。实时媒体和游戏位置更新可更重视时效性：播放截止100 ms时，40 ms到达有用，恢复后160 ms才到可能已经失效。若更新42、43都是独立完整快照，43先显示后应丢弃迟到的42；增量更新不能直接套用这个前提。UDP之上仍可为关键事件加入消息ID、ACK、重传、去重及发送控制。
+
+机器人可把观察结果发给本地\texttt{255.255.255.255:10020}：广播IP选择本地广播域，UDP端口选择监听程序，路由器不转发该有限广播。UDP也支持普通单播，交付仍无保证。
+
+\textbf{Socket（套接字）是程序接口。}普通TCP socket把分段、确认、重传和拥塞控制交给操作系统，应用负责消息格式与业务含义。服务端\texttt{bind}绑定地址和端口，\texttt{listen}监听；客户端\texttt{connect}请求连接，服务端\texttt{accept}取得该连接的socket，原监听socket继续接受其他客户端。\texttt{accept}是API调用，并非握手中的一个packet。
+
+UDP常用\texttt{sendto}/\texttt{recvfrom}发送、接收单个数据报；它也可调用\texttt{connect}，但没有TCP式握手。成功发送调用不代表远端已收到。普通TCP的\texttt{recv}则可能只返回部分消息，接收程序需持续累积并解析。直接串口/UART连接采用兼容设置和约定格式，不需要TCP/UDP端口。
+
+\lecturetopic{SC2008-L08-T02}{字节流、连接与可靠交付}
+
+\textbf{分段与消息边界。}MSS（最大报文段数据长度）只计TCP数据，不含TCP/IP首部。若链路MTU为1500 B、IPv4与TCP首部各20 B，则MSS为1460 B；2500 B数据在MSS=1000 B时可分成1000、1000、500 B。题目给定其他MSS或首部长度时按题设计算。
+
+应用写入、网络分段、应用读取的边界可以不同：
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+阶段 & 同一串有序字节的可能分块 \\
+\midrule
+应用写入 & \texttt{ABCD | EFGH | IJKL} \\
+TCP分段 & \texttt{ABCDEF | GHIJKL} \\
+应用读取 & \texttt{ABC | DEFGHIJ | KL} \\
+\bottomrule
+\end{tabular}
+\end{center}
+因此应用可先发送长度字段，再累积指定字节数，例如“长度5000，随后5000 B正文”。TCP不自行识别文件或应用消息的结束。
+
+\textbf{两端各有一套字节编号。}Sequence number（SN，序列号）是本段首数据字节的编号；acknowledgement number（AN，确认号）是本段发送方下一步期待从对端收到的字节编号，累计确认该方向此前所有连续字节。若SN=2001、数据400 B且之前无缺口，则占据2001--2400，接收方回复AN=2401。缺口未填时，即使更晚字节抵达，AN仍停在缺口处。
+
+SN描述自己的发送流，AN描述收到对方发送流的进度；数据段可同时捎带对另一方向的ACK。ACK标志表明确认字段有效。普通数据每字节占一个序列号，SYN与FIN各占一个，纯ACK不占：
+\[
+ \boxed{\text{next SN}=\text{SN}+\text{data bytes}
+       +\mathbf{1}_{\mathrm{SYN}}+\mathbf{1}_{\mathrm{FIN}}}.
+\]
+SN为32位，可回绕；本讲计算远离回绕边界。Wireshark可将SYN显示为相对编号0、首数据字节为1，实际初始序列号未必为0。
+
+\textbf{建立与关闭。}三次握手依次为SYN、SYN+ACK、ACK，双方交换initial sequence number（ISN，初始序列号）并确认各自起点已到达对端。第三条确认服务器的ISN。连接是两端状态，无须预留物理线路，也不保证应用准许上传。FIN关闭一个发送方向，另一方向仍可继续发送；常见FIN/ACK/FIN/ACK中的中间两条可合并。RST用于异常中止或拒绝。完整双向计数见\relatedexercise{SC2008-L08-E01}{建立、数据与关闭会话}。
+
+\textbf{丢失恢复。}损坏段校验失败后丢弃，按丢失处理；重复字节被去重，不再次交给应用；本讲假设接收方缓存乱序段，缺口之后的字节暂不交付。后者造成head-of-line blocking（HOL，队头阻塞）。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.8cm}XX@{}}
+\toprule
+信号 & 含义 & 发送方响应 \\
+\midrule
+Timeout（超时） & 最早尚未确认的数据未及时得到确认 & 超时后重传最早未确认段 \\
+Three duplicate ACKs & 后续段到达，接收方仍在等待同一缺口 & Fast retransmit（快速重传），不等计时器到期 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+三个重复ACK不含最初那份ACK；重复通常由后续乱序段到达触发。少量重复也可能来自重排，三个重复是可能丢失的信号。若没有足够后续段抵达，仍依赖计时器。RTT（往返时间）是发送至确认返回的时间，RTO（重传超时）结合平滑RTT和波动余量；过短会误重传，过长会延误恢复。ACK丢失也可能造成重传，接收方去重后重新确认。见\relatedexercise{SC2008-L08-E02}{缺口、重复ACK与累计确认}。
+
+\textbf{运输成功与业务成功。}TCP ACK确认字节已收到，字节可能还在接收缓冲区。服务器应用随后才读取、保存和验证文件；磁盘满时仍可能返回\texttt{Storage error}。上传协议应定义\texttt{Saved successfully}等反向应用消息。文件正文结束由协议格式确定，连接可继续使用；FIN表示发送方向结束。
+
+\lecturetopic{SC2008-L08-T03}{发送额度：流量控制与拥塞控制}
+
+\textbf{两种不同瓶颈。}Flow control（流量控制）保护接收缓冲区，接收方在TCP窗口字段中通告receive window（rwnd，接收窗口）。应用读取释放空间后，rwnd可增大而AN保持不变。rwnd=0时暂停普通新数据发送，TCP仍可探测窗口更新。
+
+Congestion control（拥塞控制）保护网络路径；即使接收方很空闲，路由器也可能过载。三路各40 Mbit/s的上传汇入60 Mbit/s出口时，队列积压、时延增长，满后丢包。过度重传可使goodput（不计重传的有效交付速率）下降，严重时形成congestion collapse（拥塞崩溃）。发送方维护congestion window（cwnd，拥塞窗口）并依据反馈调整负载。
+
+\textbf{窗口限制尚未确认的总量。}Outstanding data（在途/尚未确认数据）是已发送但发送方尚未收到确认的数据，可能已经抵达接收方。若rwnd用B、cwnd用MSS个数，则
+\[
+ \boxed{W=\min(rwnd,\ cwnd\times MSS)},\qquad
+ \boxed{\text{new allowance}=\max(0,W-\text{outstanding})}.
+\]
+若cwnd已用字节表示，不再乘MSS。只考虑接收窗口时，允许的末字节号为$AN+rwnd-1$；ACK与新rwnd一起决定窗口边界。下图为AN=2001、rwnd=2000 B、已发至3500的情形：
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm,font=\small]
+ \draw[fill=black!6] (0,0) rectangle (3,0.75);
+ \draw[fill=noteBlue!18] (3,0) rectangle (7,0.75);
+ \draw[fill=green!12!white] (7,0) rectangle (10,0.75);
+ \draw[fill=black!6] (10,0) rectangle (14,0.75);
+ \node at (1.5,0.39) {已确认};
+ \node at (5,0.39) {已发、未确认};
+ \node at (8.5,0.39) {现在可新发};
+ \node at (12,0.39) {尚不允许};
+ \node at (1.5,-0.3) {1001--2000};
+ \node at (5,-0.3) {2001--3500};
+ \node at (8.5,-0.3) {3501--4000};
+ \node at (12,-0.3) {4001起};
+ \draw[<->,thick,noteBlue] (3,1.02)--(10,1.02)
+   node[midway,above] {接收窗口：$1500+500=2000$ B};
+\end{tikzpicture}
+
+\small 依据录播p.~58重绘；各区块宽度为示意，不按字节数比例。
+\end{center}
+
+\textbf{课程中的窗口增长模型。}一轮约为一个RTT，假设待发数据充足、rwnd不限制、无丢失且每个完整段得到一个新数据ACK。初始cwnd=1 MSS；slow start（慢启动）每个新ACK加1 MSS，故每轮近似翻倍。到ssthresh（慢启动阈值）后，congestion avoidance（拥塞避免）每轮约加1 MSS。阈值决定增长方式，并非最大窗口。
+
+课程按轮计算时把翻倍封顶到阈值：ssthresh=12时为$1,2,4,8,12,13,14,\ldots$。翻倍依赖ACK假设：cwnd=2发送两段，若分别ACK则变4；若只收到一份累计ACK，在上述按ACK增长规则下只变3。
+
+\textbf{Tahoe与Reno的退让。}发生损失信号时，先令
+\[
+ ssthresh=\left\lfloor\frac{\text{损失前的 }cwnd}{2}\right\rfloor.
+\]
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}p{2.5cm}XX@{}}
+\toprule
+事件 & Tahoe & Reno \\
+\midrule
+Timeout & cwnd=1，重新慢启动 & cwnd=1，重新慢启动 \\
+三个重复ACK & 快速重传，cwnd=1，重新慢启动 & 快速重传与恢复；恢复后cwnd=ssthresh，继续拥塞避免 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+Reno把三个重复ACK视为仍有数据流动的证据，保留部分窗口。表中是本课程简化模型和\emph{恢复后}的cwnd；阈值按损失前cwnd计算，不能把旧阈值直接减半。窗口额度、完整轨迹和读图见\relatedexercise{SC2008-L08-E03}{窗口计算}、\relatedexercise{SC2008-L08-E04}{Tahoe/Reno轨迹}。
+
+\lecturetopic{SC2008-L08-T04}{窗口、RTT与传输时间}
+
+一批$W$字节发出后需等待确认释放额度，因此window-limited throughput（窗口受限吞吐量）约为$W/RTT$。与路径最窄的可用容量共同作用：
+\[
+ \boxed{\text{throughput}\approx
+ \min\!\left(\text{bottleneck capacity},\frac{W}{RTT}\right)},
+ \qquad
+ \boxed{\text{time}\approx\frac{\text{file size}}{\text{throughput}}}.
+\]
+假设有效窗口与RTT固定、无丢失，并忽略启动及首部开销；容量必须统一成B/s或bit/s。较快的接入链路无法消除长RTT、小窗口或远端瓶颈。100 MB文件的完整估算见\relatedexercise{SC2008-L08-E05}{吞吐率与传输时间}。
+
+未经window scaling（窗口扩大）的16位接收窗口最多表示65535 B；扩大选项用协商的倍率支持更大窗口。抓包可直接读取通告的rwnd以及SN/AN，但不直接显示发送端内部cwnd，也不能仅凭一小段抓包可靠识别拥塞控制算法。
+
+\lecturetopic{SC2008-L08-T05}{理解性拓展：CUBIC、BBR与QUIC}
+
+\textbf{CUBIC与BBR：改变发送控制。}Reno在拥塞避免中每RTT只增约1 MSS，大窗口减小后恢复缓慢；CUBIC以立方函数增长曲线较快返回先前窗口附近，在旧参考点附近放缓，再尝试向上探索，且有自己的减窗规则。若上传填满路由器的深队列，视频包可能在尚未丢包时就产生长延迟；BBR根据ACK估计交付带宽及低排队RTT，用于安排发包节奏和在途量，持续探测条件变化。两者仍需丢失恢复，表现依赖路径、竞争流量和版本，不保证始终优于其他方法。它们可控制TCP发送，可靠有序的字节流服务不变。
+
+\textbf{QUIC：在UDP上组织可靠流。}层次为HTTP/3 $\to$ QUIC $\to$ UDP $\to$ IP。QUIC加入可靠流、确认与恢复、流量及拥塞控制，并集成TLS 1.3安全握手。UDP只负责承载，不自动获得这些保证。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.8cm}X@{}}
+\toprule
+TCP带来的代价 & QUIC的对应机制与边界 \\
+\midrule
+单个有序字节流的缺口阻挡后续资源 & 同一连接内提供独立有序streams（流）。HTML流缺字节仍需等待；完整图片流可交付。流共享拥塞控制，应用依赖仍可能造成等待。 \\
+安全连接先TCP握手，再TLS握手 & 合并运输层与TLS 1.3建立。题设下全新TCP+TLS约2 RTT，QUIC约1 RTT；不含DNS、后续请求响应。 \\
+网络切换改变TCP四元组 & Connection ID识别已有连接，可支持地址改变后的路径迁移；仍需验证新路径并调整发送速率，不保证零中断。 \\
+协议格式难以更新 & 在应用库内运行，经UDP承载，加密大部分内部细节，减少OS升级及中间设备依赖对部署的限制。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+握手时间比较采用无丢失、无Retry、无会话恢复及TCP Fast Open等简化条件。独立流交付还假设HTTP头部已可用且没有缺失数据造成的应用依赖。QUIC ACK确认包，stream offset定位各流字节，不能直接套用TCP的SN练习；CUBIC、BBR也可用于其发送控制。
+
+浏览器Network面板的Protocol列中，\texttt{h3}表示HTTP/3经QUIC/UDP，\texttt{h2}表示HTTP/2经TCP/TLS；UDP不可用时可回退TCP。第一次访问出现\texttt{h2}不表示服务器必然不支持HTTP/3。交付与应用观察的情境见\relatedexercise{SC2008-L08-E06}{保存结果、状态更新与独立流}。
+
+\subsection{一分钟回顾}
+
+IP与端口确定通信端点，socket把服务交给应用。TCP维护双向字节序列，用累计ACK、重传和缓存恢复有序交付，应用自行定义消息边界与保存成功的含义。可新发量等于较小窗口减去尚未确认数据；慢启动与拥塞避免控制增长，Tahoe/Reno按损失信号退让。窗口和RTT共同限制吞吐率。UDP让上层选择恢复策略，QUIC进一步提供独立流、安全建立和迁移；CUBIC、BBR、QUIC只需理解动机与边界。
+\endgroup

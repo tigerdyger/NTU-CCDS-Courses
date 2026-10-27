@@ -1,0 +1,195 @@
+% Based on templates/lecture-example.tex. Lecture examples only.
+% Recorded = SC2008_M2-L4_Transport.pdf; Live = SC2008 Lecture Week 11.pdf.
+% All page references use PDF page numbers, not Part II's restarted slide numbers.
+% Necessary conditions restated; answers checked; typeset notes await review.
+% No conversational checks or learner response records.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC2008-L08-EX}{第 08 讲：Transport Layer}
+
+\textbf{日期与来源：}2026-10-27。录播指M2-L4 Transport，现场指Week 11；以下均为讲义例题或演示情境的合并整理，页码按PDF计。
+
+\exercisequestion{SC2008-L08-E01}{建立、双向数据与关闭的字节计数}
+
+\textbf{来源与关联：}录播pp.~34--40；\relatedtopic{SC2008-L08-T02}{序列号与连接}。
+
+\textbf{题目。}客户端ISN=800，服务器ISN=3000。三次握手后，客户端发送120 B，服务器用带ACK的数据段回复500 B，客户端纯ACK；随后客户端发FIN，服务器先ACK再FIN，客户端最后确认。无丢失或其他数据，求各段SN与AN。
+
+\begin{workedsolution}
+两个方向独立推进：客户端$800\to801\to921\to922$，服务器$3000\to3001\to3501\to3502$，依次对应SYN前、SYN后、数据后、FIN后。纯ACK不推进自身SN：
+\begin{center}
+\small
+\begin{tabular}{@{}cllrr@{}}
+\toprule
+次序 & 方向 & 内容 & SN & AN \\
+\midrule
+1 & 客户端$\to$服务器 & SYN & 800 & --- \\
+2 & 服务器$\to$客户端 & SYN+ACK & 3000 & 801 \\
+3 & 客户端$\to$服务器 & ACK & 801 & 3001 \\
+4 & 客户端$\to$服务器 & 120 B+ACK & 801 & 3001 \\
+5 & 服务器$\to$客户端 & 500 B+ACK & 3001 & 921 \\
+6 & 客户端$\to$服务器 & ACK & 921 & 3501 \\
+7 & 客户端$\to$服务器 & FIN+ACK & 921 & 3501 \\
+8 & 服务器$\to$客户端 & ACK & 3501 & 922 \\
+9 & 服务器$\to$客户端 & FIN+ACK & 3501 & 922 \\
+10 & 客户端$\to$服务器 & ACK & 922 & 3502 \\
+\bottomrule
+\end{tabular}
+\end{center}
+例如第5段的SN=3001是服务器自己的首数据字节；AN=921确认客户端801--920的120 B。第8、9段服务器尚未在其数据之后发送新数据，故SN相同；FIN随后占用3501。第1段没有有效ACK字段。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L08-E02}{缺口、重复ACK与累计确认}
+
+\textbf{来源与关联：}录播pp.~55--56；现场pp.~14--19；\relatedtopic{SC2008-L08-T02}{丢失恢复}。
+
+\textbf{题目。}连接已建立，之前无缺口；发送方连续发送200 B的段，起点依次为6001、6201、6401、6601、6801，仅6201段丢失。其余按顺序到达，接收方缓存乱序数据并对每段发ACK。求各次AN、快速重传时机、重传SN、补齐缺口后的AN，以及此前可交给应用的字节。
+
+\begin{workedsolution}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\toprule
+到达事件 & AN & 说明 \\
+\midrule
+6001--6200到达 & 6201 & 原始确认；这200 B可交给应用 \\
+6401--6600到达 & 6201 & 第1个重复ACK，后续字节缓存 \\
+6601--6800到达 & 6201 & 第2个重复ACK \\
+6801--7000到达 & 6201 & 第3个重复ACK，触发快速重传 \\
+重传6201--6400到达 & 7001 & 所有缺口补齐，一次确认至7000 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+发送方在第三个重复ACK后重传SN=6201，不等待RTO。原始ACK加三个重复ACK共四次AN=6201。缺口补齐前，6401--7000不能越过6201--6400交给应用；补齐后无需再次发送已经缓存的后三段。
+
+现场的同型例题采用1000 B段，SN为1、1001、2001、3001、4001，第二段丢失：先交付1--1000，后三段使AN=1001重复三次，重传1001--2000后回复AN=5001。若缺少足够的后续到达，超时仍是必要的恢复机制。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L08-E03}{接收窗口与当前可新发额度}
+
+\textbf{来源与关联：}录播pp.~59--61、66；\relatedtopic{SC2008-L08-T03}{双重窗口}。
+
+\textbf{题目。}下列情境相互独立。
+\begin{enumerate}[label=(\alph*)]
+ \item 接收缓冲区2000 B，初始AN=1001且为空。2000 B先发出、随后全部抵达，应用尚未读取；接着应用读走1200 B；最后再到1200 B，同时应用读走原先剩下的800 B。求各阶段AN与rwnd。
+ \item 最后收到AN=6001、rwnd=3000，已发至8000。求最远可发字节和新发额度。尚未继续发送，又收到AN=7001、rwnd=1500，重新计算。
+ \item AN=5001、rwnd=3500 B、cwnd=4 MSS、MSS=1000 B，5001--7000已发但未确认。求当前可新发额度和一种合法分段。
+\end{enumerate}
+
+\begin{workedsolution}
+\textbf{(a)} AN记录连续接收进度，rwnd记录缓冲空闲量：
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+阶段 & 缓冲中未读数据/B & AN & rwnd/B \\
+\midrule
+初始 & 0 & 1001 & 2000 \\
+2000 B已发、尚未抵达 & 0 & 1001 & 2000 \\
+全部抵达，尚未读取 & 2000 & 3001 & 0 \\
+应用读走1200 B & 800 & 3001 & 1200 \\
+再到1200 B，同时读走旧800 B & 1200 & 4201 & 800 \\
+\bottomrule
+\end{tabular}
+\end{center}
+在第二行，接收方虽仍空闲，发送方已有2000 B未确认，已用完额度，不能继续额外发一个完整窗口。
+
+\textbf{(b)} 初始右边界$6001+3000-1=9000$，可新发8001--9000共1000 B。更新后右边界$7001+1500-1=8500$，已发末字节仍是8000，可新发500 B。窗口收缩可抵消ACK前进带来的额度释放。
+
+\textbf{(c)} $W=\min(3500,4\times1000)=3500$ B，减去已在途的2000 B，余$\boxed{1500\text{ B}}$，可发7001--8500。一种分段为1000 B加500 B；MSS是上限。假设窗口保持不变且有数据待发。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L08-E04}{Tahoe/Reno轨迹、读图与累计发送量}
+
+\textbf{来源与关联：}录播pp.~70--77；\relatedtopic{SC2008-L08-T03}{课程拥塞控制模型}。
+
+\textbf{题目。}采用课程按轮模型：一轮约1 RTT，初始cwnd=1 MSS，每段一个新数据ACK，rwnd不限制，慢启动翻倍不超过ssthresh；以下cwnd均用MSS表示。
+\begin{enumerate}[label=(\alph*)]
+ \item 初始ssthresh=16。Tahoe在第9轮超时，列出前16轮窗口。
+ \item 相同初始条件，Reno在第9轮收到三个重复ACK，在第13轮超时，列出前18轮窗口。
+ \item 对前9轮进入损失事件前的发送，求第50与第100个新段在哪轮发出。
+ \item 下图是另一条独立轨迹。求初始阈值、慢启动轮次、第8与第12轮末发生的事件，并识别算法。
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[x=0.64cm,y=0.18cm,font=\small]
+ \draw[->] (0,0)--(18.3,0) node[right] {轮次};
+ \draw[->] (0,0)--(0,17.5) node[above] {cwnd / MSS};
+ \foreach \y in {0,4,8,12,16} {
+   \draw[black!12] (0,\y)--(17.5,\y);
+   \node[left] at (0,\y) {\y};
+ }
+ \foreach \x in {1,4,5,8,9,12,13,16,17} {
+   \draw (\x,0)--(\x,-0.35);
+   \node[below] at (\x,-0.35) {\x};
+ }
+ \draw[ntuRed,dashed,thick] (0,12)--(8.5,12)--(8.5,7)--(12.5,7)--(12.5,5)--(17.5,5);
+ \draw[noteBlue,thick] plot coordinates
+   {(1,1)(2,2)(3,4)(4,8)(5,12)(6,13)(7,14)(8,15)(9,7)(10,8)(11,9)(12,10)(13,1)(14,2)(15,4)(16,5)(17,6)};
+ \foreach \x/\y in {1/1,2/2,3/4,4/8,5/12,6/13,7/14,8/15,9/7,10/8,11/9,12/10,13/1,14/2,15/4,16/5,17/6}
+   \fill[noteBlue] (\x,\y) circle (1.6pt);
+ \draw[ntuRed,dashed,thick] (11.2,16.5)--(12.1,16.5);
+ \node[right] at (12.1,16.5) {ssthresh};
+\end{tikzpicture}
+
+\small 依据录播p.~76的数据重绘；虚线为各阶段阈值。
+\end{center}
+
+\begin{workedsolution}
+\textbf{(a)、(b) 共用的前9轮。}先慢启动到16，再每轮加1：
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+轮次 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\midrule
+cwnd & 1 & 2 & 4 & 8 & 16 & 17 & 18 & 19 & 20 \\
+累计新段数 & 1 & 3 & 7 & 15 & 31 & 48 & 66 & 85 & 105 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Tahoe：}第9轮超时令ssthresh=10，故第10--16轮依次为
+\[
+ 1,\ 2,\ 4,\ 8,\ 10,\ 11,\ 12.
+\]
+\textbf{Reno：}第9轮三个重复ACK后ssthresh=10，恢复后继续拥塞避免；第10--13轮为$10,11,12,13$。第13轮超时令ssthresh=$\lfloor13/2\rfloor=6$，第14--18轮为$1,2,4,6,7$。
+
+\textbf{(c)} 第6轮累计48、第7轮累计66，故第50段在第7轮；第8轮累计85、第9轮累计105，故第100段在第9轮。本题统计新段的顺序，不是TCP字节SN；累计表仅用于尚未进入损失与重传的部分。
+
+\textbf{(d)} 初始阈值12，前五轮为$1,2,4,8,12$。第8轮后$15\to7=\lfloor15/2\rfloor$，随后线性增长，表示三个重复ACK后的Reno恢复；Tahoe会回到1。第12轮后$10\to1$且阈值变5，表示超时。按讲义阶段标法，慢启动为第1--5及13--16轮；此图因此为Reno，不能仅凭一次回到1区分两个算法。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L08-E05}{窗口受限的吞吐率与文件传输时间}
+
+\textbf{来源与关联：}录播pp.~80--81；\relatedtopic{SC2008-L08-T04}{性能估算}。
+
+\textbf{题目。}(a) 上传100 MB，cwnd=10段、MSS=1460 B、RTT=50 ms，接收方与链路无更小限制，求吞吐率和传输时间。(b) 相同有效窗口65535 B，在RTT分别为20 ms和200 ms时，求窗口受限吞吐率。采用1 MB=$10^6$ B、固定窗口、无损失并忽略启动及首部开销。
+
+\begin{workedsolution}
+\nopagebreak[4]
+\textbf{(a)} $W=10\times1460=14600$ B，RTT=0.05 s，故
+\[
+ \begin{aligned}
+ \text{throughput}&=\frac{14600}{0.05}
+ =292000\text{ B/s}=2.336\text{ Mbit/s},\\[3pt]
+ \text{time}&=\frac{100000000}{292000}
+ \approx342.5\text{ s}\approx5.7\text{ min}.
+ \end{aligned}
+\]
+\textbf{(b)} 分别为$65535/0.02=3276750$ B/s与$65535/0.2=327675$ B/s，即约26.2与2.62 Mbit/s。即使接入链路为1 Gbit/s，也不能绕过这两个窗口限制；若路径容量更低，还应取容量与$W/RTT$的较小值。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L08-E06}{应用观察：保存结果、状态更新与独立流}
+
+\textbf{来源与关联：}现场pp.~58--59、66--67；\relatedtopic{SC2008-L08-T01}{应用服务选择}、\relatedtopic{SC2008-L08-T02}{交付含义}、\relatedtopic{SC2008-L08-T05}{QUIC}。QUIC部分仅作理解。
+
+\textbf{情境与解答。}
+\begin{enumerate}[label=(\alph*)]
+ \item TCP确认所有上传字节，应用随后回复\texttt{Storage error}。ACK只确认接收，保存仍可能失败，应检查应用回复；不能据此判定TCP失败。
+ \item 游戏显示完整独立快照43后，快照42迟到。应丢弃42、保留43；此规则要求各快照能够独立解释。
+ \item QUIC的HTML流缺数据，独立图片流已完整，HTTP头部可用且无应用依赖。图片可交付；HTML内部仍等待缺口，多个流仍共享拥塞控制容量。
+ \item RTT=100 ms的全新连接，比较发出首个加密请求前的等待。按题设TCP+TLS 1.3约$2RTT=200$ ms，QUIC约$1RTT=100$ ms；假设无丢失、Retry、会话恢复和TCP Fast Open，不计DNS及后续请求响应，不能视作总页面加载时间。
+\end{enumerate}
+\endgroup
