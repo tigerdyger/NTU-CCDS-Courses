@@ -1,0 +1,126 @@
+% Based on templates/tutorial.tex; omit dialogue and learner-check records.
+% Source: LEC06 Image Recognition - Tutorial Problems.pdf, PDF p. 1, Q1--Q3.
+% Key: LEC06 Image Recognition - Tutorial Solutions.pdf, PDF pp. 2--12.
+% Session: 2026-10-27, teaching Week 11. All three questions answered and checked.
+
+\Needspace{12\baselineskip}
+\exercisegroup{SC4061-TUT06}{Tutorial 06：Image Recognition}
+\label{tutorial:SC4061-TUT06}
+
+{\small 2026-10-27（第十一教学周）。来源：\emph{LEC06 Image Recognition -- Tutorial Problems}，PDF p.~1，Questions 1--3；参考解答 \emph{Tutorial Solutions} pp.~2--12。题目、计数与 ROC 已核对。}
+
+\exercisequestion{SC4061-TUT06-Q01}{Visual Words 与整图表示}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L09-T03}{SIFT 描述子}；
+\relatedtopic{SC4061-L09-T04}{BoVW 共享词典与直方图}。
+
+\textbf{题目。}解释 Bag-of-Words（词袋模型）中 visual words（视觉词）的基本概念。
+
+\begin{checkedsolution}
+从训练图像提取 SIFT 局部描述子，在描述子空间中进行聚类。每个 cluster centroid（聚类中心）充当一个视觉词，代表一类常见的局部视觉模式，例如相似的边缘、角点或纹理。视觉词无需具有明确的物体语义。全部中心构成 visual vocabulary（视觉词表）：
+\[
+  \mathcal V=\{\bm v_1,\ldots,\bm v_K\},\qquad
+  \bm v_j\in\mathbb R^{128}.
+\]
+这里的 $128$ 来自 SIFT 描述子的维数，$K$ 是聚类中心数，即词表大小。
+
+表示一张图片时，将其每个局部描述子分配给最近的视觉词，再按词表顺序累计次数，得到 $K$ 维直方图。因此，\textbf{一个视觉词是 $128$ 维中心，整张图片的 BoW 表示是 $K$ 维向量}；图中关键点数量可以变化。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT06-Q02}{SPM 如何保留空间布局}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L09-T04}{BoVW 的空间信息局限}。
+
+\textbf{题目。}说明 Spatial Pyramid Matching（SPM，空间金字塔匹配）相比普通 Bag-of-Words 能改善场景分类表现的主要原因。
+
+\begin{checkedsolution}
+普通 BoW 在整张图上累计视觉词频数，丢失局部特征之间的空间布局。若两张图的视觉词种类及数量相同，即使各词的位置分布不同，全局直方图仍可相同。
+
+SPM 把图像逐层划分为更细的子区域，\textbf{每个区域分别统计同一词表上的直方图}，并按固定区域顺序组合：
+\[
+  1\times1\quad\longrightarrow\quad2\times2\quad\longrightarrow\quad4\times4.
+\]
+粗层描述整体分布，细层描述模式所在的大致位置。三个层级分别有 $1$、$4$、$16$ 个区域；若每格直方图为 $K$ 维，直接拼接得到 $(1+4+16)K=21K$ 维表示。不同层级还可加权组合。
+
+\begin{center}
+  \input{figures/tutorial-06-spm}
+  \par\smallskip
+  \refstepcounter{figure}\label{fig:sc4061-tut06-spm}
+  {\small 图~\thefigure：按参考解答 p.~8 的分层思想原创绘制。相同形状表示同类视觉词；每层观察同一组特征位置。}
+\end{center}
+
+因此，词频相同但\emph{区域分布不同}的场景可以得到不同表示，为分类增加布局线索。它保留的是分区粒度的空间信息，同一最细分区内部的排列仍可能无法区分；效果提升取决于这些布局线索对任务是否有用。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT06-Q03}{阈值评价与 ROC 曲线}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L10-T02}{Precision、Recall 与 F1}。
+
+\textbf{题目。}十个测试样本预测为正类的后验概率 $p_i$ 和真实类别如下。
+(a) 在阈值 $0.8$ 下计算 precision、recall 和 F-measure；
+(b) 绘制 ROC 曲线。
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}l*{10}{c}@{}}
+\toprule
+样本 $i$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
+\midrule
+概率 $p_i$ & 0.95 & 0.93 & 0.87 & 0.852 & 0.851 & 0.85 & 0.76 & 0.53 & 0.43 & 0.25 \\
+真实类别 & $+$ & $-$ & $-$ & $-$ & $+$ & $-$ & $-$ & $+$ & $-$ & $+$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{checkedsolution}
+\textbf{(a) 固定阈值。}约定 $p_i\ge t$ 时预测为正类。原表没有概率恰好等于 $0.8$ 的样本，因此此处用 $>$ 或 $\ge$ 得到相同结果。阈值 $t=0.8$ 时，样本 $1$--$6$ 判正，$7$--$10$ 判负：
+
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+真实类别 & 预测为正 & 预测为负 \\
+\midrule
+正类，共 4 个 & $TP=2$：$1,5$ & $FN=2$：$8,10$ \\
+负类，共 6 个 & $FP=4$：$2,3,4,6$ & $TN=2$：$7,9$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Precision（精确率）衡量判正结果中真正例的比例；recall（召回率）衡量真实正类中被检出的比例：
+\[
+  P=\frac{TP}{TP+FP}=\frac{2}{6}=\boxed{\frac13},\qquad
+  R=\frac{TP}{TP+FN}=\frac{2}{4}=\boxed{\frac12}.
+\]
+本题 F-measure 取两者的调和平均，即 $F_1$：
+\[
+  F_1=\frac{2PR}{P+R}
+     =\frac{2TP}{2TP+FP+FN}
+     =\frac{4}{4+4+2}=\boxed{\frac25}.
+\]
+
+\textbf{(b) 改变阈值，得到 ROC。}ROC 的横轴为 false positive rate（假正率），纵轴为 true positive rate（真正率）：
+\[
+  \boxed{FPR=\frac{FP}{FP+TN}=\frac{FP}{6}},\qquad
+  \boxed{TPR=\frac{TP}{TP+FN}=\frac{TP}{4}=R}.
+\]
+两条坐标轴分别以\emph{全部真实负类}和\emph{全部真实正类}为分母。Precision 的分母是预测正类数，不能作为 ROC 横轴。
+
+从 $t>0.95$ 开始，全部样本判负，曲线起点为 $(0,0)$。逐渐降低阈值，按表中分数降序把样本逐个纳入预测正类：遇到真实正类，$TP$ 加 $1$，\textbf{向上走 $1/4$}；遇到真实负类，$FP$ 加 $1$，\textbf{向右走 $1/6$}。当全部样本判正时，终点为 $(1,1)$。各步按降序连接，得到图~\ref{fig:sc4061-tut06-roc}。
+
+\begin{center}
+  \input{figures/tutorial-06-roc}
+  \par\smallskip
+  \refstepcounter{figure}\label{fig:sc4061-tut06-roc}
+  {\small 图~\thefigure：由原题数据逐点计算并重绘的 ROC；突出点对应阈值 $0.8$。}
+\end{center}
+
+阈值 $0.8$ 的点为
+\[
+  (FPR,TPR)=\left(\frac{4}{6},\frac{2}{4}\right)
+           =\boxed{\left(\frac23,\frac12\right)}.
+\]
+单个阈值决定一个点，扫描阈值得到整条曲线。计算时保留 $0.852>0.851>0.85$ 的原始精度，避免四舍五入制造并列分数、改变阶梯路径。参考解答 p.~12 用 \texttt{perfcurve(labels,scores,1)} 计算同样的 ROC 坐标。
+\end{checkedsolution}
+
+\textbf{一分钟回顾。}视觉词由局部描述子聚类得到，BoW 累计词频；SPM 分层、分区统计，补充粗略空间布局。固定阈值计算混淆矩阵与 $P,R,F_1$，改变阈值则得到以 $FPR$、$TPR$ 为坐标的 ROC。

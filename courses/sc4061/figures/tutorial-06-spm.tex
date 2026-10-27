@@ -1,0 +1,32 @@
+% Original schematic based on Tutorial 6 Solutions, PDF p. 8.
+% Identical visual words and positions are reused at all three levels.
+\begin{tikzpicture}[x=1cm,y=1cm,font=\small]
+  \foreach \shift/\level/\n/\dimension in {0/0/1/1,4.2/1/2/4,8.4/2/4/16}{
+    \begin{scope}[shift={(\shift,0)}]
+      \fill[black!2] (0,0) rectangle (2.4,2.4);
+      \ifnum\n>1
+        \pgfmathtruncatemacro{\lastdivision}{\n-1}
+        \foreach \k in {1,...,\lastdivision}{
+          \pgfmathsetmacro{\division}{2.4*\k/\n}
+          \draw[black!35,line width=0.4pt] (\division,0) -- (\division,2.4);
+          \draw[black!35,line width=0.4pt] (0,\division) -- (2.4,\division);
+        }
+      \fi
+      \draw[noteBlue,line width=0.7pt] (0,0) rectangle (2.4,2.4);
+      \foreach \x/\y in {0.28/2.12,0.93/1.45,1.49/0.29,2.12/0.91}{
+        \fill[noteBlue] (\x,\y) circle[radius=2pt];
+      }
+      \foreach \x/\y in {0.32/0.87,0.91/0.27,1.51/2.09,2.09/1.49}{
+        \fill[ntuRed] (\x-0.055,\y-0.055) rectangle (\x+0.055,\y+0.055);
+      }
+      \foreach \x/\y in {0.29/1.46,0.93/2.12,1.48/0.92,2.10/0.28}{
+        \fill[black!60] (\x,\y+0.075) -- (\x-0.065,\y-0.045)
+          -- (\x+0.065,\y-0.045) -- cycle;
+      }
+      \node[anchor=south] at (1.2,2.52) {Level \level: $\n\times\n$};
+      \node[anchor=north] at (1.2,-0.12) {拼接维数：$\dimension K$};
+    \end{scope}
+  }
+  \node[anchor=north,font=\footnotesize,black!75] at (5.4,-0.59)
+    {每格统计一个 $K$ 维直方图；相同形状与颜色表示相同视觉词。};
+\end{tikzpicture}
