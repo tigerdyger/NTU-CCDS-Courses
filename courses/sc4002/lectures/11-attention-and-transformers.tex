@@ -1,0 +1,188 @@
+% Based on templates/lecture.tex; actual class 11, 2026-10-28 (Week 11).
+% Sources: Lec4_week11.pdf pp. 4--51; Lec4_recorded.pdf pp. 4--43.
+% Transcript: 81346 - 0_id8644hz - PID 117.txt (no timestamps).
+% Live pp. 24--25 duplicate; pp. 37 and 44 are Optional.
+% Source scope and numerical examples verified; no dialogue checks retained.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\Needspace{10\baselineskip}
+\section{第 11 节课：Attention 与 Transformers}
+\label{lecture:SC4002-L11}
+
+\textbf{日期与来源：}2026-10-28（Week 11）；\texttt{Lec4\_week11.pdf} pp.~4--51、\texttt{Lec4\_recorded.pdf} pp.~4--43；字幕 81346（无时间戳）。重复内容合并，Optional 内容随节标明；笔记待审阅。
+
+\textbf{本讲主线。}从固定向量概括源句，转向按需读取各个位置；再让词与词交换信息，组合成 Transformer，最后按任务确定可见范围与输出方式。
+
+\lecturetopic{SC4002-L11-T01}{Cross-attention：每一步按需读取源句}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~4--17；录播版 pp.~4--21。
+\nopagebreak[4]
+
+将 \texttt{red car} 翻译为 \texttt{voiture rouge} 时，两个生成步骤需要关注不同源词。只把源句压入 encoder 最后一个状态，会形成 information bottleneck（信息瓶颈）。Attention 保留整组 encoder 状态 $\mathbf h_1,\ldots,\mathbf h_n$，让每个 decoder 步骤重新读取所需信息。
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+角色 & 本例中的对象 & 用途 \\
+\midrule
+Query（查询） & 当前 decoder 状态 $\mathbf s_t$ & 表达这一步的信息需求 \\
+Key（键） & 各 encoder 状态 $\mathbf h_i$ & 与 query 计算匹配分数 \\
+Value（值） & 各 encoder 状态 $\mathbf h_i$ & 提供加权汇总的内容 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+本例中 key 与 value 共用 $\mathbf h_i$；两者承担不同功能，不要求一般模型也使用相同向量。对同维列向量，未缩放的点积 attention 为
+\begin{align*}
+ e_{t,i}&=\mathbf s_t^\top\mathbf h_i, &
+ \alpha_{t,i}&=\frac{\exp(e_{t,i})}{\sum_{j=1}^{n}\exp(e_{t,j})},\\
+ \mathbf c_t&=\sum_{i=1}^{n}\alpha_{t,i}\mathbf h_i, &
+ \mathbf p_t&=\operatorname{softmax}\!\left(W_o[\mathbf s_t;\mathbf c_t]+\mathbf b_o\right).
+\end{align*}
+其中 $\mathbf c_t$ 是 context vector（上下文向量），对应录播符号 $\mathbf a_t$；$[\,;\,]$ 表示拼接。第一个 softmax 在\textbf{源位置}上分配权重，最后一个 softmax 在\textbf{目标词表}上给出预测概率。
+
+\begin{center}
+\input{figures/attention-retrieval-flow}
+\end{center}
+{\small\textit{原创流程图，依据录播版 pp.~7、14、20。Key 用于匹配，value 用于汇总；这里一个 query 产生一个上下文向量。}}
+
+注意力权重随 query 改变，不必只选择一个源词；它可以融合多处证据。把各生成步骤的权重排成矩阵，可观察 soft alignment（软对齐），但不能仅凭权重证明完整的因果解释。直接读取各源位置绕过了固定摘要瓶颈，也为远处状态提供较短的梯度通路；这有助于缓解梯度消失，不保证所有优化问题都消失。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L11-E01}{\texttt{red car} 的两步读取与输出层}。
+
+\lecturetopic{SC4002-L11-T02}{Self-attention：为每个词形成上下文表示}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~18--26；录播版 pp.~22--34。
+
+Self-attention（自注意力）让同一序列的各位置交换信息。例如 \texttt{not very good} 中，good 的表示需要结合前面的修饰与否定。它的直接输出是\textbf{每个位置的新表示}，还不是整句类别或下一词。
+
+\subsubsection{投影、匹配与汇总}
+
+批量公式采用一词一行的约定。设 $X\in\mathbb R^{n\times d}$，则
+\[
+ Q=XW_Q,\quad K=XW_K,\quad V=XW_V,
+ \qquad
+ A=\operatorname{softmax}_{\rm row}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right),
+ \qquad O=AV.
+\]
+$W_Q,W_K,W_V$ 是可学习参数，$Q,K,V$ 是当前输入产生的表示。三者来自同一序列，但投影不同，数值无需相同。$\operatorname{softmax}_{\rm row}$ 表示每个 query 分别在 key 位置上归一化。缩放因子 $\sqrt{d_k}$ 控制点积尺度；现场版算例使用缩放，录播的基础算例没有使用，不能混用。
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+对象 & 形状 & 含义 \\
+\midrule
+$W_Q,W_K$ & $d\times d_k$ & 查询与键的投影参数 \\
+$W_V$ & $d\times d_v$ & 内容投影参数 \\
+$Q,K$；$V$ & $n\times d_k$；$n\times d_v$ & 每个位置的三种表示 \\
+$A$ & $n\times n$ & 第 $i$ 行查询、第 $j$ 列被读取 \\
+$O$ & $n\times d_v$ & 每个位置一个 $d_v$ 维输出 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+单个位置的输出为 $\mathbf o_i=\sum_j A_{ij}\mathbf v_j$：加权汇总发生在\textbf{被读取的位置}上，保留 value 的特征维度。对全部 query 重复该运算，便得到 $n$ 行输出；整句汇聚需要后续 pooling，不能把两者混为一谈。
+
+\subsubsection{与 RNN 的区别及边界}
+
+RNN 的当前状态依赖前一状态；self-attention 同一层的各 query 都读取上一层已知表示，因此可并行计算。全连接 attention 使任意两个位置能在一层中直接交互，讲义的 $O(1)$ 指\emph{交互路径长度}。全体配对仍形成 $n\times n$ 的分数矩阵，总计算量不是 $O(1)$。因果生成还要限制可见范围，见\hyperref[topic:SC4002-L11-T04]{任务与掩码}。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L11-E02}{\texttt{not very good} 的缩放 attention}；\relatedexercise{SC4002-L11-E03}{录播三维例题的精确 softmax}。
+
+\lecturetopic{SC4002-L11-T03}{Transformer block：交换、加工与逐层更新}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~28--41；录播版 p.~36。多头组合公式在现场版 p.~37 标为 Optional。
+
+\subsubsection{位置与逐位置非线性}
+
+完整 self-attention 本身不内置词序：交换输入位置会相应交换输出，无法仅凭这一步区分 \texttt{dog bites man} 与 \texttt{man bites dog} 的顺序关系。讲义将同维 position embedding（位置嵌入）加到词向量：
+\[
+ \widetilde{\mathbf x}_i=\mathbf x_i+\mathbf p_i.
+\]
+Learned absolute position embeddings（可学习的绝对位置嵌入）为每个位置训练一个向量，灵活但受位置表长度限制；表外位置没有可直接查用的向量。本讲不展开其他位置编码公式。
+
+Attention 汇聚跨位置内容后，以共享的 feed-forward network（前馈网络，FFN）加工每个位置。以下单个位置公式采用列向量：
+\[
+ \operatorname{FFN}(\mathbf o_i)
+ =W_2\operatorname{ReLU}(W_1\mathbf o_i+\mathbf b_1)+\mathbf b_2.
+\]
+Attention 负责位置间的信息交换，FFN 负责逐位置的特征变换。Softmax 本身已有非线性；FFN 补充的是对表示的显式非线性加工，不应把整个 attention 称为线性运算。
+
+\subsubsection{多头、残差与归一化}
+
+Multi-head attention（多头注意力）让不同头使用各自的投影，在不同表示空间中计算权重，然后拼接并映射回模型维度：
+\[
+ \mathrm{head}_r=\operatorname{Attention}(Q_r,K_r,V_r),\qquad
+ \operatorname{MultiHead}=\operatorname{Concat}(\mathrm{head}_1,\ldots,\mathrm{head}_H)W^O.
+\]
+讲义以实体关联、语法关联和代词指代说明不同头可能关注的内容；这些是可能学到的模式，不是固定分工，也不保证每个头都有独立可解释的功能。
+
+Residual connection（残差连接）保留输入的直接通路；layer normalization（层归一化）在每个位置的特征维上归一化，帮助稳定训练。按讲义图示的 Add \& Norm 顺序，一个 encoder block 可写为
+\begin{align*}
+ U&=\operatorname{LayerNorm}\!\left(X+\operatorname{MultiHead}(X)\right),\\
+ Y&=\operatorname{LayerNorm}\!\left(U+\operatorname{FFN}(U)\right).
+\end{align*}
+这里 $X$ 是该层输入；第一层输入包含词与位置表示。先交换信息，再加工特征，每个子层都有 Add \& Norm；继续堆叠多个 block，便逐层更新上下文表示。
+
+\lecturetopic{SC4002-L11-T04}{任务决定可见范围与输出方式}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~42--50（p.~44 为 Optional）；录播版 pp.~39--41。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+架构 & 信息来源 & 输出与讲义中的用途 \\
+\midrule
+Encoder-only & 完整输入的双向上下文 & 整句池化后分类；逐词分类用于 NER；BERT-style \\
+Decoder-only & 当前及之前的位置 & 逐位置预测下一词；GPT-style 续写 \\
+Encoder--decoder & 完整源句与目标前缀 & 翻译、摘要等条件生成；T5-style \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{完整输入与因果掩码}
+
+对 \texttt{not very good} 做情感分类时，整句已知：encoder 产生逐词表示，经 pooling（汇聚）得到句向量，再接类别输出层。训练目标可用类别交叉熵。
+
+预测下一词时，位置 $i$ 不得读取未来位置 $j>i$。Causal mask（因果掩码）在 softmax \emph{之前}作用于分数：
+\[
+ A=\operatorname{softmax}_{\rm row}\!\left(\frac{QK^\top}{\sqrt{d_k}}+M\right),
+ \qquad
+ M_{ij}=\begin{cases}0,&j\le i,\\-\infty,&j>i.\end{cases}
+\]
+被屏蔽位置的 softmax 后权重为 $0$；其余位置重新归一化。现场版 p.~48 的图混合展示了屏蔽值与概率，复习时必须区分这两个阶段。
+
+最终逐位置表示 $\mathbf h_t$ 经输出层得到词表分布：
+\[
+ \mathbf z_t=W_{\rm vocab}\mathbf h_t+\mathbf b,\qquad
+ \mathbf p_t=\operatorname{softmax}(\mathbf z_t),\qquad
+ L=-\sum_t\log p_{t,y_t}.
+\]
+$y_t$ 表示该位置应预测的真实下一词。完整训练序列提供标签，因果掩码允许并行计算多个训练位置而不泄漏未来；生成时后续词尚未产生，仍需逐词选择并接续。Softmax 输出是概率；若需要 log-probabilities，须再取对数或使用 log-softmax。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L11-E04}{同一输入在 full 与 causal attention 下的差异}。
+
+\subsubsection{Encoder--decoder 的完整信息流}
+
+Encoder 通过完整 self-attention 得到整组源句表示。每个 decoder block 先用 masked self-attention 处理目标前缀，再用 cross-attention 查阅源句，最后经过 FFN；各子层均带 Add \& Norm。
+
+\begin{center}
+\input{figures/transformer-source-target-flow}
+\end{center}
+{\small\textit{原创结构图，依据现场版 pp.~41--44。实线表示前向计算；Add \& Norm 在每个子层后执行，图中合并标示以突出信息来源。}}
+
+Cross-attention 的 query 来自 decoder 当前表示，keys 与 values 来自 encoder 最终输出；encoder 输出可供多个 decoder 层反复读取。Masked self-attention 与 cross-attention 在一次前向计算中依次执行，整网按目标序列损失联合训练，无须先单独训练其中一个模块。
+
+录播末尾以历史实验展示翻译的 BLEU、文档生成的 perplexity 与 ROUGE-L，以及 GLUE 语言理解结果。它们说明应用价值，不构成所有任务和计算预算下 Transformer 必然最优的结论。
+
+\subsection*{一分钟回顾}
+
+Cross-attention 让每个生成步骤按需读取源句；self-attention 为每个输入位置融合上下文。位置嵌入补充顺序，FFN 加工特征，多头提供多种读取方式，Add \& Norm 支持多层训练。理解任务可读完整输入，生成任务须限制未来可见性；attention 输出还需通过任务输出层，才能得到类别或词表概率。
+\endgroup

@@ -1,0 +1,18 @@
+% Original diagram based on Lec4_recorded.pdf pp. 7, 14, 20.
+\begin{tikzpicture}[
+ >=Latex,font=\small,
+ box/.style={draw=noteBlue,rounded corners,fill=blue!3,minimum height=.65cm,align=center},
+ flow/.style={->,thick,noteBlue}
+]
+ \node[box,minimum width=2.1cm] (q) at (0,0) {Query $\mathbf q$};
+ \node[box,minimum width=2.1cm] (k) at (0,1.1) {Keys $\{\mathbf k_i\}$};
+ \node[box,minimum width=2.2cm] (score) at (3,0) {匹配分数 $e_i$};
+ \node[box,minimum width=2.2cm] (alpha) at (6.3,0) {权重 $\alpha_i$};
+ \node[box,minimum width=2.7cm] (out) at (10.3,0) {$\mathbf c=\sum_i\alpha_i\mathbf v_i$};
+ \node[box,minimum width=2.7cm] (v) at (10.3,1.1) {Values $\{\mathbf v_i\}$};
+ \draw[flow] (q) -- (score);
+ \draw[flow] (k.east) -| (score.north);
+ \draw[flow] (score) -- node[above,font=\footnotesize] {softmax} (alpha);
+ \draw[flow] (alpha) -- node[above,font=\footnotesize] {加权} (out);
+ \draw[flow] (v) -- (out);
+\end{tikzpicture}

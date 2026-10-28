@@ -1,0 +1,169 @@
+% Based on templates/lecture-example.tex; related lecture SC4002-L11.
+% Sources: Lec4_week11.pdf pp. 9--17, 19--25, 48--49;
+% Lec4_recorded.pdf pp. 30--34. All numerical operations independently checked.
+% Genuine lecture examples only; no learner answers or dialogue check records.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\Needspace{10\baselineskip}
+\exercisegroup{SC4002-L11-EX}{第 11 讲：Attention 与 Transformers}
+
+\exercisemeta
+  {SC4002-L11-EX}
+  {2026-10-28}
+  {\texttt{Lec4\_week11.pdf} pp.~9--17、19--25、48--49；\texttt{Lec4\_recorded.pdf} pp.~30--34}
+  {现场版三组、录播版一组算例；条件与数值已核对，显示值舍入，中间计算保留精度}
+  {笔记成稿待审阅}
+
+\exercisequestion{SC4002-L11-E01}{\texttt{red car}：不同 query 读取不同源词}
+\nopagebreak[4]
+\textbf{题目（现场版 pp.~9--17）。}将 \texttt{red car} 翻译为 \texttt{voiture rouge}。给定 encoder 状态和两个 decoder query：
+\[
+ \mathbf h_{\rm red}=[2,0]^\top,\quad
+ \mathbf h_{\rm car}=[0,2]^\top,\quad
+ \mathbf s_1=[0,1]^\top,\quad\mathbf s_2=[1,0]^\top.
+\]
+以未缩放点积为分数，计算两步 attention 权重与上下文向量，说明如何预测词。再考虑 query $[1,1]^\top$。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L11-T01}{动态源句读取}。
+
+\begin{workedsolution}
+第一步两个点积为 $0\times2+1\times0=0$、$0\times0+1\times2=2$，因此
+\[
+ \boldsymbol\alpha_1=\frac{[e^0,e^2]}{e^0+e^2}
+ \approx[.1192,.8808],\qquad
+ \mathbf c_1=.1192\mathbf h_{\rm red}+.8808\mathbf h_{\rm car}
+ \approx[.2384,1.7616]^\top.
+\]
+第二步 query 改变，而源句表示不变：
+\[
+ \mathbf e_2=[2,0],\quad\boldsymbol\alpha_2\approx[.8808,.1192],\quad
+ \mathbf c_2\approx[1.7616,.2384]^\top.
+\]
+两步分别偏向 car 与 red。按源词顺序排列的权重矩阵为
+\[
+ \begin{array}{c|cc}
+ &\mathrm{red}&\mathrm{car}\\\hline
+ \mathrm{voiture}&.1192&.8808\\
+ \mathrm{rouge}&.8808&.1192
+ \end{array}.
+\]
+预测词还需经过 $\mathbf p_t=\operatorname{softmax}(W_o[\mathbf s_t;\mathbf c_t]+\mathbf b_o)$。讲义给定第一步词表顺序为 \texttt{[voiture, rouge, <EOS>]}，输出概率为 $[.781,.170,.049]$，故贪心选择 voiture。该输出层参数未给出，概率不是仅由 $\mathbf c_1$ 就能独立复算的结果。
+
+当 $\mathbf s=[1,1]^\top$ 时，分数为 $[2,2]$，权重为 $[.5,.5]$，得到 $\mathbf c=[1,1]^\top$。Attention 可以融合多处信息，并不总是挑选单个位置。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L11-E02}{\texttt{not very good}：缩放点积与全部位置输出}
+\nopagebreak[4]
+\textbf{题目（现场版 pp.~19--25）。}各词按行排列，给定
+\[
+ X=\begin{bmatrix}1&0\\0&1\\1&1\end{bmatrix},\qquad
+ W_Q=W_K=I_2,\qquad
+ W_V=\begin{bmatrix}1&0\\0&2\end{bmatrix}.
+\]
+行顺序为 not、very、good，采用 $QK^\top/\sqrt{d_k}$，其中 $d_k=2$。求 good 的 attention 输出，再给出完整权重与输出矩阵。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L11-T02}{逐位置上下文表示}。
+
+\begin{workedsolution}
+先投影：
+\[
+ Q=K=X,\qquad V=XW_V=\begin{bmatrix}1&0\\0&2\\1&2\end{bmatrix}.
+\]
+第三个 query 为 $[1,1]$，与三个 key 的点积为 $[1,1,2]$。缩放并归一化得
+\[
+ \mathbf z_3\approx[.7071,.7071,1.4142],\qquad
+ \boldsymbol\alpha_3\approx[.248255,.248255,.503490].
+\]
+因此
+\begin{align*}
+ \mathbf o_3
+ &=.248255[1,0]+.248255[0,2]+.503490[1,2]\\
+ &\approx\boxed{[.7517,1.5035]}.
+\end{align*}
+全部位置的缩放分数为
+\[
+ Z=\frac1{\sqrt2}\begin{bmatrix}1&0&1\\0&1&1\\1&1&2\end{bmatrix}.
+\]
+逐行 softmax，再右乘 $V$：
+\[
+ A\approx\begin{bmatrix}
+ .401112&.197776&.401112\\
+ .197776&.401112&.401112\\
+ .248255&.248255&.503490
+ \end{bmatrix},\qquad
+ O\approx\begin{bmatrix}
+ .8022&1.1978\\.5989&1.6044\\.7517&1.5035
+ \end{bmatrix}.
+\]
+每行权重和为 $1$；$A$ 为 $3\times3$，$O$ 为 $3\times2$。输出保留每个位置，尚未进行整句池化或分类。手工给定向量演示运算，不构成模型已经学会否定语义的实验证据。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L11-E03}{录播例题：保留 softmax 精度}
+\nopagebreak[4]
+\textbf{题目（录播版 pp.~30--34）。}输入为三个四维向量，投影后三种表示为三维。计算第一个 query 的输出所需条件如下，向量横排展示：
+\[
+ \mathbf q_1=[1,0,2],\qquad
+ \begin{array}{c|ccc}
+ j&1&2&3\\\hline
+ \mathbf k_j&[0,1,1]&[4,4,0]&[2,3,1]\\
+ \mathbf v_j&[1,2,3]&[2,8,0]&[2,6,3]
+ \end{array}.
+\]
+使用讲义的\textbf{未缩放点积}，求 $\boldsymbol\alpha_1$ 与 $\mathbf o_1$；投影矩阵的具体值未给出，直接使用已给定的投影结果。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L11-T02}{匹配分数、权重与 values}。
+
+\begin{workedsolution}
+点积依次为 $2,4,4$。为便于计算，softmax 的各分数共同减去 $4$：
+\[
+ \boldsymbol\alpha_1
+ =\frac{[e^{-2},1,1]}{e^{-2}+2}
+ \approx[.063379,.468311,.468311].
+\]
+按原顺序对 values 加权：
+\begin{align*}
+ \mathbf o_1
+ &=.063379[1,2,3]+.468311[2,8,0]+.468311[2,6,3]\\
+ &\approx\boxed{[1.9366,6.6831,1.5951]}.
+\end{align*}
+录播图示以 $[0,.5,.5]$ 作粗略示意，从而得到 $[2,7,1.5]$；它不是原始分数的精确 softmax 结果。正式计算应先按题目确定是否缩放，再保留中间精度。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L11-E04}{Causal mask：屏蔽未来并重新归一化}
+\nopagebreak[4]
+\textbf{题目（现场版 pp.~48--49）。}沿用例题\hyperref[exercise:SC4002-L11-E02]{\texttt{not very good}}的 $X,W_Q,W_K,W_V$ 和 $d_k=2$。当 very 所在的第二个位置用于预测后续词时，只允许读取 not 和 very。比较掩码前后的权重与输出。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L11-T04}{下一词预测与因果可见性}。
+
+\begin{workedsolution}
+完整可见时，第二行缩放分数为 $[0,1/\sqrt2,1/\sqrt2]$，故
+\[
+ \boldsymbol\alpha_2\approx[.1978,.4011,.4011],\qquad
+ \mathbf o_2\approx[.5989,1.6044].
+\]
+第三个位置属于未来。先将其分数设为 $-\infty$，再做 softmax：
+\[
+ \boldsymbol\alpha_2^{\rm causal}
+ =\operatorname{softmax}([0,1/\sqrt2,-\infty])
+ =\frac{[1,e^{1/\sqrt2},0]}{1+e^{1/\sqrt2}}
+ \approx[.3302,.6698,0].
+\]
+于是
+\[
+ \mathbf o_2^{\rm causal}
+ =.3302[1,0]+.6698[0,2]+0[1,2]
+ \approx\boxed{[.3302,1.3395]}.
+\]
+对于全部位置，softmax 后矩阵为
+\[
+ A^{\rm causal}\approx\begin{bmatrix}
+ 1&0&0\\.330238&.669762&0\\.248255&.248255&.503490
+ \end{bmatrix}.
+\]
+第一行只能看自己，第二行只能看前两个位置，第三行可看全部已给定位置。$-\infty$ 属于 softmax 前的分数，归一化后是 $0$；不能把未来权重置零后保留其他旧权重不变。
+\end{workedsolution}
+\endgroup

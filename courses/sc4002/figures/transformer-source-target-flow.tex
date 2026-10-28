@@ -1,0 +1,28 @@
+% Original diagram based on Lec4_week11.pdf pp. 41--44.
+% One encoder and one decoder block shown; Add & Norm follows each sublayer.
+\begin{tikzpicture}[
+ >=Latex,font=\small,
+ box/.style={draw=noteBlue,fill=blue!3,rounded corners,minimum width=4.2cm,minimum height=.65cm,align=center},
+ flow/.style={->,thick,noteBlue}
+]
+ \node (src) at (0,0) {源句：词向量 $+$ 位置};
+ \node[box] (encsa) at (0,1.2) {Full self-attention};
+ \node[box] (encff) at (0,2.4) {FFN};
+ \node[box] (encout) at (0,3.6) {Encoder 最终输出};
+ \node (tgt) at (8,0) {目标前缀：词向量 $+$ 位置};
+ \node[box] (decsa) at (8,1.2) {Masked self-attention};
+ \node[box,fill=ntuRed!5,draw=ntuRed] (cross) at (8,2.4) {Cross-attention};
+ \node[box] (decff) at (8,3.6) {FFN};
+ \node[box] (pred) at (8,4.8) {词表投影 $+$ softmax};
+ \draw[flow] (src) -- (encsa);
+ \draw[flow] (encsa) -- (encff);
+ \draw[flow] (encff) -- node[left,font=\footnotesize] {可堆叠} (encout);
+ \draw[flow] (tgt) -- (decsa);
+ \draw[flow] (decsa) -- node[right,font=\footnotesize] {$Q$} (cross);
+ \draw[flow] (cross) -- (decff);
+ \draw[flow] (decff) -- node[right,font=\footnotesize] {可堆叠} (pred);
+ \draw[->,thick,ntuRed] (encout.east) -- (3.5,3.6)
+   -- node[right,font=\footnotesize] {$K,V$} (3.5,2.4) -- (cross.west);
+ \node[font=\footnotesize,align=center,text width=4.5cm] at (0,4.85)
+   {每个 attention / FFN 子层后\\均有 Add \& Norm};
+\end{tikzpicture}
