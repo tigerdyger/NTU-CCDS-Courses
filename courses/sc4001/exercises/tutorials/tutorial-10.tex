@@ -1,0 +1,146 @@
+% Tutorial set: 10; actual session: 2026-10-28 (Week 11).
+% Sources: tute10.pdf p. 1, Q1; t10q1.ipynb, all 34 cells (zero-based 0--33).
+% Adapted from templates/tutorial.tex. Code and cached outputs inspected;
+% no model execution or training. Original notebook images are not reproduced.
+
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4001-TUT10}{Tutorial 10：Vision Transformer 推理流程}
+\label{tutorial:SC4001-TUT10}
+\noteintro{
+\textbf{日期：}2026-10-28（第 11 周）。
+\textbf{来源：}\texttt{tute10.pdf} p.~1，Q1；\texttt{t10q1.ipynb}，
+署名 Hiroto Honda。已核对代码与文件保存的图表、输出；未重新运行模型。
+本题使用预训练 ViT，围绕图像分类走读数据流，不涉及重新训练。
+}
+
+\exercisequestion{SC4001-TUT10-Q01}{从图像块到分类结果}
+\nopagebreak[4]
+\textbf{题目。}使用提供的 notebook 理解 Vision Transformer（ViT，视觉 Transformer）
+的推理过程：图像切块与嵌入、位置编码、Transformer encoder（编码器）、
+attention（注意力）可视化及分类头。
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L10-T02}{ViT 图像分类}、
+\relatedtopic{SC4001-L09-T02}{自注意力与加权汇总}。
+
+\textbf{1. 输入与图像块序列。}
+\texttt{create\_model("vit\_base\_patch16\_224", pretrained=True)}
+载入已有权重，对教堂示例图片预测 ImageNet 的 1000 类之一。
+图片先调整至 $224\times224$，转为 RGB 通道张量；像素缩放至 $[0,1]$ 后，
+按本例设置计算 $(x-0.5)/0.5$。\texttt{unsqueeze(0)} 增加 batch（批次）维。
+
+每块大小为 $16\times16$，故块数为 $(224/16)^2=196$。
+\texttt{model.patch\_embed} 使用如下卷积：
+\begin{center}
+\small\texttt{Conv2d(3, 768, kernel\_size=16, stride=16)}
+\end{center}
+每次覆盖一个不重叠的 patch（图像块），共享可学习投影产生 768 维表示，
+再将空间位置排成序列。一个原始块含 $16\times16\times3=768$ 个数，
+与本例 embedding（嵌入）维数相同，但投影仍会改变特征；一般模型不要求两者相等。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+阶段 & 形状 & 解释 \\
+\midrule
+输入 & $1\times3\times224\times224$ & 一张 RGB 图片 \\
+切块投影 & $1\times768\times14\times14$ & 每个空间位置有 768 个特征 \\
+排成序列 & $1\times196\times768$ & 196 个 patch tokens（图像块词元） \\
+补齐输入 & $1\times197\times768$ & 前置 class token，再加位置编码 \\
+12 个编码块 & $1\times197\times768$ & 保留位置数与特征维，逐层更新内容 \\
+读取 class token & $1\times768$ & 取最终序列的第 0 行 \\
+分类头 & $1\times1000$ & 每个类别一个 logit（未归一化分数） \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{2. 位置与整图表示。}
+输入由以下代码构成（本例 batch 大小为 1）：
+\begin{center}
+\small\ttfamily
+torch.cat((model.cls\_token, patches), dim=1) + pos\_embed
+\end{center}
+\texttt{cat} 将可学习的 class token（分类词元）放到序列最前面，
+长度从 196 增至 197；位置嵌入逐元素相加，形状保持不变。
+忽略 batch 维，写成
+\[
+ Z_0=[c;\,p_1;\,\ldots;\,p_{196}]+E_{\rm pos},
+ \qquad Z_0,E_{\rm pos}\in\mathbb R^{197\times768}.
+\]
+$p_i$ 表示第 $i$ 块内容，位置向量提供其空间身份。初始 $c$ 是各图像共享的参数，
+不含已知类别标签；经自注意力更新后，它汇总当前图像的信息，供分类头读取。
+
+\textbf{位置编码图的读法。}代码固定一个 patch 的位置向量，计算它与
+全部 196 个 patch 位置向量的 cosine similarity（余弦相似度），
+再排回 $14\times14$。这些小图展示学到的位置关系，不依赖当前示例图像的内容；
+邻近位置可能呈现较高相似度，但这不是训练机制强制保证的性质。
+
+\textbf{3. 编码块与多头自注意力。}
+本模型有 12 个串联的 encoder blocks，每个 block 内有 12 个并行的 heads（注意力头）。
+所有头均读取全部 197 个 token；每个头的特征维数为 $768/12=64$。
+按 notebook 引用的实现，块内采用 pre-norm（前归一化）：
+\[
+ U=Z+\operatorname{MSA}(\operatorname{LN}(Z)),\qquad
+ Z_{\rm next}=U+\operatorname{MLP}(\operatorname{LN}(U)).
+\]
+LN 为层归一化；MSA 在 token 之间交换信息；MLP（多层感知机）对每个 token
+使用同一组参数加工特征；残差相加保留原表示并加入更新。
+全图已知，分类使用 encoder，无需 decoder 或 causal mask（因果掩码）。
+
+QKV 投影的输出维为 $3\times768=2304$。省略 batch 维，代码先得到
+$197\times2304$，再重排为 $197\times3\times12\times64$，
+分出 Q、K、V 并调整轴顺序。对头 $h$：
+\[
+ Q_h,K_h,V_h\in\mathbb R^{197\times64},\quad
+ A_h=\operatorname{softmax}_{\rm row}\!\left(\frac{Q_hK_h^\top}{8}\right),
+ \quad O_h=A_hV_h\in\mathbb R^{197\times64}.
+\]
+$A_h$ 的行对应 query（查询），列对应 key（键）；每行权重对所有 value（值）
+加权汇总，生成该位置的新表示。12 个头的输出拼接为 $197\times768$，
+经输出投影后进入残差路径。维度划分发生在特征轴，不是把 token 分给不同的头。
+
+\textbf{4. 从完整分数矩阵读出空间图。}
+Notebook 的 \texttt{attention\_matrix = q @ kT} 得到
+$12\times197\times197$，其中第一个轴为 head。
+\texttt{attention\_matrix[3]} 显示第 4 个头的完整匹配矩阵。
+空间热图则读取 \texttt{attention\_matrix[i,100,1:]}：
+固定查询 token 的索引为 100，去掉第 0 列的 class token，将剩下的 196 个分数排回图像位置。
+
+\begin{center}
+\input{figures/tutorial-10-attention-readout}
+\end{center}
+{\small 原创索引示意，依据 notebook 的可视化代码；图中颜色仅标识选取位置，不表示分数大小。}
+
+由于序列第 0 项是 class token，查询索引 100 对应从零计数的 patch 99，
+即 $14\times14$ 网格的第 8 行、第 2 列。
+\texttt{range(7)} 展示头 0--6 对同一查询位置的匹配分数，不能直接当作最终分类的归因图。
+
+\textbf{可视化勘误。}该手工分支既未先经过实际 block 的 \texttt{norm1}，
+也未对 $QK^\top$ 进行缩放和 softmax。因此保存的图是该手工计算的原始匹配分数，
+可能为负、每行和不必为 1；不能将其标作模型实际的归一化注意力权重。
+上述正确计算顺序可查 notebook 引用的
+\href{https://github.com/huggingface/pytorch-image-models/blob/198f6ea0f3dae13f041f3ea5880dd79089b60d61/timm/models/vision_transformer.py}
+{\texttt{timm} 源码中的 \texttt{Block.forward} 与 \texttt{Attention.forward}}。
+
+\textbf{5. 读取 class token 并分类。}
+\texttt{for blk in model.blocks: x = blk(x)} 依次执行 12 个块；
+随后 \texttt{x = model.norm(x)}，再以 \texttt{x[:,0]} 取出 class token 的最终表示。
+此处选择一行，不是将 197 行展平或直接求和。
+文件打印的 \texttt{model.head} 是 \texttt{Linear(768,1000)}，计算
+\[
+ s=h_{\rm CLS}W+b\in\mathbb R^{1\times1000},\qquad
+ \widehat y=\arg\max_k s_k.
+\]
+\texttt{imagenet\_labels} 将类别索引映射为名称。
+分数图的横轴为类别编号、纵轴为 logit；若需要概率，再对 1000 个分数做 softmax，
+最大分数对应的类别保持不变。教程称其为 MLP head，但本例实际分类头只有一个线性层，
+应与 encoder 内的 MLP 区分。
+
+\textbf{保存结果的边界。}完整调用 \texttt{model(img\_tensor)} 的缓存标签为
+\texttt{church, church\_building}；手工拆解分支的缓存标签为
+\texttt{dome}（编号 538）。两者不一致，仅凭该文件无法判定原因；
+若要验证拆解等价性，应在一致的模型、输入与推理状态下重跑比较。
+本次仅核对已有文件，不把缓存输出当作重新复现成功的证据。
+\endgroup
