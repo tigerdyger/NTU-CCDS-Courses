@@ -74,6 +74,27 @@
   \end{center}
 }
 
+% Course introductions: lectures and tutorials use the same horizontal frame.
+% Use noteintro when the existing source information is written as prose.
+\newcommand{\noteintro}[1]{%
+  \begin{center}
+    \begin{tabularx}{\textwidth}{@{}X@{}}
+      \toprule
+      #1 \\
+      \bottomrule
+    \end{tabularx}
+  \end{center}
+}
+
+% Keep the tutorial and lecture-example interfaces distinct. Written-assignment
+% documents retain exercisemeta and their existing local formatting overrides.
+\newcommand{\tutorialmeta}[5]{\exercisemeta{#1}{#2}{#3}{#4}{#5}}
+\newcommand{\examplemeta}[5]{%
+  \par\textbf{题组编号：}\texttt{#1}\quad\textbf{对应日期：}#2\par
+  \textbf{主要来源：}#3\par
+  \textbf{核对状态：}#4\quad\textbf{人工确认：}#5\par
+}
+
 \newcommand{\lecturetopic}[2]{%
   \subsection{#2}\label{topic:#1}%
   \recordid{#1}\par

@@ -1,0 +1,193 @@
+% Based on templates/tutorial.tex; actual tutorial session 08, 2026-10-28.
+% Source: Week11-tut.pdf, Sequence Modeling, PDF pp. 1--2, Q1--Q3.
+% The source does not print a tutorial number. Q1 text omits one predicted O;
+% its five-token figure supplies B I O O O. Entity-span F1 is an explicit convention.
+% Linked POS notebook inspected on 2026-10-28; no model training executed.
+% Source and reasoning checked; final notes await user review.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4002-TUT08}{Tutorial 08：Sequence Modeling}
+\label{tutorial:SC4002-TUT08}
+
+\tutorialmeta
+  {SC4002-TUT08}
+  {2026-10-28（Week 11）}
+  {\texttt{Week11-tut.pdf}，\emph{Sequence Modeling}，pp.~1--2；Q1--Q3 与末尾 RNN 编程练习链接}
+  {题意、公式与计算已核对；未提供官方答案；编程部分为源码分析，未运行训练}
+  {已完成讨论，笔记成稿待审阅}
+
+\exercisequestion{SC4002-TUT08-Q01}{Q1：RNN 实体标注与 F1}
+\nopagebreak[4]
+\textbf{题目（p.~1）。}用 RNN 做仅含一种实体类型的 NER（命名实体识别）。(1) 用输入权重 $W_{xh}$、递归权重 $W_{hh}$ 写单向 RNN；(2) 改写为双向 RNN；(3) 确定 BIO 分类数与预测方法；(4) 根据下表计算 F1。
+\begin{center}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+词 & New & York & is & near & Boston \\
+\midrule
+预测标签 & B & I & O & O & O \\
+真实标签 & B & I & O & O & B \\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small 原题文字的预测序列少一个 O，此处依五词图补齐；题干称唯一实体类型为 person，而图中使用地名。本题按单类 BIO 的结构与给定标签计算。}
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L10-T01}{RNN 状态更新}、\relatedtopic{SC4002-L10-T03}{序列标注与双向网络}。
+
+\textbf{1. 单向递归。}设词向量 $\mathbf e_t\in\mathbb R^d$、状态 $\mathbf h_t\in\mathbb R^H$，选用 $\tanh$ 激活：
+\[
+ \boxed{\mathbf h_t=\tanh(W_{xh}\mathbf e_t+W_{hh}\mathbf h_{t-1}+\mathbf b_h).}
+\]
+$W_{xh}\in\mathbb R^{H\times d}$、$W_{hh}\in\mathbb R^{H\times H}$；同一组参数跨时间共享。$\mathbf h_t$ 结合当前词与左侧历史，初始状态 $\mathbf h_0$ 可取零。
+
+\textbf{2. 双向递归。}两方向各有独立参数，反向状态依赖 $t+1$：
+\begin{align*}
+ \overrightarrow{\mathbf h}_t
+ &=\tanh(W_{xh}^{\to}\mathbf e_t+W_{hh}^{\to}\overrightarrow{\mathbf h}_{t-1}+\mathbf b^{\to}),\\
+ \overleftarrow{\mathbf h}_t
+ &=\tanh(W_{xh}^{\leftarrow}\mathbf e_t+W_{hh}^{\leftarrow}\overleftarrow{\mathbf h}_{t+1}+\mathbf b^{\leftarrow}),\\
+ \mathbf r_t&=[\overrightarrow{\mathbf h}_t;\overleftarrow{\mathbf h}_t]\in\mathbb R^{2H}.
+\end{align*}
+边界为 $\overrightarrow{\mathbf h}_0$ 与 $\overleftarrow{\mathbf h}_{T+1}$。此处采用讲义的 concatenation（拼接）；相加是另一种设计，会合并对应维度，不能与拼接混写。标注时整句已知，因此允许利用右侧词。
+
+\textbf{3. 输出分类。}一种实体类型仍有 \textbf{3 类}：B 为实体开头，I 为实体内部，O 为实体外。令 $\mathbf r_t=\mathbf h_t$（单向）或上述拼接（双向），则
+\[
+ \mathbf z_t=W_{hy}\mathbf r_t+\mathbf b_y\in\mathbb R^3,
+ \qquad \mathbf p_t=\operatorname{softmax}(\mathbf z_t),
+ \qquad \widehat y_t=\arg\max_{k\in\{B,I,O\}}p_{t,k}.
+\]
+输出层在各词位置共享；$W_{hy}$ 为 $3\times H$ 或 $3\times2H$。每个词使用自己的上下文表示预测标签。
+
+\textbf{4. 实体级 F1。}原题未明确评分粒度；本解采用 NER 常用的 \emph{entity-level exact match（实体跨度完全匹配）}，实体边界和类型均须正确。预测实体只有 New York，真实实体有 New York 与 Boston，因此 $TP=1,FP=0,FN=1$：
+\[
+ P=\frac{TP}{TP+FP}=1,\qquad
+ R=\frac{TP}{TP+FN}=\frac12,\qquad
+ \boxed{F_1=\frac{2PR}{P+R}=\frac23.}
+\]
+两词的 New York 计作一个实体；O 不计作实体。逐词准确率为 $4/5$，不能将其当作上述实体级 F1。
+
+\exercisequestion{SC4002-TUT08-Q02}{Q2：变长 batch 与训练、生成的差异}
+\nopagebreak[4]
+\textbf{题目（p.~2）。}(1) 一个 mini-batch 中的句长不一致，如何高效训练？(2) RNN 语言模型训练时输入真实前词，生成时却只能使用自己的预测，这会造成什么问题？提出一种缓解方法。
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L10-T01}{训练与生成}、\relatedtopic{SC4002-L10-T04}{Teacher forcing}。
+
+\textbf{1. Padding 与 mask。}设本 batch 的真实长度为 $\ell_1,\ldots,\ell_B$，补至 $T_{\max}=\max_b\ell_b$，同时保留真实长度。令 $m_{bt}=\mathbf1[t\leq\ell_b]$，仅在真实位置计算平均损失：
+\[
+ L=-\frac{\sum_{b=1}^{B}\sum_{t=1}^{T_{\max}}
+       m_{bt}\log p_{bt,y_{bt}}}
+       {\sum_{b=1}^{B}\sum_{t=1}^{T_{\max}}m_{bt}}.
+\]
+无需把所有 batch 都补到整个数据集的最长句。Padding 统一形状，loss mask 排除虚构标签；packing（打包）还可跳过补齐位置的递归计算。若取最终状态，应取真实句尾；尤其双向 RNN 中，仅屏蔽 loss 不能阻止反向状态受 padding 影响。
+
+\textbf{2. Exposure bias（暴露偏差）。}Teacher forcing（教师强制）用真实前词训练；生成时，错误预测可能成为后续输入，造成误差累积。Scheduled sampling（计划采样）在训练中混用真实前词与模型预测词，可逐渐提高使用模型词的比例，使模型接触自身产生的前缀。它是一种缓解方案，不保证消除训练与生成的差异。
+
+\exercisequestion{SC4002-TUT08-Q03}{Q3：RNN Encoder--Decoder 机器翻译}
+\nopagebreak[4]
+\textbf{题目（p.~2）。}英译法模型的 encoder、decoder 均为单层 RNN，每个词已有定长词向量。说明：(1) encoder 的角色；(2) decoder 的角色及区别；(3) 将 \texttt{I am learning} 译为 \texttt{Je suis en train d'apprendre} 的过程；(4) 双向 encoder 的改动；(5) 贪心解码的问题及改进；(6) RNN 翻译的局限。
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L10-T04}{基本 Seq2seq}；瓶颈的后续改进见\relatedtopic{SC4002-L11-T01}{Cross-attention}。
+
+\textbf{1--2. 编码与生成。}按本课无 attention 的基本模型作答。Encoder 顺序读取 $x_1,x_2,x_3$，产生 $\mathbf h_1,\mathbf h_2,\mathbf h_3$，取固定上下文 $\mathbf c=\mathbf h_3$。Decoder 根据源句表示与已生成前缀，输出目标词表分布；译文长度不必等于源句长度。
+
+采用状态初始化方案，若维度匹配，$\mathbf s_0=\mathbf c$；否则先作学习到的投影。设 $y_0=\texttt{<s>}$，每一步为
+\begin{align*}
+ \mathbf s_t&=\tanh(W_{ed}\mathbf e(y_{t-1})+W_{sd}\mathbf s_{t-1}+\mathbf b_d),\\
+ \mathbf p_t&=\operatorname{softmax}(W_o\mathbf s_t+\mathbf b_o),
+ &\widehat y_t&=\arg\max_w p_{t,w}\quad\text{（贪心示例）}.
+\end{align*}
+这里 $\mathbf c$ 是初始状态的来源，\textbf{第一个输入词元是 \texttt{<s>}，不是 $\mathbf c$}。每步只输入上一个词的向量，前缀信息由状态携带，无须把整个前缀重新拼接输入。
+
+\textbf{3. 翻译步骤。}Encoder 读完 \texttt{I, am, learning} 后初始化 decoder。以下按空格分词示意，并假定每步选中给定译文；实际分词由 tokenizer 决定，模型也不保证生成此句。
+\begin{center}
+\small
+\begin{tabular}{@{}clll@{}}
+\toprule
+步 & 输入词元 & 状态更新 & 要预测的词 \\
+\midrule
+1 & \texttt{<s>} & $\mathbf s_0=\mathbf c\ \to\ \mathbf s_1$ & Je \\
+2 & Je & $\mathbf s_1\to\mathbf s_2$ & suis \\
+3 & suis & $\mathbf s_2\to\mathbf s_3$ & en \\
+4 & en & $\mathbf s_3\to\mathbf s_4$ & train \\
+5 & train & $\mathbf s_4\to\mathbf s_5$ & d'apprendre \\
+6 & d'apprendre & $\mathbf s_5\to\mathbf s_6$ & \texttt{</s>} \\
+\bottomrule
+\end{tabular}
+\end{center}
+生成遇到结束标记 \texttt{</s>} 停止，工程上另设最大长度。训练时表中左列使用真实前词、右列作为监督标签；生成时左列来自自己的上一预测。条件概率与训练损失为
+\[
+ P(\mathbf y\mid\mathbf x)=\prod_{t=1}^{M}P(y_t\mid y_{<t},\mathbf c),
+ \qquad L=-\sum_{t=1}^{M}\log P(y_t\mid y_{<t},\mathbf c),
+\]
+其中 $M$ 包括结束标记的位置，encoder 与 decoder 可由该损失联合训练。
+
+\textbf{4. 双向 encoder。}对三词源句，两方向读完整句的状态分别是 $\overrightarrow{\mathbf h}_3$ 和 $\overleftarrow{\mathbf h}_1$，因此可取
+\[
+ \boxed{\mathbf c=[\overrightarrow{\mathbf h}_3;\overleftarrow{\mathbf h}_1],
+ \qquad \mathbf s_0=\tanh(W_c\mathbf c+\mathbf b_c).}
+\]
+反向最终状态位于原序列开头；拼接次序也可反过来，但须与后续权重约定一致。$W_c$ 将 $2H$ 维上下文映射至 decoder 的状态维度。目标生成仍然是从左到右的自回归过程。
+
+\textbf{5. Greedy 与 beam search。}当前词概率最高，不保证整条译文概率最高。Beam search（束搜索）保留宽度 $K$ 的候选\textbf{前缀序列}，扩展它们后按累计分数全局筛选：
+\[
+ S(y_{1:t})=\sum_{j=1}^{t}\log P(y_j\mid y_{<j},\mathbf c).
+\]
+每步从候选扩展的并集中保留高分前缀，而非每条分支各保留 $K$ 个。遇 EOS 的候选作为完整序列保存；结束后选最高分完整候选。有限 beam 是近似搜索，被删分支可能原本更优，不能保证全局最优。
+
+\textbf{6. 局限。}固定维度 $\mathbf c$ 形成信息瓶颈，长句与复杂内容更难完整保留；普通 RNN 的长链反传可能导致梯度消失或爆炸，长期依赖难学；时间步依赖前一步，难以沿时间并行。LSTM 缓解梯度问题，attention 允许逐步读取源状态，但二者并不自动消除所有问题。
+
+\exercisequestion{SC4002-TUT08-C01}{编程练习：BiLSTM 词性标注}
+\nopagebreak[4]
+\textbf{来源与任务。}原题 p.~2 的
+\href{https://drive.google.com/file/d/1jZUpCxs8s7pDDHRdHrmyl1XkCafxmFXP/view}{RNN notebook：Example: POS Tagging}。
+使用 UD English-EWT 的句子与 UPOS（通用词性）标签，补上 LSTM 后的解包及逐词分类。训练、验证共享训练集词表；代码默认 embedding 维度 64、每方向状态维度 64、batch size 16、6 epochs，优化器为 Adam。这些是源码设置，非本次实验记录。
+
+\textbf{1. 模型与维度。}令 $T$ 为本 batch 最长句长，$B$ 为 batch 大小，$C$ 为输出词性词表大小（源码含 padding 类 0）。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\toprule
+阶段 & 输出形状 & 含义 \\
+\midrule
+词 ID & $T\times B$ & 输入句子的词编号 \\
+Embedding & $T\times B\times64$ & 查表得到可训练词向量 \\
+BiLSTM 解包后 & $T\times B\times128$ & 同一位置拼接两方向状态 \\
+Linear & $T\times B\times C$ & 每词的词性类别得分 \\
+LogSoftmax & $T\times B\times C$ & 沿类别维计算对数概率 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+每个词都需要标签，分类器使用\textbf{全部时间步输出}，不能只取最终状态。整句输入已知，双向上下文不会泄漏未知未来目标。原说明文字写 embedding 为 200 维，此处以实际默认代码的 64 维为准。
+
+\textbf{2. 参考前向函数。}以下替换原 \texttt{forward}：完成解包、线性分类与 \texttt{LogSoftmax}，同时修正原 LSTM 初始状态和调试打印问题。\texttt{lengths} 按原 collate 函数为一维张量，batch 已按长度递减排序。
+\par
+\begingroup\linespread{1}\fontsize{9}{11}\selectfont
+\begin{verbatim}
+def forward(self, x, lengths=None, hidden=None):
+    net = self.word_embeddings(x)
+    if lengths is not None:
+        lens = lengths.detach().cpu().tolist()
+        net = pack_padded_sequence(net, lens)
+
+    net, hidden = self.rnn(net, hidden)
+    if lengths is not None:
+        net, _ = pad_packed_sequence(net, total_length=x.size(0))
+
+    net = self.fc(net)
+    net = self.activation(net)
+    return net, hidden
+\end{verbatim}
+\endgroup
+其中 \texttt{self.fc} 为 \texttt{Linear(128, C)}，\texttt{self.activation} 为 \texttt{LogSoftmax(dim=2)}。LSTM 的初始状态为 $(h_0,c_0)$；传入 \texttt{None} 时自动置零。它返回状态元组 $(h_n,c_n)$，打包输出则是 \texttt{PackedSequence} 对象，不能直接对二者调用 \texttt{.size()}，因此删除原调试语句。接口依据
+\href{https://docs.pytorch.org/docs/stable/generated/torch.nn.LSTM.html}{PyTorch LSTM 文档}。
+
+\textbf{3. 损失、评估与结果边界。}将输出展平为 $(TB)\times C$，标签展平为 $TB$，用 \texttt{NLLLoss} 计算正确标签的负对数概率。源码令 padding 类权重为 0，以忽略补齐位置；预测取类别维 argmax。验证应使用 \texttt{model.eval()} 与 \texttt{torch.no\_grad()}，继续训练前恢复 \texttt{model.train()}。
+
+计算 accuracy 与 F1 前都应先用真实标签 $\ne0$ 的同一 mask 筛选预测和标签。原代码的 accuracy 已排除 padding，但 F1 没有；仅在最后不打印 padding 类，不能排除这些位置给其他类别带来的假阳性。此处是\textbf{逐词分类}指标，与 Q1 的实体跨度 F1 不同。
+
+notebook 保存的历史验证准确率为 $0.889264$（约 $88.93\%$），不代表当前补全代码已复现该结果；原 F1 输出也不作为修正后的评估结果。另需注意，源码只有一层 LSTM，构造器中的 \texttt{dropout=0.9} 不会启用层间 dropout，应设为 0 避免误解。\textbf{本次仅核对源码与原有输出，没有训练或测试模型。}
+
+\endgroup
