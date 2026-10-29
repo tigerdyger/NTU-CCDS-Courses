@@ -1,0 +1,42 @@
+% Based on templates/lecture-example.tex.
+% Source illustrations: File Systems.pdf, slides 9.12--9.13 and 9.21--9.22.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2005-L20-EX}{第 20 讲：路径与 UNIX 权限}
+
+\examplemeta
+  {SC2005-L20-EX}
+  {2026-10-29}
+  {File Systems 9.12--9.13、9.21--9.22（PDF pp.~12--13、21--22）}
+  {按讲义原有路径与权限示例整理，非另设测验}
+  {已完成学习并要求整理}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\exercisequestion{SC2005-L20-E01}{同一文件的绝对路径与相对路径}
+\textbf{情境与来源。}讲义 9.12--9.13：文件路径为 \nolinkurl{/spell/mail/prt/first}，当前目录为 \nolinkurl{/spell/mail}。用绝对路径与相对路径表示同一文件。对应\relatedtopic{SC2005-L20-T02}{目录与路径}。
+
+\begin{workedsolution}
+绝对路径为 \texttt{/spell/mail/prt/first}；相对路径为 \texttt{prt/first}。前者从根目录逐层查找，后者从当前目录进入 \texttt{prt} 后找到 \texttt{first}。路径开头的 \texttt{/} 指定从根目录出发，故 \texttt{/prt/first} 指向根下的 \texttt{prt}，并非本情境的相对写法。路径中间的 \texttt{/} 仅用于分隔各级名称。
+\end{workedsolution}
+
+\exercisequestion{SC2005-L20-E02}{文件 game1 与目录 games 的权限}
+\textbf{情境与来源。}讲义 9.21--9.22：文件 \texttt{game1} 的权限为 \texttt{-rwxr-x--x}；目录 \texttt{games} 的权限为 \texttt{drwxr-x---}。解读类型、数值权限和三类用户可执行的操作。对应\relatedtopic{SC2005-L20-T03}{UNIX 保护}。
+
+\begin{workedsolution}
+首字符 \texttt{-}、\texttt{d} 分别表示普通文件和目录，不参加权限数值计算。其余九位按三组划分：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}ll>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+对象 & 数值 & Owner & Group & Others \\
+\midrule
+\texttt{game1} & 751 & \texttt{rwx}：读、写、执行 & \texttt{r-x}：读、执行 & \texttt{--x}：执行 \\
+\texttt{games} & 750 & \texttt{rwx}：列出、穿过、修改目录记录 & \texttt{r-x}：列出、穿过 & \texttt{---}：无上述权限 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+例如，同组用户不能修改 \texttt{game1} 的内容，也不能在 \texttt{games} 中创建或删除名称。能够穿过 \texttt{games} 并不自动获得其中各文件的读取权；仍需检查目标文件的权限。文件列表中另列出的 Links 数量为硬链接计数，与权限值及打开计数不同。
+\end{workedsolution}
+\endgroup

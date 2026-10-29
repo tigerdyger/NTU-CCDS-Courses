@@ -1,0 +1,20 @@
+% Original schematic based on File Systems.pdf, slides 9.19--9.20.
+% Uses the lecture's simplified placement of file offset and permissions.
+\begin{tikzpicture}[
+  font=\small,>=Latex,
+  box/.style={draw=noteBlue,rounded corners=2pt,align=center,inner sep=6pt,minimum height=1.65cm}
+]
+  \node[align=center] (user) at (0,0) {用户进程\\\texttt{read(fd,n)}};
+  \node[box,text width=2.8cm] (process) at (3.2,0)
+    {进程级表\\当前位置\\访问方式、指针};
+  \node[box,text width=2.8cm] (system) at (7.2,0)
+    {系统级表\\打开计数\\FCB 副本};
+  \node[box,text width=2.4cm,fill=noteBlue!5] (disk) at (11.2,0)
+    {文件数据块\\按块位置访问};
+  \node[draw=gray,dashed,fit=(process)(system),inner sep=9pt,
+    label={[font=\small,text=noteBlue]above:内核内存}] {};
+  \node[above=0.48cm of disk,font=\small] {磁盘};
+  \draw[->,thick] (user.east) -- node[above,font=\footnotesize]{索引} (process.west);
+  \draw[->,thick] (process.east) -- node[above,font=\footnotesize]{指针} (system.west);
+  \draw[->,thick] (system.east) -- node[above,font=\footnotesize]{映射} (disk.west);
+\end{tikzpicture}

@@ -1,0 +1,109 @@
+% Based on templates/lecture.tex; actual session 20, 2026-10-29 (Week 11).
+% File Systems.pdf, slides 9.1--9.22; videos unavailable, titles only.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 20 节课：文件、目录与文件访问}
+\label{lecture:SC2005-L20}
+
+\lecturemeta
+  {SC2005-L20}
+  {2026-10-29（第十一教学周）}
+  {File Systems，Part 9}
+  {9.1--9.22（PDF pp.~1--22）；文件、目录、保护与内存结构}
+  {Intro, Files and Directories；Protection and In-memory Data Structure；仅按标题对应，视频未读取}
+  {已完成讲解与订正并要求整理；讲义已核对；两节划分为学习安排}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\keyidea{程序提供路径后，文件系统通过目录找到文件，检查访问权限，并建立打开状态；后续读写通过文件描述符定位相应记录。目录解决命名，权限控制访问，打开文件表维护运行时状态；文件在磁盘上的分配方式留到下一节。}
+
+\lecturetopic{SC2005-L20-T01}{文件抽象与分层职责}
+
+\textbf{来源：9.1--9.8。}File（文件）为持久数据提供命名和访问接口。讲义后续采用 UNIX 的 \textbf{byte stream（字节流）模型}：文件是从偏移量 $0$ 开始、每个字节可单独定位的逻辑序列。逻辑位置连续不要求磁盘块连续；文件偏移量也不同于进程的虚拟内存地址。
+
+\textbf{内容、结构与属性。}记录、行列或其他内部格式通常由应用程序解释，OS 提供统一字节接口，再由存储层组织成块。可执行文件、目标文件、源代码、脚本、文本与文档、库、打印/显示格式及归档文件都可通过此接口保存。Metadata（元数据）描述文件：名称、类型、大小、位置、权限、所有者和创建/访问/修改时间；它们与实际内容有别。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{5.1cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+文件系统层次 & 职责 \\
+\midrule
+Logical File System（逻辑文件系统） & 目录、文件创建与访问、元数据、保护与安全 \\
+File-Organisation Module（文件组织模块） & 分配存储，将逻辑文件块映射到物理磁盘块，管理空闲空间 \\
+Basic File System（基本文件系统） & 管理缓冲与缓存，向驱动发出通用的物理块读写命令 \\
+I/O Control（I/O 控制） & 设备驱动与中断处理，完成内存和设备之间的数据传输 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{访问方式。}Sequential access（顺序访问）按文件顺序处理数据；Direct access（直接访问）按指定字节偏移量定位，可不按先后顺序读写。Current position pointer（当前位置指针）记录下一次普通读写的位置。例如从偏移量 $0$ 成功读取 $100$ 字节后，位置前进到 $100$；下一次读写从此继续。
+
+\lecturetopic{SC2005-L20-T02}{目录：命名、路径与共享}
+
+\textbf{来源：9.9--9.17。}Directory entry（目录项）是目录中的\textbf{一条名称记录}。目录及文件保存在磁盘上，使用时可将需要的信息缓存到内存。讲义给出两种表示：文件名与属性直接放在同一条记录中；或者保存文件名及指向 \textbf{FCB（File Control Block，文件控制块）}的指针。后一种形成
+\[
+  \text{文件名}\ \longrightarrow\ \text{FCB：权限、所有者、时间、大小、块位置等}\
+  \longrightarrow\ \text{数据块}.
+\]
+目录用线性列表实现时简单，但查找需逐项比较；用哈希表可缩小查找范围。不同名字可能落到同一哈希位置，称为 collision（冲突），需要在对应记录列表中继续比较名称。
+
+\textbf{树形目录与路径。}Absolute path（绝对路径）以 \texttt{/} 开头，从根目录出发；Relative path（相对路径）从当前工作目录出发。路径逐层定位目录记录，支持逻辑分组，也允许不同目录中使用相同文件名。\texttt{.} 表示当前目录，\texttt{..} 表示父目录。讲义中的 \texttt{/spell/mail/prt/first} 路径见\relatedexercise{SC2005-L20-E01}{路径示例}。
+
+\textbf{目录操作。}Create 建立目录；普通 Delete 操作要求目录为空（只含 \texttt{.}、\texttt{..} 时视为空）；List 列出名称及相应目录记录信息；Search 查找指定名称；Traverse 沿目录结构访问各目录和文件。递归删除工具通过先处理内容再删除目录完成操作。
+
+\textbf{共享与链接。}Acyclic-graph directory（无环图目录）允许多个路径访问同一文件，避免复制数据。两种链接的区别为：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+ & Hard link（硬链接） & Symbolic link（符号链接） \\
+\midrule
+关系 & 多个目录名指向同一文件对象 & 保存目标的绝对或相对路径 \\
+解析 & 目录记录直接定位文件对象 & 还需解析保存的路径 \\
+删除名称 & 移除一个名称后，其他硬链接仍有效 & 目标路径失效后可留下 dangling link（悬空链接） \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\textbf{UNIX 语义补充。}硬链接增加的是同一文件的名称，不复制内容，也不分别维护多份独立属性。Link count（硬链接计数）统计名称引用，区别于 file open count（打开计数）。移除最后一个硬链接后，文件若仍被打开，数据保留到最后一个打开引用释放。符号链接不以这种方式保留目标文件。\footnote{硬链接与删除语义：Linux man-pages 的 \href{https://man7.org/linux/man-pages/man2/link.2.html}{link(2)}、\href{https://man7.org/linux/man-pages/man2/unlink.2.html}{unlink(2)}；对讲义 9.15--9.16 的简写作准确性补充。}
+
+共享可能让遍历重复访问同一文件，需规定是否跟随链接；悬空链接可以查找清除，或在解析失败时处理。
+
+\lecturetopic{SC2005-L20-T03}{UNIX 保护：文件与目录的 rwx}
+
+\textbf{来源：9.21--9.22。}传统权限分为 owner（所有者）、group（所属组）、others/public（其他用户）三类，每类用 $r,w,x$ 三个位表示。数值为 $r=4,w=2,x=1$，一组权限的数值是所设位之和；如 $rwx=7$、$r\texttt{-}x=5$、$\texttt{--}x=1$。权限串的第一个字符表示类型，\texttt{-} 为普通文件、\texttt{d} 为目录，后面才是三组权限。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+权限 & 普通文件 & 目录 \\
+\midrule
+Read（\texttt{r}） & 读取文件内容 & 列出目录中的名称 \\
+Write（\texttt{w}） & 修改文件内容 & 修改目录记录，如创建、删除或重命名名称；通常还需 \texttt{x} \\
+Execute（\texttt{x}） & 执行文件 & Search/traverse：通过名称搜索、穿过目录 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{路径访问条件。}按普通用户、传统权限模型，访问已知路径需要沿途目录的 \texttt{x}；读取最终文件还需该文件的 \texttt{r}。目录有 \texttt{r} 而无 \texttt{x} 时，可能列出名字，却不能通过名字访问内部对象；有 \texttt{x} 而无 \texttt{r} 时，已知名称仍可能被访问。目录权限与文件权限要分别检查。\footnote{目录搜索权限与路径解析：\href{https://man7.org/linux/man-pages/man7/path_resolution.7.html}{Linux path\_resolution(7)}。此处不展开特权用户、ACL 等额外机制。}讲义的 \texttt{game1} 和 \texttt{games} 示例见\relatedexercise{SC2005-L20-E02}{权限串解读}。
+
+\lecturetopic{SC2005-L20-T04}{打开文件后的内存结构与操作}
+
+\textbf{来源：9.8、9.18--9.20。}Open 建立后续访问状态，避免每次读写重新解析完整路径。先查找目录、检查权限并定位 FCB，再建立两级记录：\textbf{system-wide open-file table（系统级打开文件表）}保存 FCB 副本、打开计数等；\textbf{per-process open-file table（进程级打开文件表）}保存本次访问状态并指向系统级记录。最后返回进程表中的索引，即 \textbf{file descriptor（文件描述符，\texttt{fd}）}。
+
+\begin{center}
+\input{figures/open-file-table-flow}
+
+{\small 据讲义 9.19--9.20 原创重绘；字段位置采用讲义简化模型。}
+\end{center}
+
+\texttt{fd} 属于进程自己的编号空间；不同进程中的同一编号可以指向不同文件。两级表都由内核管理。Open 主要准备元数据和打开状态，不要求把全部文件内容装入内存。
+
+\textbf{Read/Write 路径。}先用 \texttt{fd} 找到进程级记录，再沿指针访问系统级记录。当前位置与请求长度决定要访问哪些逻辑文件块；FCB 与分配方法决定这些块位于磁盘何处。完成普通顺序读写后，当前位置随实际传输字节数更新。
+
+\textbf{实现边界。}讲义把当前位置画在进程级表中；实际 Linux 将偏移量与状态标志保存在可共享的 open file description（打开文件描述）中。两级查找表达管理关系，不代表所有系统字段布局完全相同。\footnote{文件描述符与打开文件描述：\href{https://man7.org/linux/man-pages/man2/open.2.html}{Linux open(2)}。}
+
+\textbf{创建、关闭与删除。}Create 建立文件对象、元数据和目录记录，按需分配存储；Close 释放本次打开引用并更新状态，文件通常仍保留；Delete 移除目录名称，在满足引用条件时回收文件与存储空间。
+
+\textbf{一分钟回顾。}文件提供逻辑字节流，应用解释内容格式。目录把名称映射到文件对象，绝对路径从根出发，相对路径从当前目录出发。硬链接共享文件对象，符号链接保存目标路径；文件和目录的 \texttt{rwx} 含义不同。Open 返回进程内的文件描述符，后续读写通过打开文件表定位元数据和数据块；Close 结束本次访问，Delete 移除名称并可能触发回收。
+\endgroup
