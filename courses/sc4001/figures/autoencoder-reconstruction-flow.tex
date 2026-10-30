@@ -1,0 +1,24 @@
+% Original schematic based on 11_autoencoders.pdf pp. 5--10 and 20--24.
+\begin{tikzpicture}[
+ font=\small,>=Stealth,
+ box/.style={draw=noteBlue,fill=noteBlue!4,rounded corners,
+   minimum width=2.15cm,minimum height=.75cm,align=center},
+ flow/.style={->,thick,noteBlue}
+]
+\node[anchor=east] at (-1.5,0) {AE};
+\node[box] (x) at (0,0) {输入 $x$};
+\node[box] (e) at (3.2,0) {Encoder};
+\node[box] (d) at (6.4,0) {Decoder};
+\node[box] (y) at (9.6,0) {重建 $\hat x$};
+\draw[flow] (x)--(e);
+\draw[flow] (e)--node[above] {$h$}(d);
+\draw[flow] (d)--(y);
+\node[anchor=east] at (-1.5,-1.2) {DAE};
+\node[box] (xn) at (0,-1.2) {受损输入 $\tilde x$};
+\node[box] (en) at (3.2,-1.2) {Encoder};
+\node[box] (dn) at (6.4,-1.2) {Decoder};
+\node[box] (yn) at (9.6,-1.2) {重建 $\hat x$};
+\draw[flow] (xn)--(en);
+\draw[flow] (en)--node[above] {$h$}(dn);
+\draw[flow] (dn)--(yn);
+\end{tikzpicture}

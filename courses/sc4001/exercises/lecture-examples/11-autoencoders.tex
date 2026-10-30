@@ -1,0 +1,156 @@
+% Source: 11_autoencoders.pdf pp. 16--19, 25--36, 50--51, 53--65.
+% Prepared from templates/lecture-example.tex; arithmetic independently checked.
+% MNIST figures/results are source observations, not locally rerun experiments.
+
+\exercisegroup{SC4001-L11-EX}{第 11 讲：自编码器与生成模型}
+
+\examplemeta
+  {SC4001-L11-EX}
+  {2026-10-30}
+  {11\_autoencoders：Example 1--3 与 pp.~50--51 的数值例}
+  {损失、矩阵运算与 KL 值已复算；MNIST 训练实验未重跑}
+  {已整理，待审阅}
+
+\Needspace{7\baselineskip}
+\exercisequestion{SC4001-L11-E01}{五维输入的三维编码}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L11-T01}{AE、权重绑定与重建损失}。
+
+\textbf{题目（Example 1，pp.~16--19）。}将四个二值输入
+$(1,0,1,0,0)$、$(0,0,1,1,0)$、$(1,1,0,1,1)$、$(0,1,1,1,0)$
+编码为三个隐藏单元的表示，再重建输入。采用 tied weights 与 sigmoid 激活，写出批量计算及错误位数；计算讲义给定预测的 BCE，并说明讲义训练结果中的隐藏表示。
+
+\begin{workedsolution}
+将样本逐行堆叠为 $X\in\mathbb R^{4\times5}$，则
+\[
+ H=\sigma(XW+B)\in\mathbb R^{4\times3},\qquad
+ \hat X=\sigma(HW^\top+C)\in\mathbb R^{4\times5},
+\]
+其中 $W\in\mathbb R^{5\times3}$，$B,C$ 分别将长度为 $3,5$ 的偏置复制到四行。阈值输出为 $O_{ik}=\mathbf1[\hat X_{ik}>0.5]$，错误位数为
+\[
+ \text{bit errors}=\sum_{i=1}^4\sum_{k=1}^5\mathbf1[X_{ik}\ne O_{ik}].
+\]
+
+\textbf{计算给定预测的损失。}p.~17 给出的假设预测为
+\[
+ \hat X=\begin{pmatrix}
+ .9&.1&.8&.3&.2\\
+ .2&.4&.7&.9&.1\\
+ .8&.7&.2&.6&.9\\
+ .3&.6&.9&.7&.4
+ \end{pmatrix}.
+\]
+例如第一行损失为
+\[
+ -\ln.9-\ln(1-.1)-\ln.8-\ln(1-.3)-\ln(1-.2)
+ \approx1.01368.
+\]
+四行依次约为 $1.01368,1.30137,1.41915,1.84036$，故
+\[
+ J_{\rm BCE}\approx5.57456,\qquad
+ J_{\rm BCE}/4\approx1.39364,\qquad J_{\rm BCE}/20\approx0.27873.
+\]
+所有元素在 $0.5$ 处阈值化后均正确，因此错误位数为 $0$；预测概率还未达到完全确定，交叉熵仍大于零。
+
+\textbf{从讲义训练参数计算隐藏表示。}p.~19 给出的舍入参数为
+\[
+ W=\begin{pmatrix}
+ -3.6867&-.3808&2.6520\\
+ -.2545&-3.6158&-1.8657\\
+ 1.7148&3.0138&.9254\\
+ 1.9011&-.9880&-3.5277\\
+ -2.4830&-2.5980&-1.1112
+ \end{pmatrix},
+ \quad b=(.1496,.5881,-.1604),
+\]
+\[
+ c=(1.2448,2.3414,-.7427,2.1173,.9872).
+\]
+\begin{center}
+\small
+\begin{tabular}{@{}cc@{}}
+\toprule
+输入 & 隐藏表示 $h$（保留五位小数） \\
+\midrule
+$(1,0,1,0,0)$ & $(.13916,.96162,.96823)$ \\
+$(0,0,1,1,0)$ & $(.97737,.93175,.05937)$ \\
+$(1,1,0,1,1)$ & $(.01245,.00092,.01776)$ \\
+$(0,1,1,1,0)$ & $(.97100,.26857,.00968)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+再经过 $\sigma(HW^\top+C)$，阈值重建也全部正确。这里是对\emph{讲义给定参数}的前向复算，未重新训练；它与上面的假设预测是两组不同数值。隐藏表示是连续向量，不要求三个单元输出二进制码，也不保证每次训练都得到相同编码。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L11-E02}{MNIST 去噪实验：输入、目标和权重图}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L11-T02}{去噪自编码器}。
+
+\textbf{题目（Example 2a--2b，pp.~25--36）。}MNIST 图像大小为 $28\times28$，像素从 $[0,255]$ 归一化到 $[0,1]$；训练集 $60\,000$ 张、测试集 $10\,000$ 张。构建有 $500$ 个隐藏单元的 DAE，比较 $10\%$ 置零噪声和标准差 $0.1$ 的加性 Gaussian 噪声。说明训练配对与权重可视化的含义。
+
+\begin{workedsolution}
+网络为 $784\to500\to784$，编码权重 $W\in\mathbb R^{784\times500}$。两组实验均输入 $\tilde x$、以干净 $x$ 为重建目标，讲义学习率为 $0.1$：
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+实验 & 受损输入 & 训练要求 \\
+\midrule
+Example 2a & $\tilde x_k=m_kx_k$，$m_k\sim\operatorname{Bernoulli}(0.9)$ & 用剩余像素恢复被置零位置及整体数字 \\
+Example 2b & $\tilde x_k=x_k+\epsilon_k$，$\epsilon_k\sim\mathcal N(0,0.1^2)$ & 从扰动像素重建原图 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+随机置零 $10\%$ 指每个位置的破坏概率；不保证每张图恰好相同数量，也不表示所有被选位置原本非零。
+
+$W$ 的每一列包含某个隐藏单元接收的 $784$ 个输入权重，可排为 $28\times28$。讲义显示的是 $500$ 列中的 $100$ 列，并非只训练了 $100$ 个单元。权重图可帮助观察笔画和局部结构的响应模式；它本身不是重建图。
+
+讲义的损失曲线与重建图展示了去噪效果；本次仅解读已有结果，未重跑训练或新增测试指标。
+\end{workedsolution}
+
+\Needspace{7\baselineskip}
+\exercisequestion{SC4001-L11-E03}{三个隐藏单元的稀疏代价}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L11-T03}{平均激活与 KL 约束}。
+
+\textbf{题目（Numerical Example，pp.~50--51）。}三个隐藏单元的平均激活为 $0.1,0.3,0.5$，目标 $\rho=0.2$。计算总稀疏代价 $D(h)$，对数取自然对数。
+
+\begin{workedsolution}
+每项按 $D_j=\rho\ln(\rho/\bar\rho_j)+(1-\rho)\ln[(1-\rho)/(1-\bar\rho_j)]$ 计算：
+\[
+ \begin{aligned}
+ D_1&=.2\ln\frac{.2}{.1}+.8\ln\frac{.8}{.9}\approx.044403,\\
+ D_2&=.2\ln\frac{.2}{.3}+.8\ln\frac{.8}{.7}\approx.025732,\\
+ D_3&=.2\ln\frac{.2}{.5}+.8\ln\frac{.8}{.5}\approx.192745.
+ \end{aligned}
+\]
+故 $D(h)\approx0.262880$。讲义将各项先舍入四位再相加得到 $0.2628$；最后才舍入则为 $0.2629$。实际加入总损失的是 $\beta D(h)$。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L11-E04}{欠完备、过完备与稀疏模型的比较}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L11-T03}{表示维数与激活约束}。
+
+\textbf{题目（Example 3，pp.~53--65）。}对 $28\times28$ MNIST 图像分别使用 $100$ 单元普通 AE、$900$ 单元普通 AE 和 $900$ 单元 SAE；最后一组取 $\beta=0.5,\rho=0.05$。说明三者的区别，以及讲义中权重图、重建图和隐藏激活图分别展示什么。
+
+\begin{workedsolution}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+模型 & 训练约束 & 隐藏激活的显示方式 \\
+\midrule
+$784\to100\to784$ & 较窄的隐藏层鼓励压缩 & 每张图的 $100$ 个激活排成 $10\times10$ \\
+$784\to900\to784$ & 隐藏维数大于输入，无稀疏项 & 每张图的 $900$ 个激活排成 $30\times30$ \\
+$784\to900\to784$ SAE & 重建损失 $+0.5D(h)$，目标平均激活 $.05$ & 同为 $30\times30$，讲义结果中多数激活较暗 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+三种图应分别解释：
+\begin{itemize}
+ \item \textbf{权重图：}每个隐藏单元的 $784$ 个输入权重排为 $28\times28$，对应输入像素位置。$900$ 单元模型的讲义图只展示其中 $100$ 个单元。
+ \item \textbf{重建图：}输出的 $784$ 个数排回 $28\times28$，与原图比较。
+ \item \textbf{激活图：}给定某张输入时隐藏单元的响应；讲义展示 $49$ 个输入的激活。$10\times10$ 或 $30\times30$ 网格只是排版，不表示原图中的空间位置。
+\end{itemize}
+普通过完备模型的激活较密集，SAE 更稀疏，说明该示例中的约束起了作用。此例没有下游评估，不能据图断言分类更准。
+\end{workedsolution}

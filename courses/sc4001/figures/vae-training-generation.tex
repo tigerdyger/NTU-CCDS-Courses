@@ -1,0 +1,20 @@
+% Original schematic based on 11_autoencoders.pdf pp. 90--97.
+\begin{tikzpicture}[
+ font=\small,>=Stealth,
+ box/.style={draw=noteBlue,fill=noteBlue!4,rounded corners,
+   text width=3.5cm,minimum height=1.15cm,align=center,inner sep=4pt},
+ flow/.style={->,thick,noteBlue}
+]
+\node[box] (e) at (0,0) {Encoder\\$x\mapsto(\mu_{z\mid x},\Sigma_{z\mid x})$};
+\node[box] (z) at (5,0) {按编码分布采样\\$z\sim q_\phi(z\mid x)$};
+\node[box] (d) at (10,0) {Decoder\\计算 $p_\theta(x\mid z)$};
+\draw[flow] (e)--node[above] {参数}(z);
+\draw[flow] (z)--node[above] {$z$}(d);
+\node[anchor=west,font=\small\bfseries] at (-1.9,1) {训练：联合更新编码器与解码器，另加 KL 约束};
+\node[box] (p) at (0,-2.35) {从先验采样\\$z\sim p(z)$};
+\node[box] (g) at (5,-2.35) {Decoder\\$\mu_{x\mid z},\Sigma_{x\mid z}$};
+\node[box] (o) at (10,-2.35) {生成新样本\\$\hat x\sim p_\theta(x\mid z)$};
+\draw[flow] (p)--node[above] {$z$}(g);
+\draw[flow] (g)--node[above] {参数}(o);
+\node[anchor=west,font=\small\bfseries] at (-1.9,-1.35) {生成：无需输入图片，也不运行编码器};
+\end{tikzpicture}

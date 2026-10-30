@@ -1,0 +1,223 @@
+% Actual class: 11, Week 11, 2026-10-30.
+% Source: 11_autoencoders.pdf pp. 1--103; 11_pulse_checking.pdf pp. 1--5.
+% All four English caption tracks read; no claim of full video-frame review.
+% Prepared from templates/lecture.tex; source experiments were not rerun.
+
+\section{第 11 节课：自编码器与生成模型}
+\label{lecture:SC4001-L11}
+
+\lecturemeta
+  {SC4001-L11}
+  {2026-10-30（第十一周）}
+  {11\_autoencoders：Autoencoders}
+  {pp.~1--103；11\_pulse\_checking pp.~1--5 用于概念核对}
+  {11\_autoencoders\_part1--4，约 84 分钟；完整英文字幕与讲义核对，未逐帧观看}
+  {已讲解并订正；数值已复算，讲义训练实验未重跑；笔记待审阅}
+
+本讲从一个任务出发：\textbf{让网络重建输入，从中学到有用的表示。}普通自编码器以重建误差训练；去噪和稀疏约束限制它如何表示数据；深层编码器可为分类提供特征；最后，VAE 学习概率分布，用来生成新样本。
+
+\lecturetopic{SC4001-L11-T01}{普通自编码器：通过重建学习表示}
+
+\textbf{来源：}pp.~3--19，视频 Part 1。
+
+\subsubsection{输入、隐藏表示与训练目标}
+
+Autoencoder（AE，自编码器）由 encoder（编码器）和 decoder（解码器）组成：
+\[
+ x\in\mathbb R^n\ \xrightarrow{E}\ h\in\mathbb R^m
+ \ \xrightarrow{D}\ \hat x\in\mathbb R^n.
+\]
+编码器得到 representation（表示）$h$，解码器据此重建 $x$。训练目标来自输入本身，不需要人工提供类别标签；讲义将其归入无监督学习，也可从自动构造监督信号的角度理解。
+
+对 $N$ 个样本，连续值重建常用 mean squared error（MSE，均方误差）：
+\[
+ J_{\rm MSE}=\frac1N\sum_{i=1}^N\|\hat x_i-x_i\|_2^2.
+\]
+对二值输入，以 sigmoid 输出各位取 $1$ 的概率，使用 binary cross-entropy（BCE，二元交叉熵）：
+\[
+ J_{\rm BCE}=-\sum_{i=1}^N\sum_{k=1}^n
+ \big[x_{ik}\ln\hat x_{ik}+(1-x_{ik})\ln(1-\hat x_{ik})\big].
+\]
+此处 BCE 沿用讲义的总和；若报告平均损失，应说明按样本数 $N$ 还是元素数 $Nn$ 归一化。连续概率用于训练；阈值化后的 bit errors（错误位数）用于检查二值重建，两者不相同。
+
+重建得好只说明网络保留了恢复输入所需的信息。若网络直接复制输入，或主要保留与分类无关的细节，隐藏表示仍可能不适合下游任务。
+
+\subsubsection{权重绑定：共用参数，不保证精确重建}
+
+按讲义列向量约定，设 $W=W_e\in\mathbb R^{n\times m}$。Weight tying（权重绑定）可选地约束 $W_d=W_e^\top$，于是
+\[
+ h=f(W^\top x+b),\qquad \hat x=f(Wh+c),
+ \qquad b\in\mathbb R^m,\ c\in\mathbb R^n.
+\]
+编码与解码使用同一组权重，两个偏置仍分别训练。这减少独立参数，也限制了模型的自由度。\textbf{转置 $W^\top$ 不等于矩阵求逆。}即使去掉偏置与非线性，重建也只是 $\hat x=WW^\top x$，一般不能保证等于 $x$；绑定权重本身不要求 $W$ 正交。
+
+四个二值样本的网络、损失和隐藏表示见\relatedexercise{SC4001-L11-E01}{五维输入的三维编码}。
+
+\lecturetopic{SC4001-L11-T02}{去噪自编码器：用受损输入恢复干净数据}
+
+\textbf{来源：}pp.~20--36，视频 Part 2。
+
+Denoising autoencoder（DAE，去噪自编码器）先把干净输入 $x$ 破坏为 $\tilde x$，再训练
+\[
+ \hat x=D(E(\tilde x)),\qquad J=\sum_i L(\hat x_i,x_i).
+\]
+\textbf{输入是受损数据，目标始终是干净的原数据。}被破坏的内容无法直接复制，网络需要利用像素之间的关系恢复结构。
+
+\begin{center}
+\input{figures/autoencoder-reconstruction-flow}
+\end{center}
+{\small 原创示意，依据 pp.~5--10、20--24；两种训练都比较输出与干净的 $x$。}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+噪声 & 构造受损输入 & 参数的含义 \\
+\midrule
+加性 Gaussian noise & $\tilde x_k=x_k+\epsilon_k$，$\epsilon_k\sim\mathcal N(0,\sigma^2)$ & $\sigma$ 控制扰动大小，常用于连续数据 \\
+乘性 masking noise & $\tilde x_k=m_kx_k$，$m_k\sim\operatorname{Bernoulli}(p)$ & $p$ 为保留概率，$1-p$ 为置零概率 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+讲义在 MNIST 上比较这两种噪声，使用 $784\to500\to784$ 网络。输入到某个隐藏单元的 $784$ 个权重可排回 $28\times28$，观察它对哪些像素组合敏感。这样的\emph{权重图}不同于输入某张图片后得到的\emph{激活值}。
+
+去噪效果与训练时使用的破坏方式有关，不能据此保证对任意噪声都有效。实验设置及读图方法见\relatedexercise{SC4001-L11-E02}{MNIST 去噪实验}。
+
+\lecturetopic{SC4001-L11-T03}{表示的约束：压缩维数与稀疏激活}
+
+\textbf{来源：}pp.~37--65，视频 Part 3。
+
+\subsubsection{隐藏层宽度限制了什么}
+
+若输入维数为 $n$、隐藏维数为 $m$，undercomplete AE（欠完备自编码器）满足 $m<n$，通过较窄的中间层鼓励压缩；overcomplete AE（过完备自编码器）满足 $m>n$，有更大表示容量，也更容易学会复制输入。MNIST 输入有 $784$ 维，$100$ 维隐藏层属于前者，$900$ 维属于后者。
+
+瓶颈本身不保证学到有用特征，模型表达能力与训练约束也很重要。在线性映射、平方误差等条件下，欠完备 AE 与 PCA 所保留的主子空间有关；带非线性的 AE 可以学习更复杂的表示，不能一般地等同于 PCA。
+
+Regularized AE（正则化自编码器）用额外代价限制表示：
+\[
+ J_{\rm total}=J_{\rm reconstruction}+\beta\,\Omega(h).
+\]
+这允许较宽的隐藏层，同时避免所有单元对所有样本都强烈响应。
+
+\subsubsection{Sparse AE：约束每个单元的平均激活}
+
+本讲的 sparse autoencoder（SAE，稀疏自编码器）使用 sigmoid 隐藏单元。第 $j$ 个单元在数据上的平均激活为
+\[
+ \bar\rho_j=\frac1N\sum_{i=1}^N h_j(x_i).
+\]
+用较小的目标 $\rho$（例如 $0.05$）鼓励该单元在多数样本上接近不激活。$\rho$ 约束\textbf{跨样本的平均值}；它不要求每次激活都等于 $0.05$，也不等于每张图严格只有 $5\%$ 单元激活。
+
+讲义用 Bernoulli 分布的 KL divergence（KL 散度）比较目标与实际平均值：
+\[
+ D(h)=\sum_{j=1}^{m}\left[
+ \rho\ln\frac{\rho}{\bar\rho_j}
+ +(1-\rho)\ln\frac{1-\rho}{1-\bar\rho_j}\right],
+ \qquad J_{\rm SAE}=J+\beta D(h).
+\]
+在 $0<\rho,\bar\rho_j<1$ 时，各项非负；当 $\bar\rho_j=\rho$ 时为零。平均激活高于或低于目标都会受罚，因此把所有单元都压到零也不合适。计算例见\relatedexercise{SC4001-L11-E03}{三个单元的稀疏代价}。
+
+\subsubsection{重建与稀疏之间的取舍}
+
+对权重的梯度及更新为
+\[
+ \nabla_W J_{\rm SAE}=\nabla_W J+\beta\nabla_W D(h),
+ \qquad W\leftarrow W-\alpha\nabla_W J_{\rm SAE}.
+\]
+偏置按各自梯度更新。$\alpha$ 是 learning rate（学习率），$\beta$ 决定稀疏项相对重建项的重要性；$\beta$ 太大可能损害重建。由于 $D(h)$ 只依赖隐藏激活，它不直接依赖输出偏置 $c$；绑定权重 $W$ 则同时参与编码与解码。
+
+讲义的 $900$ 单元 SAE 激活图比普通 $900$ 单元 AE 更稀疏。将隐藏激活排成 $30\times30$ 只是显示方式，网格位置不代表原图像素。三个模型的比较见\relatedexercise{SC4001-L11-E04}{欠完备、过完备与稀疏模型}。
+
+\lecturetopic{SC4001-L11-T04}{多层表示与分类：学到的编码怎样使用}
+
+\textbf{来源：}pp.~66--70，视频 Part 3。
+
+\subsubsection{逐层预训练，再整体微调}
+
+Deep stacked autoencoder（深层堆叠自编码器）把多个编码器依次连接。讲义采用 greedy layer-wise pretraining（贪心逐层预训练）：
+\begin{enumerate}
+ \item 第一层：训练 $x\to h_1\to\hat x$，重建目标为 $x$。
+ \item 第二层：固定第一层编码器，训练 $h_1\to h_2\to\hat h_1$，重建目标为 $h_1$；仅更新第二层编码器与对应解码器。
+ \item 更深层同理：固定前面的编码器，以前一层表示为新输入及重建目标。
+\end{enumerate}
+之后接成完整路径，例如
+\[
+ x\xrightarrow{E_1}h_1\xrightarrow{E_2}h_2
+ \xrightarrow{D_2}\hat h_1\xrightarrow{D_1}\hat x,
+\]
+再以最终重建误差 $L(\hat x,x)$ 对全网络 fine-tune（微调）。逐层训练提供初始参数，整体训练让各层共同适应最终目标；逐层预训练并非训练深层网络的唯一方式。
+
+\subsubsection{无标签预训练如何帮助有标签分类}
+
+先用无标签数据训练 AE，随后去掉 decoder，保留 encoder 并接上分类器：
+\[
+ x\xrightarrow{\rm encoder}h\xrightarrow{\rm classifier}P(y\mid x).
+\]
+再用有标签数据优化分类损失，并可一起微调编码器。这是本讲 semi-supervised learning（半监督学习）的用法。重建预训练有助于利用无标签数据，但是否改善分类仍需评估；重建任务可能保留许多与类别无关的信息。
+
+\lecturetopic{SC4001-L11-T05}{VAE：学习分布，再生成新样本}
+
+\textbf{来源：}pp.~71--98，视频 Part 4。
+
+\subsubsection{从重建现有样本转向生成新样本}
+
+普通 AE 给每个输入一个确定的编码，但没有规定任意随机编码应该对应什么。训练样本编码之间可能存在空隙，随意抽取 $z$ 再解码不保证得到合理数据。
+
+Variational autoencoder（VAE，变分自编码器）先定义生成过程：从 prior（先验）$p(z)$ 抽取隐藏变量 $z$，再按 decoder 给出的 conditional distribution（条件分布）$p_\theta(x\mid z)$ 生成数据。先验常取 $\mathcal N(0,I)$；$\theta$ 表示解码器参数。
+
+本讲以 Gaussian decoder 为例：它接收 $z$，输出数据分布的均值 $\mu_{x\mid z}$ 与对角协方差 $\Sigma_{x\mid z}$，从而定义
+\[
+ p_\theta(x\mid z)=\mathcal N(\mu_{x\mid z},\Sigma_{x\mid z}).
+\]
+Gaussian 是分布选择之一。对角协方差表示给定 $z$ 时各输出维度条件独立，不表示数据各维在总体上独立。
+
+\subsubsection{为什么训练时还需要编码器}
+
+训练集只提供 $x$，没有提供产生它的 $z$。最大化数据似然需要计算
+\[
+ p_\theta(x)=\int p_\theta(x\mid z)p(z)\,\mathrm dz.
+\]
+神经网络解码器使这个高维积分通常难以直接求出。Bayes 公式还给出
+\[
+ p_\theta(z\mid x)=\frac{p_\theta(x\mid z)p(z)}{p_\theta(x)},
+\]
+但精确 posterior（后验）同样依赖难求的分母。于是增加参数为 $\phi$ 的编码器，用可计算的 $q_\phi(z\mid x)$ 近似它：
+\[
+ q_\phi(z\mid x)=\mathcal N(\mu_{z\mid x},\Sigma_{z\mid x}).
+\]
+编码器输入 $x$，输出\textbf{隐藏变量分布的参数}，随后从该分布采样 $z$。它与先验 $p(z)$ 的角色不同：前者依赖当前输入，后者用于从零生成。
+
+\begin{center}
+\input{figures/vae-training-generation}
+\end{center}
+{\small 原创示意，依据 pp.~90--97；讲义采用对角 Gaussian 编码器与解码器。}
+
+\subsubsection{联合训练：保留重建信息，同时约束分布}
+
+编码器的近似质量也需要学习，不能先假定 $q_\phi=p_\theta(z\mid x)$。训练时联合优化编码器和解码器，最大化 evidence lower bound（ELBO，证据下界）：
+\[
+ \log p_\theta(x)\ge
+ \underbrace{\mathbb E_{z\sim q_\phi(z\mid x)}
+   [\log p_\theta(x\mid z)]}_{\text{鼓励重建观测到的 }x}
+ -\underbrace{D_{\rm KL}\!\left(q_\phi(z\mid x)\,\|\,p(z)\right)}_{
+   \text{使编码分布接近所选先验}}.
+\]
+也可最小化其相反数，即“负的期望重建对数似然 $+$ KL 代价”。第一项要求 $z$ 保留重建所需的信息；第二项让编码分布与生成时使用的先验相协调。二者需要平衡，VAE 优化的是似然的下界。
+
+这里的 KL 比较\emph{隐藏变量的概率分布}；SAE 中的 KL 比较\emph{单元平均激活与目标值所对应的 Bernoulli 分布}。两者约束对象不同。
+
+{\small 记号订正：讲义 pp.~91--94 的期望下标误写为 $q_\phi(x\mid z)$，应为上式的 $q_\phi(z\mid x)$。本讲未展开重参数化或 ELBO 的完整证明。}
+
+\subsubsection{生成时只使用先验与解码器}
+
+训练后生成新数据的步骤为
+\[
+ z\sim p(z)
+ \ \longrightarrow\ (\mu_{x\mid z},\Sigma_{x\mid z})
+ \ \longrightarrow\ \hat x\sim p_\theta(x\mid z).
+\]
+生成时不需要输入图片或运行 encoder。讲义生成图像仍有平滑、模糊等局限；隐藏变量也不必具有可解释的含义。
+
+\subsection{一分钟回顾}
+
+AE 通过重建学习表示，权重绑定不保证精确恢复输入。DAE 的目标是干净数据，SAE 约束平均激活。堆叠 AE 可逐层预训练，编码器可接分类器。VAE 联合学习编码与解码分布；生成时从先验采样，不需编码器。
