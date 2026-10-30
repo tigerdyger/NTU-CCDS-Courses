@@ -1,0 +1,173 @@
+% Based on templates/tutorial.tex; original tutorial questions only.
+% Source: Part 2-Tutorial 3-Questions(1).pdf, printed/PDF pp. 1--3, Q1--Q4.
+% Session: 2026-10-30, Week 11. No official solution supplied.
+% Q1's 13-segment construction explicitly permits ACK/data/FIN coalescing.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2008-TUT07}{Tutorial 07：TCP 时序、拥塞控制与网页访问}
+\label{tutorial:SC2008-TUT07}
+
+\tutorialmeta
+  {SC2008-TUT07}
+  {2026-10-30（Week 11）}
+  {Part 2-Tutorial 3-Questions(1)，Tutorial 2-3: Transport and Application Layers；pp.~1--3（PDF pp.~1--3），Questions 1--4}
+  {题目、图形与计算已核对；未提供官方参考答案}
+  {已完成学习并要求整理}
+
+\linespread{1.1}\selectfont
+\setlength{\parskip}{0.3em}
+\setlength{\topsep}{0.3em}
+
+\exercisequestion{SC2008-TUT07-Q01}{TCP 建立、数据传输与关闭}
+\textbf{对应讲义：}\relatedtopic{SC2008-L08-T02}{字节编号与连接}；\relatedtopic{SC2008-L08-T03}{发送窗口}。
+
+\textbf{题目（p.~1，Figure Q1）。}客户端建立连接后依次执行写入 30 B、读取 3000 B、关闭；服务器接受连接后依次读取 30 B、写入 3000 B、关闭。在理想无差错、无重传情况下，画出最少 TCP 报文段交换，标明各段的 SN、AN 及 SYN、FIN 标志。客户端 ISN=100，服务器 ISN=600；双方接收窗口固定为 2048 B，MSS=536 B，初始拥塞窗口为 1 MSS。
+
+\begin{checkedsolution}
+\textbf{本解约定。}允许第三次握手携带 30 B 请求，使用累计 ACK，服务器将 FIN 捎带于最后的数据段，客户端再合发 FIN+ACK。采用课程慢启动模型：每份确认新数据的 ACK 使 cwnd 增加 1 MSS。题面未明确 ACK 策略及双方关闭的同步时机，以下为\textbf{这些合并约定下的 13 段解}；若另外要求分开发送，段数会改变。
+
+\textbf{分段与额度。}SN 记录本方向的发送位置，AN 表示期待对方的下一字节；SYN、FIN 各占一个序列号，纯 ACK 不占。服务器三批的 cwnd 依次为 1、2、3 MSS，对应 536、1072、1608 B，均小于接收窗口 2048 B。实际发送量依次为 $536$、$536+536$、$536+536+320$ B，共 3000 B。第二批只收到一份累计 ACK，故 cwnd 从 2 增至 3 MSS。
+
+\begin{center}
+\small
+\begin{tabular}{@{}cllrr@{}}
+\toprule
+段 & 方向 & 内容及标志 & SN & AN \\
+\midrule
+1 & 客户端$\to$服务器 & SYN & 100 & --- \\
+2 & 服务器$\to$客户端 & SYN+ACK & 600 & 101 \\
+3 & 客户端$\to$服务器 & 30 B+ACK & 101 & 601 \\
+4 & 服务器$\to$客户端 & 536 B+ACK & 601 & 131 \\
+5 & 客户端$\to$服务器 & ACK & 131 & 1137 \\
+6 & 服务器$\to$客户端 & 536 B+ACK & 1137 & 131 \\
+7 & 服务器$\to$客户端 & 536 B+ACK & 1673 & 131 \\
+8 & 客户端$\to$服务器 & ACK & 131 & 2209 \\
+9 & 服务器$\to$客户端 & 536 B+ACK & 2209 & 131 \\
+10 & 服务器$\to$客户端 & 536 B+ACK & 2745 & 131 \\
+11 & 服务器$\to$客户端 & 320 B+FIN+ACK & 3281 & 131 \\
+12 & 客户端$\to$服务器 & FIN+ACK & 131 & 3602 \\
+13 & 服务器$\to$客户端 & ACK & 3602 & 132 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+客户端数据占 101--130，FIN 占 131；服务器数据占 601--3600，FIN 占 3601。因此最后分别确认到 132 与 3602。首段没有有效的 ACK 字段。按本模型，服务器至少需要 $\lceil3000/536\rceil=6$ 个数据段，并至少两次中途 ACK 才能释放及扩大额度；上述合并避免了额外的请求确认和关闭段。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT07-Q02}{从拥塞窗口曲线判断状态}
+\textbf{对应讲义：}\relatedtopic{SC2008-L08-T03}{慢启动、拥塞避免与丢失反馈}。
+
+\textbf{题目（p.~2，Q2 图）。}根据下图，给出：(a) slow start 区间；(b) congestion avoidance 区间；(c)、(d) 第 16、22 轮之后的丢包分别由三个重复 ACK 还是超时检测；(e)、(f)、(g) 第 1、18、24 轮的阈值；(h) 第 70 个报文段在哪轮发出。各项均说明依据。
+
+\begin{center}
+\input{figures/tutorial07-tcp-window}
+
+{\footnotesize 根据 Q2 原图数据重绘；纵轴为拥塞窗口，以报文段数计。}
+\end{center}
+
+\begin{checkedsolution}
+按图采用 Reno 的简化恢复模型：慢启动每轮近似翻倍，拥塞避免每轮约加 1；三个重复 ACK 后窗口减半，超时后回到 1。两种损失事件均将 ssthresh 设为损失前窗口的一半。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{4.3cm}X@{}}
+\toprule
+小问 & 结论 & 依据 \\
+\midrule
+(a) & 第 1--6、23--26 轮 & 前段为 $1,2,4,8,16,32$；末段为 $1,2,4,8$。\\
+(b) & 第 6--16、17--22 轮 & 窗口分别从 32 增至 42、从 21 增至 26，每轮加 1。\\
+(c) & 三个重复 ACK & 第 16 轮之后 $42\to21$，随后线性增长。\\
+(d) & Timeout（超时） & 第 22 轮之后 $26\to1$，重新慢启动。\\
+(e) & 初始 ssthresh=32 & 第 6 轮达到 32 后转为线性增长。\\
+(f) & 第 18 轮 ssthresh=21 & 第 16 轮损失后设置 $42/2=21$。\\
+(g) & 第 24 轮 ssthresh=13 & 第 22 轮损失后设置 $26/2=13$。\\
+(h) & 第 7 轮 & 前六轮共 63 段，第七轮发送第 64--96 段。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+第 6 轮是两阶段的共同边界；阈值在下一次损失前保持不变。(h) 中 $1+2+4+8+16+32=63$，再加第七轮的 33 段得到 96；这里累计的是段数，与按字节计数的 SN 不同。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT07-Q03}{家用网关的角色与网页访问帧序列}
+\textbf{对应讲义：}\relatedtopic{SC2008-L06-T03}{ARP 与下一跳}；\relatedtopic{SC2008-L06-T05}{DHCP 与 NAT}；\relatedtopic{SC2008-L08-T01}{应用协议}；\relatedtopic{SC2008-L08-T02}{TCP 连接}。
+
+\textbf{题目（pp.~2--3，Figures Q3a--Q3b）。}电脑经 ADSL 设备连接 ISP，拓扑为“电脑 $\leftrightarrow$ ADSL 设备 $\leftrightarrow$ Internet $\leftrightarrow$ Web 服务器”。电脑掩码为 \texttt{255.255.255.0}，DHCP Enabled=Yes，默认网关、DHCP Server、DNS Server 均为 \texttt{192.168.1.254}。设备地址如下：
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+设备 & IP & MAC & MAC 简写 \\
+\midrule
+电脑 & \texttt{192.168.1.68} & \texttt{00-23-26-AA-AA-AA} & $M_P$ \\
+ADSL 设备内网接口 & \texttt{192.168.1.254} & \texttt{00-24-17-BB-BB-BB} & $M_R$ \\
+Web 服务器 & \texttt{155.69.6.163} & 未提供，电脑无需解析 & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+(a) 推断 ADSL 设备的功能并说明用途。(b) 电脑无代理访问 \texttt{http://www.ntu.edu.sg}，所有缓存初始为空；列出电脑发出或收到的帧，包含用途、源/目的 MAC 及适用时的源/目的 IP，直到收到第一帧网页内容。
+
+\begin{checkedsolution}
+\textbf{(a) 设备角色。}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.2cm}X@{}}
+\toprule
+功能 & 依据与用途 \\
+\midrule
+ADSL Modem & 经 ADSL 接入 ISP，在数字数据与电话线路传输信号间转换。\\
+Router / Gateway & 配置为默认网关，在局域网与外部网络之间转发 IP 包。\\
+DHCP Server & 配置为 DHCP 服务器，分配 IP、掩码、网关及 DNS 等参数。\\
+DNS Proxy / Forwarder & 配置为 DNS 服务器，接收查询，通常向上游转发并返回结果。\\
+NAT / PAT & 私有 IP 访问公网时转换地址，通常以端口映射区分连接。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+DNS 服务角色直接来自配置；上游转发与 NAT/PAT 按普通家用宽带场景推断。
+
+\textbf{(b) 电脑侧的帧。}电脑已有地址配置，无需重新 DHCP；依次进行 ARP、DNS、TCP 握手、HTTP 请求与响应。$M_B=\texttt{FF-FF-FF-FF-FF-FF}$ 为广播地址。
+\begin{center}
+\small
+\begin{tabular}{@{}clccll@{}}
+\toprule
+帧 & 用途 & 源 MAC & 目的 MAC & 源 IP & 目的 IP \\
+\midrule
+1 & ARP Request & $M_P$ & $M_B$ & --- & --- \\
+2 & ARP Reply & $M_R$ & $M_P$ & --- & --- \\
+3 & DNS Query & $M_P$ & $M_R$ & \texttt{192.168.1.68} & \texttt{192.168.1.254} \\
+4 & DNS Reply & $M_R$ & $M_P$ & \texttt{192.168.1.254} & \texttt{192.168.1.68} \\
+5 & TCP SYN & $M_P$ & $M_R$ & \texttt{192.168.1.68} & \texttt{155.69.6.163} \\
+6 & TCP SYN+ACK & $M_R$ & $M_P$ & \texttt{155.69.6.163} & \texttt{192.168.1.68} \\
+7 & TCP ACK & $M_P$ & $M_R$ & \texttt{192.168.1.68} & \texttt{155.69.6.163} \\
+8 & HTTP GET & $M_P$ & $M_R$ & \texttt{192.168.1.68} & \texttt{155.69.6.163} \\
+9 & HTTP Reply & $M_R$ & $M_P$ & \texttt{155.69.6.163} & \texttt{192.168.1.68} \\
+\bottomrule
+\end{tabular}
+\end{center}
+第一帧的 ARP sender/target IP 为 \texttt{192.168.1.68}/\texttt{192.168.1.254}，第二帧反向。ARP 不封装在 IP 包内，表中 IP 首部地址因此不适用。第四帧的 DNS 数据携带 \texttt{155.69.6.163} 这一解析结果，DNS 回复的源 IP 仍为 \texttt{192.168.1.254}。
+
+帧表只观察\textbf{电脑网卡}，公网 NAT 和上游 DNS 不列入。远端通信的 MAC 指向网关，IP 指向服务器。本题不求最少帧数：第 7、8 帧分开，请求的 ACK 随响应返回；独立 ACK 或其他合并方式会改变总数。收到第一帧网页内容即停止，不列关闭连接。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-TUT07-Q04}{小窗口如何限制高速链路}
+\textbf{对应讲义：}\relatedtopic{SC2008-L08-T04}{窗口、RTT 与传输时间}。
+
+\textbf{题目（p.~3）。}经 10 Gbps 链路向日本上传 1 GByte 文件，RTT=100 ms，MSS=1 KByte，最大段数为 16。无丢包，求预期上传时间。
+
+\begin{checkedsolution}
+将“16”解释为最多 16 个未确认段，按稳定窗口估算，忽略握手、慢启动暂态及首部开销，并假设无更小的接收窗口限制。$W=16\times1=16$ KByte，$R_W=W/RTT=16/0.1=160$ KByte/s。有效吞吐率取链路速率与 $R_W$ 的较小值；后者仅约 $1.3$ Mbit/s，远低于 10 Gbps，因此
+\[
+ T\approx\frac{1\text{ GByte}}{160\text{ KByte/s}}.
+\]
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+单位约定（原题未指定） & 计算 / s & 时间 \\
+\midrule
+十进制：$G=10^9,\ K=10^3$ & $10^9/(160\times10^3)$ & $6250$ s，约 $104.2$ min \\
+二进制：按 GiB、KiB 理解 & $2^{30}/(160\times2^{10})$ & $6553.6$ s，约 $109.2$ min \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{checkedsolution}
+\endgroup
