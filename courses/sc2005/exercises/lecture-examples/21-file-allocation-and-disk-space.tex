@@ -1,0 +1,81 @@
+% Based on templates/lecture-example.tex.
+% File Systems.pdf: original worked examples and diagrams, slides 9.27--9.44.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2005-L21-EX}{第 21 讲：文件块定位与空间计算}
+
+\examplemeta
+  {SC2005-L21-EX}
+  {2026-10-30}
+  {File Systems 9.27、9.30、9.32--9.33、9.36、9.38--9.40、9.44}
+  {按讲义例题与原图条件整理，推导补全；PDF 页码同 slide 尾号}
+  {已完成学习并要求整理}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\exercisequestion{SC2005-L21-E01}{同一文件偏移的三种映射}
+\textbf{题意与来源。}讲义 9.27、9.30、9.33：定位文件偏移 $L=2333$，磁盘块大小均为 512 字节。连续分配的文件起始块为 19、长度为 6 块；链式分配的块链为 $9\to16\to1\to10\to25$，每块开头 4 字节保存链接指针；索引分配的索引块为 19，前五项为 $[9,16,1,10,25]$。求各自的物理块号和块内偏移。对应\relatedtopic{SC2005-L21-T01}{分配与地址映射}。
+
+\begin{workedsolution}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}Xll@{}}
+\toprule
+分配方式 & 换算与定位 & 物理块号 & 块内偏移 \\
+\midrule
+连续 & $2333=4\times512+285$；$19+4=23$ & 23 & 285 \\
+链式 & $2333=4\times508+301$；取链中第 5 块 & 25 & $301+4=305$ \\
+索引 & $2333=4\times512+285$；查 $I[4]=25$ & 25 & 285 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+链式每块只有 508 字节文件内容，故除数与另两种方法不同。索引块 19 存放块号，不是文件的第一个数据块。结果中的偏移均从 0 开始，不将讲义的 ``285th byte'' 误读为从 1 开始的序号。
+\end{workedsolution}
+
+\exercisequestion{SC2005-L21-E02}{128 KiB 文件需要多少索引块}
+\textbf{题意与来源。}讲义 9.32：最大文件大小为 $128K$ 字节，块大小为 512 字节，每个块指针占 4 字节。解释为何索引表需要两块；按课件的二进制单位取 $K=1024$。对应\relatedtopic{SC2005-L21-T01}{索引分配}。
+
+\begin{workedsolution}
+最大文件需要的数据块数为 $128\times1024/512=256$；每个数据块对应一个指针，索引表占 $256\times4=1024$ 字节。因此索引表需要 $1024/512=\boxed{2}$ 块，另外还有 256 个数据块。
+\end{workedsolution}
+
+\exercisequestion{SC2005-L21-E03}{inode 的直接与间接寻址容量}
+\textbf{题意与来源。}讲义 9.36：块大小为 $4K=4096$ 字节、块指针为 4 字节，inode 有 12 个直接指针及一级、二级间接指针。计算只使用直接指针、加入一级间接、再加入二级间接时的累计数据容量。对应\relatedtopic{SC2005-L21-T02}{多级索引}。
+
+\begin{workedsolution}
+每个索引块容纳 $N=4096/4=1024=2^{10}$ 个指针。12 个直接指针覆盖 $12\times4096=48\,\mathrm{KiB}$；一级间接\textbf{增加} $N\times4096=2^{22}$ 字节；二级间接\textbf{增加} $N^2\times4096=2^{32}$ 字节。
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+使用范围 & 累计可寻址数据容量 \\
+\midrule
+直接 & $48\,\mathrm{KiB}$ \\
+直接 + 一级间接 & $48\,\mathrm{KiB}+4\,\mathrm{MiB}$ \\
+直接 + 一级间接 + 二级间接 & $48\,\mathrm{KiB}+4\,\mathrm{MiB}+4\,\mathrm{GiB}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+二级间接的两个 $N$ 分别来自两层索引的分支数。以上只统计文件数据，不把索引块本身算作文件内容。
+\end{workedsolution}
+
+\exercisequestion{SC2005-L21-E04}{路径查找与打开后的块定位}
+\textbf{情境与来源。}讲义 9.38 的路径为 \texttt{/usr/ast/mbox}，初始仅根目录在内存中。原图给出：根目录的 \texttt{usr} 对应 inode 6，inode 6 指向目录块 132；该目录的 \texttt{ast} 对应 inode 26，inode 26 指向目录块 406；块 406 中 \texttt{mbox} 对应 inode 60。另在 9.39--9.40 的读取示例中，inode 有 6 个直接指针，块大小为 1000 字节，当前位置为 5100，要读取 200 字节。分别说明路径查找和读取定位过程。对应\relatedtopic{SC2005-L21-T03}{完整文件访问路径}；两组图示为各自独立的例子。
+
+\begin{workedsolution}
+\textbf{路径查找：}从根目录找到 \texttt{usr} 的 inode 6，读取 inode 6 后访问目录块 132；在块 132 找到 \texttt{ast} 的 inode 26，再读取其指向的目录块 406；在块 406 找到 \texttt{mbox} 的 inode 60。随后通过 inode 60 定位文件数据。inode 6、26、60 与磁盘块 132、406 是不同类型的编号。
+
+\textbf{读取定位：}由 $5100=5\times1000+100$ 得逻辑块号 5、块内偏移 100。读取范围为 $5100$--$5299$，全部在逻辑块 5 内，因此用该例 inode 的第六个直接指针定位数据块，在块内偏移 100 处读取 200 字节。原图没有给出具体物理块号，不能将它写成 5。成功读取全部数据后，当前位置为 $5100+200=\boxed{5300}$。
+\end{workedsolution}
+
+\exercisequestion{SC2005-L21-E05}{空闲块位图的存储开销}
+\textbf{题意与来源。}讲义 9.44：磁盘容量为 $2^{34}$ 字节、块大小为 $2^9$ 字节，每块用一个 bit 记录分配状态。求位图大小。对应\relatedtopic{SC2005-L21-T04}{空闲空间管理}。
+
+\begin{workedsolution}
+块数为 $2^{34}/2^9=2^{25}$，故位图占 $2^{25}$ bits。换算为字节：
+\[
+  \text{位图大小}=\frac{2^{25}}{8}=2^{22}\text{ bytes}=\boxed{4\,\mathrm{MiB}}.
+\]
+块数先给出位数，最后才除以 8；这里的 $2^{34}$ 字节严格写作 $16\,\mathrm{GiB}$。
+\end{workedsolution}
+\endgroup

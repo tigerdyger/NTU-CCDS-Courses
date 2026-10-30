@@ -1,0 +1,31 @@
+% Original schematic based on File Systems.pdf, slides 9.34--9.36.
+% Edge multiplicities describe fan-out, not a sequential linked allocation.
+\begin{tikzpicture}[
+  font=\footnotesize,>=Latex,
+  idx/.style={draw=noteBlue,fill=noteBlue!5,rounded corners=2pt,
+    minimum width=1.7cm,minimum height=0.52cm,align=center},
+  data/.style={draw=gray,minimum width=1.7cm,minimum height=0.52cm,align=center}
+]
+  \node[draw=noteBlue,minimum width=1.65cm,minimum height=3.3cm,align=center]
+    (inode) at (0,-1.275) {inode\\属性\\块指针};
+  \node[data] (d0) at (3.2,0) {数据块};
+  \node[idx] (s1) at (3.2,-0.85) {索引块};
+  \node[data] (d1) at (6.1,-0.85) {数据块};
+  \node[idx] (s2) at (3.2,-1.7) {一级索引块};
+  \node[idx] (t2) at (6.1,-1.7) {二级索引块};
+  \node[data] (d2) at (9,-1.7) {数据块};
+  \node[idx] (s3) at (3.2,-2.55) {一级索引块};
+  \node[idx] (t3) at (6.1,-2.55) {二级索引块};
+  \node[idx] (u3) at (9,-2.55) {三级索引块};
+  \node[data] (d3) at (11.9,-2.55) {数据块};
+  \draw[->] (0.825,0) -- node[above]{直接：12 个} (d0.west);
+  \draw[->] (0.825,-0.85) -- node[above]{一级间接} (s1.west);
+  \draw[->] (0.825,-1.7) -- node[above]{二级间接} (s2.west);
+  \draw[->] (0.825,-2.55) -- node[above]{三级间接} (s3.west);
+  \draw[->] (s1) -- node[above]{$N$} (d1);
+  \draw[->] (s2) -- node[above]{$N$} (t2);
+  \draw[->] (t2) -- node[above]{$N$} (d2);
+  \draw[->] (s3) -- node[above]{$N$} (t3);
+  \draw[->] (t3) -- node[above]{$N$} (u3);
+  \draw[->] (u3) -- node[above]{$N$} (d3);
+\end{tikzpicture}

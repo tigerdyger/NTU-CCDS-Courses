@@ -1,0 +1,76 @@
+% Based on templates/lecture.tex; actual session 21, 2026-10-30 (Week 11).
+% File Systems.pdf, slides 9.23--9.47; videos unavailable, titles only.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 21 节课：文件分配与磁盘空间管理}
+\label{lecture:SC2005-L21}
+
+\lecturemeta
+  {SC2005-L21}
+  {2026-10-30（第十一教学周）}
+  {File Systems，Part 9}
+  {9.23--9.47（PDF pp.~23--47）；分配方法、inode 与磁盘空间管理}
+  {File Allocation Methods；Disk Space Management；仅按标题对应，视频未读取}
+  {已完成学习并要求整理；讲义与例题已核对}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\keyidea{文件组织模块把文件内的字节位置映射到磁盘块，并为文件增长寻找空闲块。连续分配按起始块计算，链式分配沿指针查找，索引分配通过表项定位；inode 将索引分层组织，位图或空闲链表记录尚未分配的块。}
+
+\lecturetopic{SC2005-L21-T01}{文件块映射与三种分配方法}
+
+\textbf{来源：9.23--9.33。}File-Organisation Module（文件组织模块）负责分配空间与映射文件块。本节的 logical address（逻辑地址）是\textbf{文件内的字节偏移}，physical block（物理块）是磁盘块，区别于进程虚拟地址和内存页框。以下块号、表项下标和偏移均从 $0$ 开始。
+
+\textbf{Contiguous allocation（连续分配）。}文件占用连续磁盘块，记录起始块号 $S$ 与块数即可。设块大小为 $B$ 字节、文件偏移为 $L$，则
+\[
+  Q=\left\lfloor\frac{L}{B}\right\rfloor,\qquad R=L\bmod B,
+  \qquad \boxed{\text{物理块号}=S+Q,\quad\text{块内偏移}=R}.
+\]
+其中 $Q$ 为逻辑块号。直接计算位置支持 random access（随机访问）。分配时需寻找足够大的连续空洞，First-fit、Best-fit 等方法仍可能留下 external fragmentation（外部碎片）；文件增长时可能需要搬迁。预留过多空间或末块未填满也会浪费已分配空间。
+
+\textbf{Linked allocation（链式分配）。}文件块可以散放，每块保存下一块的指针。若块大小为 $B$、开头 $p$ 字节用于指针，每块只存放 $B-p$ 字节内容。将 $L=Q(B-p)+R$ 作带余除法，沿链找到第 $Q+1$ 个块，物理块内偏移为 $R+p$。链表可按需增长，没有外部碎片，但存在指针开销和末块内部碎片。随机访问通常需要遍历前面的链接，故\textbf{不支持高效的直接定位}。
+
+\textbf{Indexed allocation（索引分配）。}指针集中存放在 index block（索引块）中，目录记录指向索引块；数据块可以散放。仍用 $L=QB+R$ 作带余除法，查索引表得到\textbf{物理块号 $I[Q]$，块内偏移 $R$}。数据块无需扣除链接指针。该方式支持随机访问且没有外部碎片，但索引占用额外存储并带来查表开销，末块仍可能有内部碎片。$Q$ 为索引\textbf{表项下标}；若每项占 $p$ 字节，表内字节偏移为 $pQ$。
+
+三种方法的同一偏移量换算见\relatedexercise{SC2005-L21-E01}{地址映射例题}；索引空间大小见\relatedexercise{SC2005-L21-E02}{索引表容量例题}。
+
+\lecturetopic{SC2005-L21-T02}{inode：直接与多级间接索引}
+
+\textbf{来源：9.34--9.36。}每个文件或目录都有 inode（索引节点），保存属性和数据块位置。讲义模型包含\textbf{12 个直接指针}，另有一级、二级、三级间接指针各一个。Direct pointer（直接指针）指向数据块；indirect pointer（间接指针）先指向存放块地址的索引块。inode 含有元数据，不能与只存地址的间接索引块完全等同。
+
+\begin{center}
+\input{figures/inode-index-levels}
+
+{\small 据讲义 9.34--9.36 原创重绘；$N$ 为每个索引块可容纳的指针数。}
+\end{center}
+
+若数据块与索引块均为 $B$ 字节，每个指针为 $p$ 字节，则 $N=\lfloor B/p\rfloor$。直接、一级、二级、三级间接分别覆盖 $12$、$N$、$N^2$、$N^3$ 个数据块，\textbf{额外数据容量}依次为 $12B$、$NB$、$N^2B$、$N^3B$，累计时相加。小文件只需直接指针，较大文件再按需分配间接块。
+
+以上为按讲义结构补全的寻址容量，\textbf{不包含索引块占用，也不替代实际文件系统的其他限制}。$4\,\mathrm{KiB}$ 块、4 字节指针的计算见\relatedexercise{SC2005-L21-E03}{inode 容量例题}。
+
+\lecturetopic{SC2005-L21-T03}{从路径查找到一次 read}
+
+\textbf{来源：9.37--9.40。}UNIX 目录项保存\textbf{文件名与 inode 编号}；编号定位 inode 记录，记录中的块指针再定位内容。目录自身也有 inode，其数据块存放名称记录。因此路径查找逐级执行“名称 $\to$ inode $\to$ 目录或文件内容”。\textbf{inode 编号与磁盘块号是两套编号}；\texttt{/usr/ast/mbox} 的完整查找过程见\relatedexercise{SC2005-L21-E04}{路径与读取例题}。
+
+\textbf{打开后的读取。}通过文件描述符查找打开文件记录，取得当前位置与 inode 信息，再将文件偏移转换为逻辑块号，按直接或间接指针定位物理磁盘块，不必每次从根目录解析路径。若从 $L$ 开始成功读取 $n>0$ 字节，且未遇到文件末尾，则涉及的逻辑块从
+\[
+  \left\lfloor\frac{L}{B}\right\rfloor
+  \quad\text{到}\quad
+  \left\lfloor\frac{L+n-1}{B}\right\rfloor,
+\]
+当前位置更新为 $L+n$。这是对讲义读取示例的范围计算补全；实际更新量以\textbf{成功传输的字节数}为准。9.39 的示例另外采用\textbf{6 个直接指针}，覆盖逻辑块 $0$--$5$，做题时按该图的配置判断。
+
+\lecturetopic{SC2005-L21-T04}{块大小与空闲空间管理}
+
+\textbf{来源：9.41--9.47。}Block size（块大小）影响时间与空间利用率。较大块使同一文件涉及的块数减少，在讲义的磁盘访问模型下有利于定位和传输效率，但末块未用空间可能更多；较小块减小末块浪费，却增加管理与访问的块数。9.42 的曲线表达这种权衡，不是所有设备与文件分布通用的定量规律。
+
+\textbf{Bitmap / bit vector（位图）。}每个磁盘块对应一位，本讲义约定 $0$ 为空闲、$1$ 为已分配。寻找空闲块就是找 $0$，寻找连续空闲块就是找连续的 $0$。若有 $M$ 个块，位图占 $M$ bits，即 $\lceil M/8\rceil$ bytes。磁盘容量 $D$ 与块大小 $B$ 可整除时，$M=D/B$；计算时须区分 bits 与 bytes。位图通常保存在磁盘固定位置，缓存到内存便于查找，修改后需适当写回以保持一致性。计算示例见\relatedexercise{SC2005-L21-E05}{位图大小}。
+
+\textbf{Free-block linked list（空闲块链表）。}把所有未分配块链接起来，在磁盘保存链头并缓存到内存；分配时取出空闲块，释放时接回链表。链接信息可使用空闲块自身的空间，无需另设覆盖全盘的位图，但链头、指针与遍历仍有开销，寻找大量或连续空闲块较不方便。
+
+这里的链表管理\textbf{全盘尚未分配的块}，而 linked allocation 链接的是\textbf{某文件已经占用的块}；两者解决不同问题。
+
+\textbf{一分钟回顾。}文件偏移拆成逻辑块号与块内偏移，再按分配方式找到磁盘块；链式要扣除块内指针，索引式将指针另存。目录定位 inode，打开记录提供访问位置，inode 的直接或间接指针定位数据。块大小权衡速度与末块浪费，位图和空闲链表负责寻找未分配的块。
+\endgroup
