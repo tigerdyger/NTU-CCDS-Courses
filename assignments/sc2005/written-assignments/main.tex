@@ -1013,4 +1013,105 @@ B 按连续访问序列 $p,p,p,\ldots$ 理解：第一次访问完成后，页�
 Thrashing（抖动）源于可用页框不足以容纳当前频繁访问的页面，导致反复换入换出。增加物理内存可提供更多页框、提高工作集驻留能力，从而缓解抖动。增大 paging disk（分页磁盘）只增加后备容量；更快的 CPU 也不能补足物理页框。课程中的另一种处理办法是挂起部分进程，降低同时驻留的总需求。
 \end{checkedsolution}
 
+% Written assignment: SC2005-HW07
+% Source: user-supplied NTULearn Lecture Quiz 7, completed Questions 1--5;
+% File Systems, slides 9.13, 9.15, 9.21, 9.25--9.31, 9.41--9.42.
+% Completion/check date: 2026-10-31. No grades or LMS export included.
+\section{Lecture Quiz 7}
+\label{homework:SC2005-HW07}
+
+\exercisemeta
+  {SC2005-HW07}
+  {2026-10-31}
+  {NTULearn Lecture Quiz 7；File Systems 9.13、9.15、9.21、9.25--9.31、9.41--9.42}
+  {五道题已完成，并根据讲义与平台反馈核对}
+  {是（2026-10-31）}
+
+\exercisequestion{SC2005-HW07-Q01}{Question 1：Relative Path}
+
+\textbf{题干：} Assuming the current working directory is \texttt{/usr/peter/documents}, the relative path name of the file \texttt{/usr/peter/documents/os/lecture\_slides.ppt} is:
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item \texttt{documents/os/lecture\_slides.ppt}
+  \item \texttt{os/lecture\_slides.ppt}
+  \item \texttt{lecture\_slides.ppt}
+\end{enumerate}
+
+\textbf{正确答案：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L20-T02}
+
+\begin{checkedsolution}
+Relative path（相对路径）从当前工作目录出发。已经位于 \texttt{documents} 中，接下来进入 \texttt{os}，再访问 \texttt{lecture\_slides.ppt}，故路径为 \texttt{os/lecture\_slides.ppt}。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW07-Q02}{Question 2：Symbolic 与 Hard Link}
+
+\textbf{题干：} Which of the following statement regarding symbolic and hard link is \textbf{incorrect}?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Using either a symbolic or a hard link, a file can have different names.
+  \item If a file has a symbolic link, it can be accessed using two absolute path names.
+  \item Symbolic link duplicates all information about a file in multiple directories.
+\end{enumerate}
+
+\textbf{正确答案：C}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L20-T02}
+
+\begin{checkedsolution}
+Symbolic link（符号链接）保存目标的绝对或相对路径，访问时继续解析该路径。目标有效且权限允许时，可通过目标自身路径或链接路径访问同一文件；它不会复制文件的全部信息。UNIX 中的 hard link（硬链接）则让多个目录项指向同一 inode，也不复制文件内容或建立独立的属性副本。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW07-Q03}{Question 3：Group Permissions}
+
+\textbf{题干：} Protection bits of a file are set as \texttt{rwx\ r-x\ r--} in a UNIX system. What are the permissions granted to the users who are in the owner's group?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Read and Write
+  \item Read and Execute
+  \item Read, Write, and Execute
+\end{enumerate}
+
+\textbf{正确答案：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L20-T03}
+
+\begin{checkedsolution}
+九个权限位依次属于 owner（所有者）、group（所属组）、others（其他用户），每组三位。Group 对应中间的 \texttt{r-x}，因此可以读和执行，没有写权限。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW07-Q04}{Question 4：频繁更新与随机访问}
+
+\textbf{题干：} Assuming data are \textbf{updated frequently} and accessed frequently in random order, what is the most appropriate file allocation method to optimize efficiency in terms of speed of access, use of storage space, and ease of updating?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Contiguous Allocation
+  \item Linked Allocation
+  \item Indexed Allocation
+\end{enumerate}
+
+\textbf{正确答案：C}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L21-T01}
+
+\begin{checkedsolution}
+Indexed allocation（索引分配）通过索引定位数据块，支持随机访问；数据块可按需分配，无须保持连续，也没有外部碎片。连续分配访问快，但文件增长时可能需要搬迁；链式分配便于增长，随机定位却需要沿链查找。综合题目的三个目标，选择索引分配，同时仍需承担索引块和地址映射的开销。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW07-Q05}{Question 5：两种 Block Size 的作用}
+
+\textbf{题干：} Some file systems use two block sizes for disk storage allocation in order to:
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Improve disk space utilization
+  \item Increase data rate
+  \item Both (a) and (b)
+\end{enumerate}
+
+\textbf{正确答案：C}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L21-T04}
+
+\begin{checkedsolution}
+按讲义的磁盘模型，大块有利于提高传输效率，小块有利于减少末块未用空间。结合两种大小，可用大块存放主要内容，再用较小的分配单位处理尾部，从而兼顾 data rate（数据率）与 space utilization（空间利用率）。
+
+{\small\textbf{补充来源：}McKusick 等，\href{https://www.cs.columbia.edu/~junfeng/11sp-w4118/lectures/ffs.pdf}{A Fast File System for UNIX}，两种分配大小的实现例。}
+\end{checkedsolution}
+
 \end{document}

@@ -7,6 +7,7 @@
   - Lecture Quiz 4：[`SC2005-HW04`](written-assignments/main.tex)（10 道选择题，已核对）
   - Lecture Quiz 5：[`SC2005-HW05`](written-assignments/main.tex)（5 道选择题及 3 道补充题，地址绑定、内存分配与分页，已核对）
   - Lecture Quiz 6：[`SC2005-HW06`](written-assignments/main.tex)（5 道选择题，虚拟内存、缺页、页面置换与抖动，已完成并核对）
+  - Lecture Quiz 7：[`SC2005-HW07`](written-assignments/main.tex)（5 道选择题，文件路径、链接、权限、分配方法与块大小，已完成并核对）
 - 编程作业：[`programming-assignments/`](programming-assignments/)
   - Lab 1：[`SC2005-LAB01`](programming-assignments/lab-01/)（xv6、system call 与 pipe，核心任务已验证）
   - Lab 2：[`SC2005-LAB02`](programming-assignments/lab-02/)（进程调度与用户线程，核心任务及三核复测已完成）
