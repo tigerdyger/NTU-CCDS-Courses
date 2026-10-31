@@ -5,4 +5,5 @@
   - Online Interactive Exercise 2：[`SC2008-HW02 — Sales server unreachable`](written-assignments/main.tex)（2026-10-24；子网掩码、ARP 与默认网关故障排查，已完成并核对）
   - Online Interactive Exercise 3：[`SC2008-HW03 — Routing: OSPF, RIP and BGP`](written-assignments/main.tex)（2026-10-24；最短路径、故障收敛、BGP 策略及前缀劫持防护，已完成并核对）
   - Online Interactive Exercise 4：[`SC2008-HW04 — TCP/UDP and packet analysis`](written-assignments/main.tex)（2026-10-31；端口分发、报文首部、双向序号、累计确认、握手与半关闭，已完成并核对）
+  - Online Interactive Exercise 5：[`SC2008-HW05 — Training Day: Transport Layer Part II`](written-assignments/main.tex)（2026-10-31；6 个 Bench 与 5 道综合题，涵盖重传、接收窗口、拥塞控制与吞吐量，已完成并核对）
 - 实验与编程作业：[`programming-assignments/`](programming-assignments/)

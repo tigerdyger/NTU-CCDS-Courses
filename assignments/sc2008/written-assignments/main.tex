@@ -985,4 +985,210 @@ $3000=1200+1200+600$，共 \textbf{3 段}，末段 \textbf{600 B}。首部另加
 服务器只发送 SYN 与纯 ACK，没有发送数据，因此自身 SN 在 SYN 后始终为 17101。图中尚未出现服务器的 FIN，不能据此认定两个方向都已关闭。
 \end{checkedsolution}
 
+% Based on templates/written-assignment.tex; written assignment SC2008-HW05.
+% Source: user-supplied Exercise 5 Explore, Checkpoint and Sign-off pages,
+% plus the Bench 5 simulator screenshot. Completion confirmed 2026-10-31.
+% Course round model only: threshold-capped doubling and integer halving.
+\section{Online Interactive Exercise 5：TCP 重传、窗口与吞吐量}
+\label{homework:SC2008-HW05}
+\exercisemeta
+  {SC2008-HW05}
+  {2026-10-31}
+  {Training Day: Transport-layer Part II lab；六个 Bench 与五道 Sign-off}
+  {已完成；依据题面、反馈与计算核对}
+  {已确认完成}
+
+本题组依次考察缺失数据如何恢复、发送量由谁限制，以及窗口怎样影响传输速度。以下保留各 Bench 的探索条件与结果，再列 checkpoint 和综合题。AN 是接收方期待的下一个连续字节；MSS 只计每段的数据字节。题面以 MSS 为单位给出 \texttt{cwnd} 时，先乘 MSS 才能与以字节为单位的 \texttt{rwnd} 比较。
+
+\subsection{Bench 1：重复 ACK 与快速重传（Slides 7--12）}
+
+\textbf{Explore。}从 SN=1201 开始发送 6 段，每段 300 B；第 3 段丢失，后面 3 段均到达。预测：无需重传、第三个重复 ACK 后重传、仅等超时重传？选\textbf{第三个重复 ACK 后重传}。缺失段从 $1201+2\times300=1801$ 开始，第 4、5、6 段各触发 AN=1801 的重复 ACK。它们表明后续数据已经到达、前面仍有缺口；不能单凭这一点断定网络拥塞。
+
+\exercisequestion{SC2008-HW05-Q01}{Checkpoint：七段数据中的第四段丢失}
+\textbf{题目。}从 SN=3601 开始发送 7 段，每段 250 B，此后没有新数据可发。第 4 段丢失，其余均到达，重传计时器尚未到期。求 (a) 后续段触发的 ACK 的 AN；(b) 重复 ACK 数；(c) 等待超时还是超时前快速重传；(d) 重传段到达后的 AN；(e) 重复 ACK 表示什么？(e) 选项：接收缓冲区满；最后一段到达了两次；网络拥塞、发送方必须停发；后续数据到达但前面仍缺字节。
+\begin{checkedsolution}
+(a)--(d) 为 \textbf{4351、3、快速重传、5351}。
+第 4 段首字节为 $3601+3\times250=4351$；第 3 段已使接收方回复 AN=4351，此后第 5--7 段产生三个\emph{重复} ACK。补齐缺口后，已缓存的后续数据也连续了，故 AN 跳到 $3601+7\times250=5351$。
+
+(e) 选\textbf{后续数据到达但前面仍缺字节}（Later data is arriving, but an earlier byte is still missing）。收到某个 AN 的\emph{首次}确认不算重复 ACK；触发快速重传需要在它之后再收到三个重复 ACK。
+\end{checkedsolution}
+
+\subsection{Bench 2：重传超时 RTO（Slides 5、6、9）}
+
+\textbf{Explore。}十次独立试验各发送一段并等待 ACK，其中一次真的丢包。RTT 约为 $120\pm45$ ms，RTO=150 ms。选项：无误重传但丢包等待很久；无误重传且较快发现丢包；未丢失的段也可能被重传。选\textbf{第三项}：有些 RTT 可达约 165 ms，ACK 尚在途中，150 ms 的计时器就已到期。
+
+\exercisequestion{SC2008-HW05-Q02}{Checkpoint：六次独立 RTT 试验}
+\textbf{题目。}六次试验各只发一段，没有其他未确认数据，RTT 依次为 159、192、208、173、140、155 ms，均无数据或 ACK 丢失。发送后 RTO 到期而 ACK 尚未到达就重传。求 (a) RTO=185 ms 时误重传几次；(b) 改为 225 ms 时几次；(c) 第七次在 $t=240$ ms 发送的段丢失，此后无数据，RTO=185 ms，何时重传；(d) RTO 远大于所有 RTT 的代价。选项：慢启动中窗口翻倍更慢；接收缓冲区溢出；没有三个重复 ACK 的真正丢包恢复很慢；未丢失的段被重传。
+\begin{checkedsolution}
+(a) \textbf{2 次}，192 与 208 ms 超过 185 ms；(b) \textbf{0 次}，六个 RTT 均小于 225 ms；(c) \textbf{425 ms}，即 $240+185$；(d) 选\textbf{没有三个重复 ACK 的真正丢包恢复很慢}。
+RTO 太短会在 ACK 到达前误重传；太长则延后真正丢包的恢复。单独发送一段后没有后续流量，也无法靠后续段产生三个重复 ACK。
+\end{checkedsolution}
+
+\subsection{Bench 3：接收缓冲区与滑动窗口（Slides 13--17）}
+
+\textbf{Explore。}最后收到 AN=2001，\texttt{rwnd}=3000 B，已发送到字节 3500，还能发多少？未确认数据为 $3500-2001+1=1500$ B，故还能发 \textbf{1500 B}，对应字节 3501--5000。AN 指向下一个期望字节；算包含两端的字节区间时要加 1。
+
+\exercisequestion{SC2008-HW05-Q03}{Checkpoint：收到数据与应用读走数据}
+\textbf{题目。}接收缓冲区容量 10000 B，传输从字节 1001 开始，已按序收到 11000，仍有 3000 B 等应用读取。随后应用读走 500 B，又按序收到 1000 B。求 (a) 初始 AN；(b) 初始 \texttt{rwnd}；(c) 新数据到达后的 AN；(d) 读操作及新数据到达后的 \texttt{rwnd}；(e) 能否确认应用尚未读取的字节？选项：可以且不再占缓冲区；可以，数据已安全存入但仍占空间、使窗口减小；不可以，未读数据被丢弃；不可以，必须等应用读取。
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+状态 & AN & 缓冲区占用/B & \texttt{rwnd}/B \\
+\midrule
+初始 & 11001 & 3000 & 7000 \\
+应用读走 500 B 后 & 11001 & 2500 & 7500 \\
+再按序收到 1000 B 后 & 12001 & 3500 & 6500 \\
+\bottomrule
+\end{tabular}
+\end{center}
+(a)--(d) 为 \textbf{11001、7000 B、12001、6500 B}；(e) 选\textbf{可以，数据已存入但仍占空间}。ACK 确认接收进度，应用读操作释放缓冲区；应用读走数据不会让 AN 再增加一次。
+\end{checkedsolution}
+
+\subsection{Bench 4：流量控制与拥塞控制共同限制（Slides 20--22、38）}
+
+设 $c$ 为以 MSS 个数表示的拥塞窗口，$F$ 为已发出但未确认的字节数，则本练习的计算规则为
+\[
+ L=\min(\texttt{rwnd},c\times\mathrm{MSS}),\qquad
+ \text{还能发送的字节数}=\max(0,L-F).
+\]
+\textbf{Explore。}MSS=1000 B，\texttt{rwnd}=9000 B，$c=6$，已有 2000 B 未确认。
+限制为 6000 B，还能发送 \textbf{4000 B}；起限制作用的是拥塞窗口。
+
+\exercisequestion{SC2008-HW05-Q04}{Checkpoint：把窗口统一成字节}
+\textbf{题目。}AN=7001，MSS=500 B，\texttt{rwnd}=9900 B，\texttt{cwnd}=9 MSS。字节 7001--8000 已发出但未确认，应用有足够数据。求 (a) 拥塞窗口的字节数；(b) 在途字节数上限；(c) 当前由接收方流量控制还是网络拥塞控制限制；(d) 还能发多少；(e) 为什么取两个窗口的较小值？选项：必须同时遵守接收方空闲空间与网络限制；连接建立后取较大窗口；\texttt{rwnd} 只在慢启动时有用；\texttt{cwnd} 只在丢包后有用。
+\begin{checkedsolution}
+(a) $9\times500=\boxed{4500\ \mathrm{B}}$；(b) $\min(9900,4500)=\boxed{4500\ \mathrm{B}}$；(c) 选\textbf{网络拥塞控制}；(d) $F=8000-7001+1=1000$ B，故 $4500-1000=\boxed{3500\ \mathrm{B}}$；(e) 选\textbf{同时遵守接收方空闲空间与网络限制}。
+题面用“The network”指拥塞控制的限制来源；\texttt{cwnd} 实际由发送方依据拥塞控制算法维护。
+\end{checkedsolution}
+
+\subsection{Bench 5：慢启动、Tahoe 与 Reno（Slides 23--31）}
+
+\textbf{本网页的逐轮模型。}窗口从 1 MSS 开始。无丢包时，低于 \texttt{ssthresh} 就翻倍，但不越过阈值；达到阈值后每轮增加 1 MSS。丢包后阈值取丢包前窗口的一半并向下取整。本题涉及的恢复规则如下；这是课程的逐轮简化，不展开 Reno 快速恢复内部的逐 ACK 窗口调整。
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+信号 & Tahoe 下一轮 \texttt{cwnd} & Reno 下一轮 \texttt{cwnd} \\
+\midrule
+Timeout（超时） & 1 MSS & 1 MSS \\
+Three duplicate ACKs（三个重复 ACK） & 1 MSS & 新 \texttt{ssthresh} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Explore。}Reno，初始阈值 12，第 8 轮末收到三个重复 ACK，问第 9 轮窗口。
+前八轮为 $1,2,4,8,12,13,14,15$；阈值变为 $\lfloor15/2\rfloor=7$，第 9 轮为 \textbf{7 MSS}。初始阈值 12 不等于第 8 轮的窗口。
+
+\exercisequestion{SC2008-HW05-Q05}{Checkpoint：Tahoe 的两次窗口重置}
+\textbf{题目。}TCP Tahoe 从 1 MSS 开始，初始 \texttt{ssthresh}=18。第 9 轮末超时，第 15 轮末收到三个重复 ACK，无其他丢包。求 (a) 第 6 轮窗口；(b) 第 9 轮丢包后的阈值；(c) 第 10 轮窗口；(d) 第 20 轮窗口；(e) 为什么 Reno 对三个重复 ACK 比对超时反应温和？选项：重复 ACK 表示后续数据仍到达、路径仍工作；超时检测更快；Reno 忽略重复 ACK；重复 ACK 表示只丢了一个字节。
+\begin{checkedsolution}
+各轮 \texttt{cwnd}（MSS）如下；损失发生在指定轮\emph{结束时}，窗口变化体现在下一轮。
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrrrrrrr@{}}
+\toprule
+轮次 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
+\texttt{cwnd} & 1 & 2 & 4 & 8 & 16 & 18 & 19 & 20 & 21 & 1 \\
+\midrule
+轮次 & 11 & 12 & 13 & 14 & 15 & 16 & 17 & 18 & 19 & 20 \\
+\texttt{cwnd} & 2 & 4 & 8 & 10 & 11 & 1 & 2 & 4 & 5 & 6 \\
+\bottomrule
+\end{tabular}
+\end{center}
+(a)--(d) 为 \textbf{18、10、1、6}。第 9 轮末阈值变为 $\lfloor21/2\rfloor=10$；第 15 轮末再变为 $\lfloor11/2\rfloor=5$。Tahoe 在两种信号后都回到 1。
+
+(e) 选\textbf{重复 ACK 表示后续数据仍到达、路径仍工作}。它不表示只丢失一个字节，也不能保证所有后续段都完好。
+\end{checkedsolution}
+
+\subsection{Bench 6：窗口、RTT 与传输时间（Slides 35--37）}
+
+\textbf{模型。}恒定有效窗口为 $W$ 字节、RTT 为秒、瓶颈速率为 $R$ bit/s。忽略丢包、首部、启动及结束开销时，
+\[
+ R_{\mathrm{window}}=\frac{8W}{\mathrm{RTT}},\qquad
+ R_{\mathrm{effective}}=\min(R_{\mathrm{window}},R),\qquad
+ T=\frac{8\times\text{文件字节数}}{R_{\mathrm{effective}}}.
+\]
+本题 $1\ \mathrm{MB}=10^6$ B，$1\ \mathrm{Mbit/s}=10^6$ bit/s。先统一单位，保留中间精度，到题目指定的输出才四舍五入。
+
+\textbf{Explore。}窗口 64000 B，RTT=100 ms，瓶颈为 100 Mbit/s。选瓶颈链路还是窗口限制？$8\times64000/0.1=5.12$ Mbit/s，低于 100 Mbit/s，因此选\textbf{窗口限制}。
+
+\exercisequestion{SC2008-HW05-Q06}{Checkpoint：120 MB 文件要传多久？}
+\textbf{题目。}文件 120 MB，\texttt{cwnd}=16 段，MSS=1460 B，RTT=40 ms，接收方不设置更小限制，瓶颈 10 Mbit/s。窗口恒定、无丢包、无首部开销。求 (a) $W$/B；(b) 窗口速率/Mbit/s，保留两位小数；(c) 窗口还是链路限制；(d) 传输时间/s，保留一位小数；(e) 若窗口速率超过瓶颈速率，实际吞吐量约为何值？选项：瓶颈速率；窗口速率；两者之和；窗口速率减瓶颈速率。
+\begin{checkedsolution}
+(a) $W=16\times1460=\boxed{23360\ \mathrm{B}}$；(b) $8W/0.04=4.672$ Mbit/s，填写 \textbf{4.67}；(c) \textbf{窗口限制}；(d)
+\[
+ T=\frac{120\times10^6\times8}{4.672\times10^6}
+ \approx\boxed{205.5\ \mathrm{s}}.
+\]
+(e) 选\textbf{瓶颈速率}。计算 (d) 使用未舍入的 4.672，而不是提前使用 4.67。
+\end{checkedsolution}
+
+\subsection{Sign-off：五道综合题}
+
+\exercisequestion{SC2008-HW05-Q07}{Loss and recovery：重复 ACK 不足三个}
+\textbf{题目。}从 SN=4301 开始发送 4 段，每段 100 B，此后无数据。第 3 段丢失，其余到达，计时器尚未到期。求 (a) 后续段触发的 AN；(b) 重复 ACK 数；(c) 等待超时还是超时前快速重传；(d) 重传段到达后的 AN；(e) 为什么一个 ACK 能确认所有缓存数据？选项：把重复 ACK 相加；ACK 是累计的、AN 指下一个期望字节；接收方把 ACK 留到最后发送；发送方请求合并 ACK。
+\begin{checkedsolution}
+(a)--(d) 为 \textbf{4501、1、等待重传超时、4701}。
+缺失段从 $4301+2\times100=4501$ 开始，只有第 4 段触发一个重复 ACK，不足以快速重传。缺口补齐后，AN 为 $4301+4\times100=4701$。
+(e) 选\textbf{ACK 是累计确认，AN 指下一个期望字节}。接收方保留了后续段；补齐前面的缺口即可一起确认。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW05-Q08}{How much may it send：共同上限减去在途数据}
+\textbf{题目。}AN=2701，MSS=1200 B，\texttt{rwnd}=25700 B，\texttt{cwnd}=13 MSS。字节 2701--11600 已发出但未确认，应用有足够数据。求 (a) 拥塞窗口/B；(b) 在途上限/B；(c) 接收方流量控制还是网络拥塞控制起限制作用；(d) 还能发多少/B；(e) 为什么取较小窗口？选项：建连后取较大值；必须同时遵守接收方空间与网络限制；\texttt{cwnd} 只在丢包后有用；\texttt{rwnd} 只在慢启动时有用。
+\begin{checkedsolution}
+(a) $13\times1200=\boxed{15600\ \mathrm{B}}$；(b) $\min(25700,15600)=\boxed{15600\ \mathrm{B}}$；(c) \textbf{网络拥塞控制}；(d) 未确认数据为 $11600-2701+1=8900$ B，故还能发 $15600-8900=\boxed{6700\ \mathrm{B}}$；(e) 选\textbf{必须同时遵守接收方空间与网络限制}。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW05-Q09}{Read a Reno trace：由窗口跳变判断损失信号}
+\textbf{题目。}Reno 从 1 MSS 开始，题面曲线的逐轮读数如下。求 (a) 初始阈值；(b) 第 10 轮末是超时还是三个重复 ACK；(c) 第 14 轮末是哪一种；(d) 第 14 轮丢包后的阈值；(e) Tahoe 对三个重复 ACK 的弱点。选项：从不重传缺失段；忽略阈值；数据仍在流动却把窗口降为 1；把窗口翻倍而非减小。
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+轮次 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\texttt{cwnd}/MSS & 1 & 2 & 4 & 8 & 16 & 18 & 19 & 20 & 21 \\
+\midrule
+轮次 & 10 & 11 & 12 & 13 & 14 & 15 & 16 & 17 & 18 \\
+\texttt{cwnd}/MSS & 22 & 1 & 2 & 4 & 8 & 4 & 5 & 6 & 7 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{checkedsolution}
+(a)--(d) 为 \textbf{18、超时、三个重复 ACK、4}。到 18 后转为每轮加 1，说明初始阈值为 18；第 10--11 轮 $22\to1$ 是超时；第 14--15 轮 $8\to4$ 是 Reno 的三重复 ACK 恢复，新阈值为 4。
+(e) 选\textbf{数据仍在流动却把窗口降为 1}；Tahoe 要重新从小窗口增长，恢复发送量较慢。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW05-Q10}{Which round sends segment n：逐轮累计段数}
+\textbf{题目。}无丢包地发送大文件，每轮发送 \texttt{cwnd} 个新段，段号从 1 起连续编号；初始阈值 13。第 1--9 轮窗口为 $1,2,4,8,13,14,15,16,17$。求 (a) 第 6 轮结束累计发出多少段；(b) 第 9 段在哪轮发送；(c) 第 68 段在哪轮发送。
+\begin{checkedsolution}
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+轮次 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+本轮段数 & 1 & 2 & 4 & 8 & 13 & 14 & 15 & 16 & 17 \\
+累计段数 & 1 & 3 & 7 & 15 & 28 & 42 & 57 & 73 & 90 \\
+\bottomrule
+\end{tabular}
+\end{center}
+(a) \textbf{42 段}；(b) \textbf{第 4 轮}，本轮覆盖第 8--15 段；(c) \textbf{第 8 轮}，本轮覆盖第 58--73 段。找段 $n$ 所在轮，应比较累计段数，而不是直接比较该轮的窗口。
+\end{checkedsolution}
+
+\exercisequestion{SC2008-HW05-Q11}{Filling a long path：窗口能否填满长路径？}
+\textbf{题目。}长距离路径瓶颈为 50 Mbit/s，RTT=80 ms；不使用 window scaling，接收方通告最大窗口 65535 B，\texttt{cwnd} 从不更小。使用十进制 MB。求 (a) 恰好跑满链路所需的窗口，即链路速率乘 RTT，单位 B；(b) 现有窗口对应速率/Mbit/s，保留两位小数；(c) 65535 B 窗口还是链路限制吞吐量；(d) 按本练习的恒定窗口模型传输 400 MB 的时间/s，保留一位小数。
+\begin{checkedsolution}
+(a) 先把链路速率换为 B/s，所需窗口为
+\[
+ W_{\mathrm{fill}}=\frac{50\times10^6\times0.08}{8}
+ =\boxed{500000\ \mathrm{B}}.
+\]
+(b) $8\times65535/0.08=6.5535$ Mbit/s，填写 \textbf{6.55}；(c) \textbf{65535 B 的窗口}；(d)
+\[
+ T=\frac{400\times10^6\times8}{6.5535\times10^6}
+ \approx\boxed{488.3\ \mathrm{s}}.
+\]
+链路虽能提供 50 Mbit/s，但窗口不足以容纳一个 RTT 内满速发出的数据。增大链路速率本身无法解除这个窗口限制。
+\end{checkedsolution}
+
 \end{document}
