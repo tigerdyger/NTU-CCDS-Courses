@@ -1,0 +1,149 @@
+% Based on templates/tutorial.tex; finished notes omit conversational checks.
+% Source: tut11.pdf, p. 11-1 (PDF p. 1), Questions 1--4. No answer key supplied.
+% Session: 2026-11-03, teaching Week 12. Solutions derived from the stated models.
+% Q2 counts one read per required uncached inode or block, without read-ahead.
+% Q3 uses in-block linked pointers and a separate, initially uncached index block.
+
+\begingroup
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC2005-TUT11}{Tutorial 11：文件链接、磁盘读取与块分配}
+\label{tutorial:SC2005-TUT11}
+
+\noteintro{
+{\small 2026-11-03（第十二教学周）。来源：\texttt{tut11.pdf}，\emph{File-Systems}，p.~11-1（PDF p.~1），Questions 1--4。原文件无参考答案；以下为按题意与文件系统模型推导的解答。}
+}
+
+\exercisequestion{SC2005-TUT11-Q01}{文件删除后的链接与共享副本}
+
+\textbf{对应讲义：}\relatedtopic{SC2005-L20-T02}{目录、链接与共享}；\relatedtopic{SC2005-L20-T04}{打开文件与删除}。
+
+\textbf{题目。}(a) 某系统允许在链接仍存在时删除文件并回收其磁盘空间。若新文件复用原存储位置或绝对路径，会发生什么问题？如何避免？(b) 比较所有用户共享一个文件副本与每个用户各持一份副本的优缺点。
+
+\begin{checkedsolution}
+\textbf{(a) 旧引用可能失效，也可能误访问新文件。}若残留引用指向已释放的 inode 或数据位置，重用后可能读写另一文件。对于 symbolic link（符号链接），目标被删除后通常成为 dangling link（悬空链接）；若同一路径出现新文件，该链接就会按路径访问新目标。仅有数据块重用，并不必然让旧硬链接指向新文件，关键在于是否保留了可被误用的旧对象引用。
+
+\textbf{硬链接的处理：}用 link count（硬链接计数）记录名称引用，删除一个名称时减一；计数归零且最后一个打开引用释放后再回收资源。这样，正常 UNIX 硬链接不会处于题设的“仍有链接却已回收文件”状态。
+
+\textbf{符号链接的处理：}删除目标时清理或更新已知链接，访问不存在的目标时报告错误。若要求链接始终引用原文件，还需额外核对对象身份或版本；只检查路径存在，无法识别同名替换。普通符号链接自身只保存路径，不维护目标的硬链接计数。
+
+\begin{samepage}
+\textbf{(b) 单副本与多副本的取舍。}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+比较项 & Single copy（单副本） & Multiple copies（多副本） \\
+\midrule
+空间 & 只存一份内容，节省空间 & 每个用户保留一份，占用更多空间 \\
+更新 & 共同访问同一内容，便于共享更新 & 可保留独立版本；需一致时要同步或合并 \\
+并发修改 & 可能覆盖彼此的修改，需要同步 & 各自修改互不影响，合并时仍可能冲突 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\end{samepage}
+多个硬链接仍共享同一文件对象，属于单副本方案；共享内容本身不保证并发修改具有原子性。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT11-Q02}{inode 路径查找、跨块读取与最大文件大小}
+
+\textbf{对应讲义：}\relatedtopic{SC2005-L21-T02}{直接与间接索引}；\relatedtopic{SC2005-L21-T03}{从路径查找到一次 read}。
+
+\textbf{题目。}inode 含 $6$ 个直接指针和 $1$ 个一级间接指针，逻辑块与物理块大小均为 $1000$ bytes。程序依次执行：
+\begin{quote}\ttfamily
+fd = open("/usr/ast/mbox");\\
+seek(fd, 5900);\\
+read(fd, buf, 200);
+\end{quote}
+求 (a) \texttt{open} 的磁盘读取次数：初始根目录内容已在内存，inode 在磁盘，每个目录占一个块；(b) 后续 \texttt{seek} 与 \texttt{read} 的磁盘读取次数；(c) 若间接索引块的每个表项占 $2$ bytes，最大文件大小是多少？
+
+\begin{checkedsolution}
+\textbf{计数约定。}偏移与逻辑块号从 $0$ 开始，文件足够长。按每个所需、尚未缓存的 inode 或磁盘块各读取一次计数，不计预读、inode 同块带来的额外缓存收益或元数据写回。
+
+\textbf{(a) 路径查找共 $5$ 次磁盘读取。}根目录内容已缓存，可直接查得 \texttt{usr} 的 inode 编号；之后依次读取：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}cl>{\raggedright\arraybackslash}X@{}}
+\toprule
+次序 & 读取对象 & 得到的信息 \\
+\midrule
+1 & \texttt{usr} 的 inode & \texttt{usr} 目录数据块的位置 \\
+2 & \texttt{usr} 的目录块 & \texttt{ast} 的 inode 编号 \\
+3 & \texttt{ast} 的 inode & \texttt{ast} 目录数据块的位置 \\
+4 & \texttt{ast} 的目录块 & \texttt{mbox} 的 inode 编号 \\
+5 & \texttt{mbox} 的 inode & 文件属性、直接与间接指针 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\texttt{open} 建立文件访问状态，此时无需读取 \texttt{mbox} 的正文数据。
+
+\textbf{(b) \texttt{seek} 为 $0$ 次，\texttt{read} 为 $3$ 次。}\texttt{seek} 只将文件位置改为 $5900$；读取范围为 $5900$--$6099$，跨越
+\[
+  \left\lfloor\frac{5900}{1000}\right\rfloor=5,
+  \qquad
+  \left\lfloor\frac{6099}{1000}\right\rfloor=6
+\]
+这两个逻辑块。前 $100$ bytes 在逻辑块 $5$，由第六个直接指针定位；后 $100$ bytes 在逻辑块 $6$，需先读取一级间接索引块，再读取数据块。\texttt{mbox} 的 inode 已由 \texttt{open} 缓存，因此
+\[
+  \boxed{N_{\mathrm{seek+read}}=0+1+1+1=3\text{ 次}}.
+\]
+
+\textbf{(c) 文件内容容量只统计数据块。}一个索引块可保存 $1000/2=500$ 个数据块地址，连同 $6$ 个直接指针，共可寻址 $506$ 个数据块：
+\[
+  \boxed{S_{\max}=\left(6+\frac{1000}{2}\right)1000
+  =506\,000\text{ bytes}=506\text{ kB}}.
+\]
+此处 $1\text{ kB}=1000$ bytes；间接索引块占用额外磁盘空间，但不计入文件内容。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT11-Q03}{三种分配方法的磁盘 I/O 次数}
+
+\textbf{对应讲义：}\relatedtopic{SC2005-L21-T01}{连续、链式与索引分配}。
+
+\textbf{题目。}仅目录项已缓存，逻辑块与物理块大小均为 $1000$ bytes，块指针占 $4$ bytes。从文件偏移 $1900$ 开始读 $200$ bytes，分别求连续、链式和索引分配所需的磁盘 I/O 次数。
+
+\begin{checkedsolution}
+读取范围为 $1900$--$2099$，按文件足够长、无数据预读计数。目录项分别给出起始块、首块或索引块的位置；本题按三种基本分配模型计算，不另加 inode 读取。
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}Xc@{}}
+\toprule
+分配方法 & 必须读取的磁盘块 & I/O 次数 \\
+\midrule
+Contiguous（连续） & 每块存 $1000$ bytes；直接计算并读取逻辑块 $1$、$2$ & $2$ \\
+Linked（链式） & 每块存 $996$ bytes；沿链依次读取第 $1,2,3$ 块 & $3$ \\
+Indexed（索引） & 读取 $1$ 个索引块，再读取逻辑块 $1$、$2$ & $3$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{链式分配的指针占用数据块空间。}每块有效内容为 $1000-4=996$ bytes，前三块依次保存文件字节 $0$--$995$、$996$--$1991$、$1992$--$2987$。目标的前 $92$ bytes 在第 $2$ 块，后 $108$ bytes 在第 $3$ 块；第 $1$ 块虽不含所需内容，仍需读取其中的后继指针。
+
+\textbf{索引分配的指针单独存放。}数据块保留完整 $1000$ bytes 内容；所需的两个表项位于同一个索引块中，该块只读取一次。因此三种方法的结果依次为 $\boxed{2,\;3,\;3}$。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT11-Q04}{两种分配单位兼顾空间与访问效率}
+
+\textbf{对应讲义：}\relatedtopic{SC2005-L21-T04}{块大小的时间与空间权衡}。
+
+\textbf{题目。}系统同时使用 $4$ Kbyte 与 $512$-byte 分配单位，一个 $6$ Kbyte 文件可用一个大块加四个小块保存。与只用一种块大小相比，这种方案有什么优势？按题目示例，$1\text{ Kbyte}=1024$ bytes，以下写作 KiB。
+
+\begin{checkedsolution}
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+分配方案 & 分配单位数 & 分配总容量 & 末块未用空间 \\
+\midrule
+全部 $4\text{ KiB}$ & $2$ & $8\text{ KiB}$ & $2\text{ KiB}$ \\
+全部 $512\text{ B}$ & $12$ & $6\text{ KiB}$ & $0$ \\
+主体大块、尾部小块 & $1+4=5$ & $6\text{ KiB}$ & $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{相比只用大块，}小块容纳尾部，减少 internal fragmentation（内部碎片），提高空间利用率。\textbf{相比只用小块，}主体按大块分配，减少块记录与寻址管理开销，并有利于较大批量的数据传输。
+
+本例恰好填满分配空间；一般文件的最后一个 $512\text{ B}$ 单位仍可能未用满。表中统计的是分配单位数，实际设备 I/O 次数还取决于缓存与请求合并。
+\end{checkedsolution}
+
+\endgroup
