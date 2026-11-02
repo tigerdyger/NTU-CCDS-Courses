@@ -1,0 +1,26 @@
+% Original schematic of Tutorial 7 Q2, not a reproduction of the corridor photo.
+% Solid segments are finite visible portions; dashed lines extend to V.
+\begin{tikzpicture}[x=1cm,y=1cm,font=\small,>=Latex]
+  \node[anchor=south] at (1.6,2.55) {空间中：共同方向 $\bm d$};
+  \foreach \x in {0.4,1.6,2.8}{
+    \draw[noteBlue,thick,->] (\x,0) -- (\x,2.3);
+  }
+  \node[anchor=north,font=\footnotesize] at (1.6,-0.12) {直线相互平行，位置不同};
+
+  \draw[->,thick,black!60] (3.5,1.15) -- (4.7,1.15)
+    node[midway,above,font=\footnotesize] {投影};
+
+  \begin{scope}[shift={(5.4,0)}]
+    \node[anchor=south] at (2,2.55) {图像中：共同消失点};
+    \coordinate (V) at (2,2.3);
+    \foreach \x in {0.3,2,3.7}{
+      \coordinate (A) at (\x,0);
+      \coordinate (B) at ($(A)!0.72!(V)$);
+      \draw[noteBlue,thick] (A) -- (B);
+      \draw[noteBlue,dashed] (B) -- (V);
+    }
+    \fill[ntuRed] (V) circle (2pt);
+    \node[ntuRed,anchor=west] at (2.13,2.3) {$V$};
+    \node[anchor=north,font=\footnotesize] at (2,-0.12) {像线延长后汇聚于同一点};
+  \end{scope}
+\end{tikzpicture}

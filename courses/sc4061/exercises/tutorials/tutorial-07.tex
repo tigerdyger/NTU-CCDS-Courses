@@ -1,0 +1,96 @@
+% Based on templates/tutorial.tex; finished notes omit dialogue and check records.
+% Source: LEC07 Imaging Geometry - Tutorial Problems.pdf, PDF p. 1, Q1--Q3.
+% Supplement: LEC07 Imaging Geometry - 2026.pdf, pp. 10--12, 26--32.
+% Study date: 2026-11-03, Week 12; this does not establish an official timetable change.
+% No tutorial answer key supplied. Proofs and degeneracy conditions derived here.
+
+\begingroup
+\setlength{\parskip}{0.4em}
+\exercisegroup{SC4061-TUT07}{Tutorial 07：Imaging Geometry}
+\label{tutorial:SC4061-TUT07}
+
+\noteintro{
+{\small 学习日期：2026-11-03（第十二教学周）。来源：\emph{LEC07 Imaging Geometry -- Tutorial Problems}，PDF p.~1，Questions 1--3；标定流程参照主讲义 pp.~26--32。原题未附参考答案；以下给出几何证明、参数估计流程及适用条件。}
+}
+
+\exercisequestion{SC4061-TUT07-Q01}{共线空间点的投影仍共线}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L11-T02}{针孔模型与透视投影}。
+
+\textbf{题目。}证明：在 pinhole camera（针孔相机）中，三个共线的空间点投影后仍然共线。
+
+\begin{checkedsolution}
+采用理想针孔模型，设成像平面为 $\Sigma$，光心为 $O$，三个空间点 $P_1,P_2,P_3$ 位于直线 $L$ 上，且均有有限的像点。先考虑 $O\notin L$ 的一般情况。
+
+\begin{enumerate}[label=\arabic*.]
+  \item 直线 $L$ 与直线外的光心 $O$ 唯一确定一个平面 $\Pi$。
+  \item 投影线 $OP_1,OP_2,OP_3$ 均位于 $\Pi$ 内。像点 $p_i=OP_i\cap\Sigma$ 因而同时属于 $\Pi$ 和 $\Sigma$。
+  \item $\Pi$ 包含光心，而成像平面 $\Sigma$ 不包含光心，所以两平面不同；已有有限像点保证它们相交，其交集为直线 $\ell$。于是 $\boxed{p_1,p_2,p_3\in\ell=\Pi\cap\Sigma}$，即三个像点共线。
+\end{enumerate}
+
+\textbf{退化情况。}若 $L$ 经过光心，所有能成像的点重合在同一像点。镜头畸变可能使实际照片中的直线弯曲，本题结论针对理想针孔投影。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT07-Q02}{同方向平行线与消失点}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L11-T02}{透视投影与深度}。
+
+\textbf{题目。}走廊照片中，沿纵深延伸的扶手、墙边和地板接缝在空间中相互平行，图像中的延长线却汇聚到 vanishing point（消失点）。解释原因。
+
+\begin{checkedsolution}
+\nopagebreak[4]
+\textbf{几何解释。}这组直线位置不同，但具有共同方向 $\bm d$。沿它们向远处观察时，空间点与光心的连线趋向经过光心、方向为 $\bm d$ 的同一条直线。该直线与成像平面的交点就是共同的消失点。固定相机后，消失点由这组直线的方向决定，与各条直线的位置无关。
+
+\begin{center}
+  \input{figures/tutorial-07-vanishing-point}
+  \par\smallskip
+  \refstepcounter{figure}\label{fig:sc4061-tut07-vanishing}
+  {\small 图~\thefigure：按原题走廊情境原创绘制；右图虚线为像线延长部分，$V$ 为共同消失点。}
+\end{center}
+
+\textbf{用投影公式核对。}在相机坐标系中，将任一条直线写为 $\bm P(\tau)=(X_0,Y_0,Z_0)^T+\tau(d_x,d_y,d_z)^T$。
+取向远处延伸的方向，使 $d_z>0$。在主点为原点的图像物理坐标中，焦距为 $f>0$，且所考虑点的深度 $Z_0+\tau d_z>0$：
+\[
+  x(\tau)=f\frac{X_0+\tau d_x}{Z_0+\tau d_z},\qquad
+  y(\tau)=f\frac{Y_0+\tau d_y}{Z_0+\tau d_z}.
+\]
+将分子、分母同除以 $\tau$ 并令 $\tau\to\infty$，得到
+\[
+  \boxed{(x_\infty,y_\infty)
+    =\left(f\frac{d_x}{d_z},\ f\frac{d_y}{d_z}\right)}.
+\]
+极限只含方向分量与焦距，因此同方向的直线有相同的消失点。这里的 $(x,y)$ 是图像物理坐标；转为像素坐标还需处理像素尺寸、轴方向和主点偏移。
+
+\textbf{方向与边界条件。}不同方向可以对应不同消失点。若 $d_z=0$，这组直线平行于成像平面，其可见投影仍平行，没有有限交点，称为消失点位于无穷远处。消失点也可能位于实际照片边界之外。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT07-Q03}{相机标定的主要步骤}
+
+\textbf{对应讲义：}\relatedtopic{SC4061-L11-T04}{内外参与统一投影矩阵}；主讲义 pp.~26--32 的传统标定流程。
+
+\textbf{题目。}描述 camera calibration（相机标定）的主要步骤。
+
+\begin{checkedsolution}
+标定利用已知的三维点及其二维像点估计相机参数。对世界坐标齐次向量 $\bm P_i^h=(X_i,Y_i,Z_i,1)^T$，针孔模型为
+\[
+  \lambda_i\begin{bmatrix}u_i\\v_i\\1\end{bmatrix}
+    =\underbrace{K[R\mid t]}_{M\in\mathbb R^{3\times4}}\bm P_i^h.
+\]
+$K$ 为内参矩阵，$R,t$ 描述世界坐标到相机坐标的旋转和平移；$\lambda_i$ 是每个点各自的齐次比例因子。
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{准备已知几何的标定物。}使用精确制作的标定板或立方体，建立世界坐标系，确定角点的三维坐标并拍摄照片。
+  \item \textbf{建立 3D--2D correspondences（三维到二维对应）。}用角点检测或边缘交点定位照片中的角点，记录像素坐标 $(u_i,v_i)$，与相应世界点逐一匹配。
+  \item \textbf{估计投影矩阵 $M$。}消去每点的 $\lambda_i$ 后，一对点给出两个关于矩阵元素的线性约束；汇总全部对应点求解。讲义固定整体尺度，写成 $A\bm\theta=\bm b$；对应点较多时用伪逆求最小二乘解。
+  \item \textbf{恢复内外参。}由估计的 $M$ 分解得到 $K,R,t$，完成讲义中的标定流程。
+\end{enumerate}
+
+\textbf{为何至少需要六对点？}一般 $3\times4$ 投影矩阵有 $12$ 个元素，整体非零倍数表示相同投影，因此有 $11$ 个独立自由度。每对点提供两个约束，数量下限为
+\[
+  2n\ge11\quad\Longrightarrow\quad\boxed{n\ge6}.
+\]
+达到数量下限还要求点的配置非退化，使方程提供足够独立的约束；通常使用更多、分布良好的对应点，以降低定位噪声的影响。
+
+\textbf{适用条件。}单张照片中全部共面的点不足以确定一般的 $M$；平面标定板通常配合多个姿态和专门的平面标定方法。讲义令 $m_{34}=1$ 的写法要求原本 $m_{34}\ne0$，否则需换用其他尺度约束。镜头畸变参数属于实际标定的扩展，本题核心是上述针孔模型下的 $M,K,R,t$。
+\end{checkedsolution}
+\endgroup
