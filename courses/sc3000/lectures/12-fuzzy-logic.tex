@@ -1,0 +1,142 @@
+% Based on templates/lecture.tex; actual regular lecture SC3000-L11, Week 12.
+% Source: Week 12 Fuzzy Logic.pptx, original slides 2--66 of 67.
+% Transcript: 82359 - 0_yizisap6 - PID 117.txt; full lecture, no timestamps.
+% Verification: source text, formulas and diagrams checked against transcript.
+% Supplement: trapezoid piecewise form and continuous centroid written explicitly.
+\begingroup
+\setlength{\parskip}{0.45em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
+\section{第 11 节课：Fuzzy Logic}
+\label{lecture:SC3000-L11}
+
+\noteintro{
+\textbf{日期与资料：}2026-11-02（Week 12）；Week 12 -- Fuzzy Logic，原始 slides 2--66，结合配套视频字幕。已核对定义、图示与例题；重复展开页面合并整理。按 Week 8 课件 slides 2--3 的课程表，本讲为最后一讲正课，Week 13 为 No Class；Week 12 另有 Tutorial 6。
+}
+
+Fuzzy logic（模糊逻辑）把“高、年轻、服务好”等边界不清晰的概念表示成程度，并据此执行规则。贯穿例子是：输入服务和食物评分，判断它们分别多大程度符合 poor、good、delicious 等概念，综合“小费少、一般、多”的规则，输出一个具体比例。讲义开头的自动驾驶情境同样涉及“距离近、视野有限”等语言概念。
+
+\lecturetopic{SC3000-L11-T01}{模糊集合与隶属函数}
+
+Crisp set（清晰集合）的成员关系为 $0$ 或 $1$；fuzzy set（模糊集合）以 membership function（隶属函数）表示部分隶属：
+\[
+ \mu_A:X\longrightarrow[0,1],\qquad
+ A=\{(x,\mu_A(x)):x\in X\}.
+\]
+$X$ 是 universe of discourse（论域），$\mu_A(x)$ 是对象 $x$ 符合概念 $A$ 的程度。例如 $\mu_{\text{tall}}(175)=0.6$ 表示 175\,cm 符合当前“高个子”标准的程度为 $0.6$，并非一个随机事件的概率。输入可以已准确测量，模糊性来自概念的边界；标准也会随人群、任务和语境改变。
+
+\textbf{梯形隶属函数。}Trapezoidal MF 以 $(a,b,c,d)$ 控制上升、平台和下降区间。对 $a<b\le c<d$，根据 slide 16 的图形补全为
+\[
+ \mu_A(x)=
+ \begin{cases}
+  0,&x\le a\text{ 或 }x\ge d,\\
+  (x-a)/(b-a),&a<x<b,\\
+  1,&b\le x\le c,\\
+  (d-x)/(d-c),&c<x<d.
+ \end{cases}
+\]
+\begin{center}
+\input{figures/fuzzy-trapezoid}
+\end{center}
+\textbf{图示：}按课件 slides 16、28 的定义重绘；水平线说明 $\alpha$-cut 如何从隶属函数得到普通集合。
+
+沿用字幕中“温度适中”的区间 $(10,18,25,30)$，$14$ 度的隶属度为 $(14-10)/8=0.5$，$20$ 度为 $1$，$28$ 度为 $(30-28)/5=0.4$。计算时先定位所在区间，再代入对应线性表达式。三角形、梯形和平滑曲线都是可选的概念表示；函数形状及参数需按任务确定。
+
+\textbf{集合记法。}课件还写作 $A=\sum_i\mu_A(x_i)/x_i$，连续论域写作 $A=\int_X\mu_A(x)/x$。这里的斜线是“隶属度／对象”的配对标记，求和或积分符号表示汇集这些配对；均不作相应算术运算。后文重心法中的求和、积分则是真正的加权计算。
+
+\lecturetopic{SC3000-L11-T02}{模糊划分、截集与凸性}
+
+\textbf{多个概念的重叠。}同一个年龄可以同时对 young、middle-aged、old 有非零隶属度。如果特意设计为对所有 $x$ 都有 $\sum_i\mu_{A_i}(x)=1$，课件称为 pseudo fuzzy partition（伪模糊划分）；一般模糊集合没有这个求和约束。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+名称 & 定义 & 梯形函数中的位置 \\
+\midrule
+Support（支撑集） & $\{x:\mu_A(x)>0\}$ & $(a,d)$ \\
+Core（核） & $\{x:\mu_A(x)=1\}$ & $[b,c]$ \\
+Crossover points（交叉点） & $\mu_A(x)=0.5$ 的点 & $(a+b)/2$、$(c+d)/2$ \\
+$\alpha$-cut（$\alpha$ 截集） & $A_\alpha=\{x:\mu_A(x)\ge\alpha\}$，$0<\alpha\le1$ & 达到该高度的横坐标构成闭区间 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Convex fuzzy set（凸模糊集合）。}在实数区间等凸论域中，对任意 $x_1,x_2$ 和 $\lambda\in[0,1]$，要求
+\[
+ \mu_A\bigl(\lambda x_1+(1-\lambda)x_2\bigr)
+ \ge\min\{\mu_A(x_1),\mu_A(x_2)\}.
+\]
+即两点之间的隶属度不低于两端中较低的一个。等价地，所有 $\alpha$-cut 都是凸集；在一维数轴上，非空截集是连续区间。如果两端都达到 $0.6$，中间却降到 $0.2$，就违反凸性。这是\emph{模糊集合}的性质，与函数图像“开口向上”的凸函数定义不同。
+
+\lecturetopic{SC3000-L11-T03}{集合运算与语言修饰}
+
+本讲采用 min--max 运算；对同一对象 $x$，令 $u=\mu_A(x)$、$v=\mu_B(x)$：
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+运算 & 定义 & $u=0.6,\ v=0.8$ 时 \\
+\midrule
+AND／intersection（交集） & $\mu_{A\cap B}(x)=\min(u,v)$ & $0.6$ \\
+OR／union（并集） & $\mu_{A\cup B}(x)=\max(u,v)$ & $0.8$ \\
+NOT／complement（补集） & $\mu_{\bar A}(x)=1-u$ & $0.4$ \\
+Subset（子集） & $A\subseteq B\iff\forall x,\ \mu_A(x)\le\mu_B(x)$ & 必须对整个论域成立 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+输入仅取 $0,1$ 时，前三个公式还原相应布尔运算。补集曲线在纵向由 $u$ 变为 $1-u$；交、并分别逐点取较低、较高的曲线。
+
+\textbf{Linguistic hedges（语言修饰算子）。}修饰词作用于\emph{隶属度}，不改变对象 $x$。课件 slides 38--39 规定：
+\[
+ \begin{aligned}
+  \text{very }u&=u^2,&\text{more-or-less }u&=u^{0.5},\\
+  \text{extremely }u&=u^3,&\text{slightly }u&=u^{0.333},\\
+  \text{somewhat }u&=\min\{u^{0.5},\,1-u^{0.333}\}.&&
+ \end{aligned}
+\]
+其中 $0.333$ 是课件对约三分之一次方的写法，somewhat 由 ``more-or-less AND NOT slightly'' 组合得到。对 $0<u<1$，$u^2<u<\sqrt u$：very 提高概念要求，使隶属度降低；more-or-less 放宽要求，使隶属度提高。具体离散集合的转换见\relatedexercise{SC3000-L11-E01}{young 与 very young}。
+
+\lecturetopic{SC3000-L11-T04}{模糊规则系统：从数值输入到数值输出}
+
+Fuzzy rule-based system（FRB，模糊规则系统）包含隶属函数、rule base（规则库）、inference engine（推理引擎）和解模糊模块。规则通常写作 ``IF $x$ is $A$, THEN $y$ is $B$''，其中 $A,B$ 是定义在输入、输出论域上的模糊集合。以下按课件的 min 截断、max 聚合方法计算。
+
+\begin{center}
+\input{figures/fuzzy-inference-pipeline}
+\end{center}
+\textbf{图示：}按课件 slides 40、48--56 重绘计算流程。规则库提供条件及结论，隶属函数提供各个语言概念的数值表示。
+
+\begin{enumerate}
+ \item \textbf{Fuzzification（模糊化）。}把确定输入 $x_0$ 代入各个条件的隶属函数，得到 $\mu_A(x_0)$；可通过函数计算或查表完成。
+ \item \textbf{Apply fuzzy operators（合并前件条件）。}用 AND/min、OR/max 等运算，得到第 $j$ 条规则的单一 firing strength（触发强度）$\alpha_j\in[0,1]$。
+ \item \textbf{Implication（作用于结论）。}把结论集合 $B_j$ 的曲线截断在 $\alpha_j$ 高度：
+ \[
+  \mu'_j(y)=\min\{\alpha_j,\mu_{B_j}(y)\}.
+ \]
+ $\alpha_j$ 限制曲线高度，输出仍是一整个模糊集合；本步采用控制系统的截断定义，而非经典逻辑的材料蕴含。
+ \item \textbf{Aggregation（聚合）。}对每一个候选输出值 $y$，合并所有规则的结论：
+ \[
+  \mu_{\mathrm{out}}(y)=\max_j\mu'_j(y).
+ \]
+ 不同规则可以在不同位置贡献最大值，因此要保留逐点合并后的整条曲线。
+ \item \textbf{Defuzzification（解模糊）。}把聚合后的模糊集合转换为一个具体输出，例如风扇转速或小费比例。
+\end{enumerate}
+
+\textbf{最大隶属度法。}选择隶属度最大的位置：
+\[
+ y^*\in\operatorname*{arg\,max}_y\mu_{\mathrm{out}}(y).
+\]
+若最高处是平台，需要规定如何从多个最大值位置中选取输出。课件 slide 65 的 $\sup_y\mu(y)$ 给出的是最大\emph{高度}；解模糊需要对应的\emph{横坐标}。
+
+\textbf{Centroid（重心法）。}离散候选点的输出为
+\[
+ y^*=\frac{\sum_i y_i\mu_{\mathrm{out}}(y_i)}
+ {\sum_i\mu_{\mathrm{out}}(y_i)}.
+\]
+分母必须大于 $0$。连续形式为 $y^*=\int y\mu_{\mathrm{out}}(y)\,dy\big/\int\mu_{\mathrm{out}}(y)\,dy$，要求积分存在且分母为正；所得数值是曲线下方区域的重心横坐标。用非等间距采样近似连续积分时，须计入积分权重。所有规则均未触发时另设后备策略。完整流程见\relatedexercise{SC3000-L11-E02}{服务与食物评分决定小费}。
+
+\subsection{一分钟回顾}
+
+隶属度表示对象符合概念的程度，取值在 $[0,1]$；隶属函数与语境有关。模糊集合的 AND、OR、NOT 在本讲分别用 min、max、$1-u$，very 等修饰词作用于隶属度。规则先将输入模糊化，再计算触发强度、截断结论曲线、逐点聚合；最后用最大隶属度法或重心法得到具体输出。凸性可通过所有 $\alpha$-cut 是否为凸集判断。
+\endgroup

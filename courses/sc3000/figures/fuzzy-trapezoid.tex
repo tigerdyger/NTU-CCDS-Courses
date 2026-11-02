@@ -1,0 +1,18 @@
+% Original schematic from the definitions in Week 12 Fuzzy Logic, slides 16, 28.
+% Coordinates are schematic; a,b,c,d are symbolic breakpoints, not source data.
+\begin{tikzpicture}[x=1.15cm,y=1.25cm,>=Latex,font=\small]
+ \fill[noteBlue!10] (2.2,0) -- (2.2,1.2) -- (6.8,1.2) -- (6.8,0) -- cycle;
+ \draw[->] (0,0) -- (9,0) node[right] {$x$};
+ \draw[->] (0,0) -- (0,2.5) node[above] {$\mu_A(x)$};
+ \draw[noteBlue,very thick] (0,0) -- (1,0) -- (3,2) -- (6,2) -- (8,0) -- (8.7,0);
+ \draw[verifyOrange,dashed] (0,1.2) node[left] {$\alpha$} -- (8.2,1.2);
+ \draw[dashed,gray] (3,0) -- (3,2) -- (0,2) node[left,black] {$1$};
+ \draw[dashed,gray] (6,0) -- (6,2);
+ \draw[verifyOrange,densely dashed] (2.2,0) -- (2.2,1.2);
+ \draw[verifyOrange,densely dashed] (6.8,0) -- (6.8,1.2);
+ \node[left] at (0,0) {$0$};
+ \foreach \x/\lab in {1/a,3/b,6/c,8/d}{\node[below] at (\x,0) {$\lab$};}
+ \draw[verifyOrange,thick,|-|] (2.2,-0.55) -- (6.8,-0.55)
+  node[midway,below] {$A_\alpha=\{x:\mu_A(x)\ge\alpha\}$};
+ \node[above,noteBlue] at (4.5,2) {Core};
+\end{tikzpicture}

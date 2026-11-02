@@ -1,0 +1,86 @@
+% Based on templates/lecture-example.tex; actual lecture SC3000-L11.
+% Source: Week 12 Fuzzy Logic.pptx, slides 39, 57--66; matching transcript.
+% Verification: numeric memberships checked in the original slide diagrams.
+% Slide 66 reports 16.7 percent without a numerical table for its nine samples.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC3000-L11-EX}{第 11 讲：Fuzzy Logic}
+
+\textbf{日期与来源：}2026-11-02；Week 12 -- Fuzzy Logic，原始 slide 39、slides 57--66，结合配套字幕核对。保留讲义条件，补全运算过程；重心法的最终数值按课件注明。
+
+\exercisequestion{SC3000-L11-E01}{语言修饰：由 young 得到 very young}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L11-T01}{集合记法}；\relatedtopic{SC3000-L11-T03}{语言修饰算子}。
+
+\textbf{题目（slide 39）。}年龄论域为 $\{0,20,40,60,80\}$，给定
+\[
+ \mathrm{young}=\frac{1}{0}+\frac{0.6}{20}
+ +\frac{0.1}{40}+\frac{0}{60}+\frac{0}{80}.
+\]
+按课件 $\mathrm{very}\ u=u^2$ 的规则，求 very young。
+
+\begin{workedsolution}
+每个年龄保持不变，把对应的隶属度平方：
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+年龄 & $0$ & $20$ & $40$ & $60$ & $80$ \\
+\midrule
+$\mu_{\mathrm{young}}$ & $1$ & $0.6$ & $0.1$ & $0$ & $0$ \\
+$\mu_{\mathrm{very\ young}}$ & $1$ & $0.36$ & $0.01$ & $0$ & $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+故 $\mathrm{very\ young}=1/0+0.36/20+0.01/40+0/60+0/80$。这里斜线仅表示“隶属度／年龄”的配对；$1/0$ 也不涉及除以零。平方使 $0$ 与 $1$ 不变，使中间隶属度降低，表达“非常年轻”的更严格要求。
+\end{workedsolution}
+
+\exercisequestion{SC3000-L11-E02}{小费计算：三条规则如何产生一个输出}
+
+\textbf{对应知识点：}\relatedtopic{SC3000-L11-T03}{min--max 运算}；\relatedtopic{SC3000-L11-T04}{模糊规则系统与解模糊}。
+
+\textbf{题目（slides 57--66）。}服务评分 $s$、食物评分 $f$ 均在 $[0,10]$。输入 $s=3,f=8$，采用以下规则；小费比例用 $t$ 表示。
+\begin{enumerate}
+ \item 服务 poor（差）OR 食物 rancid（变质）$\Rightarrow$ 小费 cheap（少）。
+ \item 服务 good（好）$\Rightarrow$ 小费 average（一般）。
+ \item 服务 excellent（出色）OR 食物 delicious（美味）$\Rightarrow$ 小费 generous（多）。
+\end{enumerate}
+图中给出 $\mu_{\mathrm{excellent}}(3)=0$、$\mu_{\mathrm{delicious}}(8)=0.7$。按 OR/max、结论 min 截断、输出 max 聚合、重心法解模糊，说明计算过程。
+
+\begin{workedsolution}
+\textbf{1. 模糊化并求触发强度。}分别读取服务与食物在各个概念下的隶属度，得到
+\[
+ \begin{aligned}
+  \alpha_1&=\max\{\mu_{\mathrm{poor}}(3),\mu_{\mathrm{rancid}}(8)\},\\
+  \alpha_2&=\mu_{\mathrm{good}}(3),\\
+  \alpha_3&=\max\{0,0.7\}=0.7.
+ \end{aligned}
+\]
+第一、二条规则的数值未在相关图中完整标注，以上保留函数形式。第三条使用 OR，食物的 $0.7$ 足以使其触发，服务 excellent 的隶属度为零不会把它阻断。
+
+\textbf{2. 截断各条结论曲线。}三条输出分别为
+\[
+ \begin{aligned}
+  \mu'_1(t)&=\min\{\alpha_1,\mu_{\mathrm{cheap}}(t)\},\\
+  \mu'_2(t)&=\min\{\alpha_2,\mu_{\mathrm{average}}(t)\},\\
+  \mu'_3(t)&=\min\{0.7,\mu_{\mathrm{generous}}(t)\}.
+ \end{aligned}
+\]
+第三条 generous 曲线超过 $0.7$ 的部分降到 $0.7$，较低部分保持原样。触发强度控制的是隶属度高度，不能将小费上限直接乘以 $0.7$ 当成最终输出。
+
+\textbf{3. 逐点聚合。}对所有候选小费比例取
+\[
+ \mu_{\mathrm{out}}(t)=\max\{\mu'_1(t),\mu'_2(t),\mu'_3(t)\}.
+\]
+低小费区域可由 cheap 规则贡献，中间由 average、高小费区域由 generous 贡献。聚合保留这些局部最大值，而非按规则强度选出唯一一条规则。
+
+\textbf{4. 重心法输出。}若 $t_i$ 是课件所标的九个离散候选点，则
+\[
+ t^*=\frac{\sum_{i=1}^{9}t_i\mu_{\mathrm{out}}(t_i)}
+ {\sum_{i=1}^{9}\mu_{\mathrm{out}}(t_i)}.
+\]
+Slide 66 给出的结果为 $\boxed{16.7\%}$，原图未列出九个采样点的完整数值表。整个流程将确定输入 $(3,8)$ 经模糊集合与规则运算，转换为确定的小费比例。
+\end{workedsolution}
+\endgroup

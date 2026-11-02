@@ -1,0 +1,17 @@
+% Original flow diagram based on Week 12 Fuzzy Logic, slides 40, 48--56.
+\begin{tikzpicture}[
+ >=Latex,font=\small,
+ stage/.style={draw=noteBlue,fill=noteBlue!5,rounded corners=2pt,
+   text width=2.22cm,minimum height=1.15cm,align=center,inner sep=3pt},
+ flow/.style={->,thick,noteBlue}
+]
+ \node[stage] (fuzz) at (0,0) {模糊化\\$\mu_A(x_0)$};
+ \node[stage] (ops) at (2.95,0) {合并条件\\$\alpha_j$};
+ \node[stage] (clip) at (5.90,0) {截断结论\\$\min(\alpha_j,\mu_{B_j})$};
+ \node[stage] (agg) at (8.85,0) {逐点聚合\\$\max_j\mu'_j(y)$};
+ \node[stage] (defuzz) at (11.80,0) {解模糊\\具体数值 $y^*$};
+ \draw[flow] (fuzz) -- (ops);
+ \draw[flow] (ops) -- (clip);
+ \draw[flow] (clip) -- (agg);
+ \draw[flow] (agg) -- (defuzz);
+\end{tikzpicture}
