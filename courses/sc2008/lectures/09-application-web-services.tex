@@ -1,0 +1,254 @@
+% Based on templates/lecture.tex. Actual notes lecture 09; 2026-11-03, Week 12.
+% Recorded: SC2008_M2-L5_Application.pdf, PDF pp. 1--108.
+% Part I: PDF 1--61 = printed 1--61; Part II: PDF 62--108 = printed 1--47.
+% Live: SC2008 Week 12 Web Services.pdf, PDF pp. 1--79.
+% Transcripts 81905 and 81906 cover recorded HTTP and DNS; no timestamps.
+% Source examples checked against the PDFs; typeset notes await user review.
+% No conversational checks, learner answers or restricted source files included.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+
+\section{第 09 节课：Application Layer 与 Web Services}
+\label{lecture:SC2008-L09}
+
+\noteintro{
+\textbf{日期与资料：}2026-11-03（Week 12）。录播\textit{M2-L5 Application}：pp.~1--61为应用层与HTTP，pp.~62--108为DNS，分别对应字幕81905、81906（无时间戳）。现场\textit{Week 12 Web Services}：pp.~1--79，无对应字幕。以下均用PDF页码，第09节按笔记的实际课堂顺序编号。
+}
+
+访问网店时，DNS把主机名解析成地址，运输层连接两端程序，HTTP表达请求与结果，后端完成登录、权限检查和订单处理。各层分别负责名称、字节交付或业务结果。
+
+\lecturetopic{SC2008-L09-T01}{应用协议、Web架构与HTTP消息}
+
+\textbf{应用层协议规定消息类型、语法、语义和交互规则。}TCP提供可靠有序字节流，应用仍需约定消息边界与业务结果。录播的简化比分协议以\texttt{SCORE ROBOTS}查询队伍，以\texttt{RESULT 3}回应，并用换行分隔消息。TCP ACK确认字节接收；订单是否创建、文件是否保存成功，由应用回复说明。
+
+Client/server（客户端／服务器）分别发起请求、提供服务。P2P（对等式）节点可兼任两者，也可借助中心服务发现节点。Socket（套接字）是程序使用运输层的接口；主机根据运输协议和端口分发数据。HTTP通常用TCP 80，基于TCP的HTTPS用443，传统DNS用UDP/TCP 53；HTTP/3经QUIC/UDP运行。
+
+Web是Internet上的应用，HTML是文档格式，HTTP交换资源表示。网站可返回静态文件、由后端生成HTML，或由浏览器JavaScript请求JSON并更新页面。Web service向程序提供网络服务，API约定可调用的请求和响应；JSON是常见数据格式。
+
+\begin{center}
+\begin{minipage}{\linewidth}
+\centering
+\begin{tikzpicture}[font=\small,>=Stealth,
+ box/.style={draw=noteBlue,rounded corners,fill=noteBlue!5,align=center,
+ minimum height=1.65cm,text width=2.9cm}]
+ \node[box] (front) at (0,0) {浏览器前端\\HTML / CSS\\JavaScript};
+ \node[box] (back) at (5.3,0) {服务器后端\\路由、校验、业务处理};
+ \node[box] (db) at (10.6,0) {数据库\\商品、用户、订单};
+ \draw[->,thick] ([yshift=2mm]front.east)--([yshift=2mm]back.west)
+   node[midway,above] {HTTP请求};
+ \draw[->,thick] ([yshift=-2mm]back.west)--([yshift=-2mm]front.east)
+   node[midway,below] {JSON响应};
+ \draw[->,thick] ([yshift=2mm]back.east)--([yshift=2mm]db.west)
+   node[midway,above] {查询／更新};
+ \draw[->,thick] ([yshift=-2mm]db.west)--([yshift=-2mm]back.east)
+   node[midway,below] {结果};
+\end{tikzpicture}
+
+\small 依据现场pp.~11--16重绘。MiniMart后端用Flask，数据库用SQLite。
+\end{minipage}
+\end{center}
+
+\textbf{URL与HTTP/1.1格式。}以\texttt{https://www.example.com/scores?team=robots}为例，scheme是\texttt{https}，主机名是\texttt{www.example.com}，路径是\texttt{/scores}，查询参数是\texttt{team=robots}。DNS只解析主机名；路径与参数交给HTTP服务。
+
+请求由request line（请求行）、headers（报头）、空行及可选body（消息体）组成；响应以status line（状态行）开头。录播示例可写成：
+\begin{center}
+\small
+\begin{tabular}{@{}l@{\hspace{8mm}}l@{}}
+\textbf{请求} & \textbf{响应} \\
+\texttt{GET /scores?team=robots HTTP/1.1} & \texttt{HTTP/1.1 200 OK} \\
+\texttt{Host: www.example.com} & \texttt{Content-Type: application/json} \\
+\texttt{Accept: application/json} & \texttt{Content-Length: 11} \\
+\multicolumn{2}{c}{\rule{0pt}{1.2em}} \\
+ & \texttt{\{"score":3\}} \\
+\end{tabular}
+\end{center}
+左侧请求无正文，右侧响应在空行之后包含JSON正文。\texttt{Host}指定同一IP上访问哪个网站，\texttt{Accept}表示希望接收的格式；\texttt{Content-Type}说明实际消息体格式，\texttt{Content-Length}按编码后的字节计数。示例JSON无末尾换行，共11个ASCII字节。POST示例的表单体\texttt{name=Mei}为8 B。
+
+HTTP在TCP字节流之上自行定界，例如用\texttt{Content-Length}或chunked transfer coding（分块传输编码）；304响应没有消息体。一条HTTP消息可跨多个TCP段，一次应用读取也可能只得到部分消息。一个HTML页面引用的图片、CSS等通常分别请求，超链接指向的所有页面则不会仅因链接存在而自动全部下载。
+
+\textbf{状态码与HTTPS。}2xx为成功，3xx涉及重定向或缓存验证，4xx表示请求相关问题，5xx表示服务器处理失败。常见具体代码见\relatedexercise{SC2008-L09-E01}{HTTP结果与超时}及本讲REST表。HTTP/1.1、HTTP/2的HTTPS层次为HTTP $\to$ TLS $\to$ TCP $\to$ IP。TLS提供加密、完整性及通常基于证书的服务器身份验证；POST自身不加密。网络仍可观察目标IP、流量大小与时间特征，HTTPS也不保证网站业务内容可信。
+
+\lecturetopic{SC2008-L09-T02}{连接复用、HTTP缓存与现代Web传输}
+
+\textbf{Persistent connection（持久连接）。}HTTP/1.1默认支持连接复用；同一连接可服务多个请求。若顺序获取$N$个小对象，每个新TCP连接约需1 RTT建立，每次HTTP交换约需1 RTT，则
+\[
+ T_{\rm nonpersistent}\approx2N\,RTT,\qquad
+ T_{\rm persistent}\approx(N+1)\,RTT.
+\]
+条件为同一服务器、无现有连接或内容缓存、无并行和流水线，忽略DNS、TLS、处理、损失及对象传输时间。HTML加两张图片的计算见\relatedexercise{SC2008-L09-E02}{连接复用的RTT例题}。
+
+\textbf{Freshness（新鲜度）与validation（验证）。}新鲜缓存可直接使用；缓存过期只意味着需要按规则验证，内容未必已经改变。\texttt{Cache-Control: max-age=60}规定新鲜期限；ETag是资源表示的验证标签。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}p{3.2cm}XX@{}}
+\toprule
+缓存状态 & 网络动作 & 是否重新传输正文 \\
+\midrule
+新鲜且允许直接复用 & 使用本地副本，无须新HTTP请求 & 否 \\
+需要验证，内容未变 & 条件GET带\texttt{If-None-Match}，收到304 & 否；使用原副本 \\
+需要验证，内容已变 & 条件GET收到200及新ETag & 是；保存新副本 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+浏览器显示\texttt{(disk cache)}与304对应不同的网络行为；304仍发生请求／响应。时间线与具体ETag见\relatedexercise{SC2008-L09-E03}{图片缓存例题}。
+
+\textbf{代理与CDN。}Forward proxy（正向代理）代表客户端访问外部服务；reverse proxy（反向代理）位于服务器前方，可承担转发、负载分配等任务。共享缓存允许复用可缓存响应；CDN（内容分发网络）把内容放到分布式边缘节点，缓存命中可减少回源和访问时延。HTTPS内容由相应授权端点处理，普通中间路由器无法直接读取其加密正文。
+
+\textbf{HTTP/2与HTTP/3。}HTTP/2把多个HTTP stream（流）的帧交错放到一个TCP连接中；这些HTTP帧不是以太网帧。TCP某处缺字节时，后续字节按序交付受阻，可影响多个HTTP流。HTTP/3使用QUIC/UDP，QUIC提供可靠有序的独立流与安全、流量和拥塞控制；一个流的缺口不必阻塞另一完整且无依赖的流。流仍共享拥塞控制，应用依赖也可能造成等待。
+
+\lecturetopic{SC2008-L09-T03}{DNS命名、委派、查询与缓存}
+
+\textbf{Domain Name System（域名系统）。}DNS是分布式、分层的名称数据库。完整域名从右向左对应根、顶级域、下级域和主机名，例如\texttt{www.example.com.}末尾的点表示根；\texttt{www}只是约定俗成的名称。资源记录可概括为(name, type, data, TTL)：
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.8cm}p{4.1cm}X@{}}
+\toprule
+类型 & data的含义 & 用途 \\
+\midrule
+A / AAAA & IPv4 / IPv6地址 & 把名称对应到地址 \\
+CNAME & 另一个域名 & 别名；解析器继续查目标名 \\
+NS & 名称服务器的域名 & 指明区域的权威服务器 \\
+MX & 优先级与邮件服务器域名 & 指定邮件投递服务器 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+CNAME解析不会自行改变浏览器URL，也不是HTTP重定向。DNS控制台中的\texttt{@}通常表示当前区域顶点，\texttt{www}表示它的子名称。
+
+\textbf{注册、DNS托管与Web托管。}Registrant（注册人）取得域名使用权，registrar（注册商）办理注册，registry（注册局）管理顶级域；DNS host发布记录，web host运行网站。机构可兼任多种角色，注册域名本身不创建网站。改A记录可更换网站IP；换DNS服务商需更新父区域NS委派。解析器沿委派查找，不采用任意自称负责该域的服务器。
+
+\textbf{递归解析器与逐级转介。}主机通常把查询交给配置的recursive resolver（递归解析器），地址可由DHCP提供。解析器可能直接查询各级服务器，也可能向上游转发。冷缓存的逐级查询如下：
+\begin{center}
+\begin{minipage}{\linewidth}
+\centering
+\begin{tikzpicture}[font=\small,>=Stealth,
+ box/.style={draw=noteBlue,rounded corners,fill=noteBlue!5,align=center,
+ minimum height=0.75cm,text width=2.3cm}]
+ \node[box] (client) at (0,0) {客户端};
+ \node[box] (resolver) at (5.1,0) {递归解析器};
+ \node[box] (root) at (11,1.4) {Root（根）};
+ \node[box] (tld) at (11,0) {TLD（顶级域）};
+ \node[box] (auth) at (11,-1.4) {权威服务器};
+ \draw[<->,thick] (client.east)--(resolver.west)
+   node[midway,above] {1. 查询／答案};
+ \draw[<->,thick] (resolver.north east)--(root.west)
+   node[midway,above,sloped] {2. 查询／TLD转介};
+ \draw[<->,thick] (resolver.east)--(tld.west)
+   node[midway,above] {3. 查询／NS转介};
+ \draw[<->,thick] (resolver.south east)--(auth.west)
+   node[midway,below,sloped] {4. 查询／地址与TTL};
+\end{tikzpicture}
+
+\small 依据录播pp.~86--88重绘。每次转介均返回解析器，由它发起下一次查询。
+\end{minipage}
+\end{center}
+图中假设无相关缓存、别名或重试，且各级服务器地址可取得。Recursive query要求解析器找回最终结果；iterative回答可转介下一查询对象。Additional/glue地址用于到达名称服务器，不是网站地址；缓存可省去部分或全部逐级查询。
+
+\textbf{TTL与迁移。}DNS TTL以秒计，限制缓存复用期限。权威记录更新后，其他解析器的未过期旧缓存仍可使用；TTL从缓存年龄计算，不因管理员改记录而重新统一起算。迁移时提前降低TTL，等待旧的长TTL缓存消退，再改地址并保留旧服务器过渡。DNS更新也不会迁移已经建立的TCP连接。见\relatedexercise{SC2008-L09-E04}{网站换地址的TTL计算}。
+
+传统DNS同时支持UDP/TCP 53，简单查询常用UDP；响应截断时可转用TCP，TCP的用途不止此一种。DoT、DoH分别通过TLS、HTTPS保护相应的DNS通信。缓存回答的\texttt{Non-authoritative answer}表示回答者不是该区域权威服务器，不表示记录必然错误。
+
+\lecturetopic{SC2008-L09-T04}{REST资源、HTTP方法与重复请求}
+
+REST（Representational State Transfer，表述性状态转移）是一种架构风格。现场讲义采用资源式HTTP API：URL标识资源，方法表达操作，状态码和JSON表达结果。集合可命名为\texttt{/api/products}，单项为\texttt{/api/products/3}；后端代码决定如何把请求转成数据库操作。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}p{1.5cm}Xp{1.4cm}p{2cm}@{}}
+\toprule
+方法 & 请求语义 & Safe & Idempotent \\
+\midrule
+GET & 读取资源表示 & 是 & 是 \\
+POST & 由目标资源处理提交内容，常用于创建 & 否 & 不保证 \\
+PUT & 用完整的新表示替换目标资源 & 否 & 是 \\
+PATCH & 对资源作部分修改 & 否 & 不保证 \\
+DELETE & 删除目标资源 & 否 & 是 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Safe（安全方法）表示未请求业务状态变化，允许日志等附带效果；它不指通信加密。避免用GET删除订单，以免链接预览、预取或爬虫触发修改。查询参数放在URL，提交内容可放在body；POST也可以带查询参数。PUT通常要求完整表示，PATCH只给待改字段，具体缺失字段的处理由API约定。
+
+Idempotent（幂等）表示重复执行相同请求的预期服务端效果与执行一次相同，响应内容和状态码可不同。“把地址设为X”可幂等，“增加100”则不幂等。DELETE首次204、再次404，最终都保持资源不存在。
+
+\textbf{重试与幂等键。}POST订单已经处理但响应丢失时，客户端仅凭超时无法判定订单是否建立。Idempotency-Key（幂等键）标识一次业务操作，后端记录键与处理结果，重复请求返回原结果。同一次操作重试沿用同一个键，真正的新操作使用新键；服务端必须实现去重，添加请求头本身不会自动防止重复。见\relatedexercise{SC2008-L09-E06}{PUT/PATCH与下单重试}。
+
+\textbf{状态码应反映实际处理结果。}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}p{2.7cm}Xp{2.7cm}X@{}}
+\toprule
+状态码 & 典型用途 & 状态码 & 典型用途 \\
+\midrule
+200 / 201 & 成功／创建资源 & 204 & 成功，无响应正文 \\
+301 / 304 & 重定向／缓存验证 & 400 / 422 & 请求错误／内容校验失败 \\
+401 / 403 & 凭据无效／无权限 & 404 & 资源不存在或隐藏其存在 \\
+409 & 状态冲突，如库存不足 & 415 & 不支持的媒体类型 \\
+429 & 请求过多 & 500 & 服务器内部错误 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+创建成功可返回201与\texttt{Location}；错误应返回相应状态码和结构化说明，例如\nolinkurl{application/problem+json}中的\texttt{status}、\texttt{title}、\texttt{detail}，避免一律200再把错误藏在正文。JavaScript的\texttt{fetch}取得HTTP响应后还需检查\texttt{res.ok}或状态码；HTTP错误不一定使该调用直接抛出网络异常。
+
+\lecturetopic{SC2008-L09-T05}{注册、登录、权限与订单一致性}
+
+\textbf{注册与存储。}前端把资料序列化为JSON发给后端；后端按方法与路径分派处理函数，校验输入、检查重复账户，再写数据库。MiniMart中输入不合要求返回422、邮箱冲突返回409、创建成功返回201。数据库参数绑定把输入当作值，避免直接拼接SQL；响应只返回业务需要的字段，不返回密码哈希等敏感列。
+
+密码使用带随机salt（盐）的密码哈希保存；示例用scrypt，登录时按保存的盐与计算参数核对输入。盐区分相同密码的存储结果，计算成本提高离线猜测代价；哈希仍需抵抗字典猜测。HTTPS保护传输，密码哈希保护存储。调用外部API或AI服务所用的秘密密钥应保留在后端，不能嵌入可下载的前端脚本。
+
+\textbf{Stateless HTTP（无状态HTTP）与会话。}HTTP本身不自动关联用户前后请求；应用用session（会话）记录登录状态。Cookie是一种携带信息的机制，服务器可用\texttt{Set-Cookie: sid=...}设置标识，浏览器随后按规则发送\texttt{Cookie: sid=...}。Cookie与服务端session并非同一对象。
+
+MiniMart采用另一种携带方式：登录成功返回随机token，服务器记录对应用户与到期时间，客户端后续显式发送\texttt{Authorization: Bearer ...}。服务器验证后定位用户；凭据缺失、无效或过期返回401，退出可撤销会话。更换TCP连接不必退出登录；多个后端可共享会话存储。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.8cm}X@{}}
+\toprule
+机制 & 要确认或保证什么 \\
+\midrule
+\shortstack[l]{Authentication\\（身份认证）} & token等凭据属于哪个用户、是否有效 \\
+\shortstack[l]{Authorization\\（授权检查）} & 该用户是否可访问这个订单或执行此操作 \\
+\shortstack[l]{Idempotency-Key\\（幂等键）} & 同一次业务请求的重试是否重复产生订单 \\
+\shortstack[l]{Transaction\\（数据库事务）} & 创建订单与扣库存等相关更新一起成功或一起回滚 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+有效token不会自动赋予其他用户订单的读取权。后端需要核对订单所有者；MiniMart对越权访问返回404以隐藏订单是否存在，其他API也可用403。仅隐藏前端按钮不能代替权限检查。下单库存不足返回409；创建订单和扣库存放在同一事务中，避免只完成其中一项。具体情境见\relatedexercise{SC2008-L09-E07}{订单权限与事务}。
+
+\lecturetopic{SC2008-L09-T06}{CORS与从局域网到业务响应的排障}
+
+\textbf{Origin（源）由scheme、host、port组成，路径不参与。}例如\texttt{http://localhost:5173}与\texttt{http://localhost:5001}跨源；同为\texttt{https://shop.com}下的不同路径同源。Same-origin policy（同源策略）限制网页脚本读取其他源的响应；CORS（跨源资源共享）通过服务器响应头允许指定来源读取。
+
+服务器可返回\texttt{Access-Control-Allow-Origin: http://localhost:5173}。某些请求需先发OPTIONS进行preflight（预检），例如带JSON或特定自定义头的跨源请求；服务器还需允许相应方法和请求头。若预检失败，实际请求可能不发出；若实际响应缺少许可，浏览器可收到200却不把内容交给JavaScript。见\relatedexercise{SC2008-L09-E08}{200响应与CORS错误}。
+
+\textbf{CORS检查网页来源；身份和权限检查识别用户并决定访问权。}CORS由浏览器执行，不能阻止\texttt{curl}等客户端直接调用API，故不充当API身份认证或访问防火墙。开发时应配置允许的源，或通过反向代理提供同源入口。
+
+\textbf{分层排障。}冷缓存、普通HTTP的完整访问包括ARP、DNS、TCP握手、HTTP请求与响应；HTTPS还需安全握手。ARP取得本地下一跳MAC，DNS取得服务器IP；发往远端的帧以网关为目的MAC，IP包仍以远端为目的IP。完整九帧教学流程及远端DNS变式见\relatedexercise{SC2008-L09-E05}{首次网页访问}。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.4cm}X@{}}
+\toprule
+观察 & 可以据此判断的内容 \\
+\midrule
+DNS返回NXDOMAIN & 查询的名称不存在；先核对拼写 \\
+DNS超时 & 未及时获得答案；检查解析器、网络和服务 \\
+DNS返回旧IP & 可能是有效旧缓存，也可能是权威配置未更新 \\
+Ping成功 & ICMP可达；HTTP服务仍需单独验证 \\
+HTTP 404 & 有HTTP响应，检查资源路径和配置 \\
+HTTP 200但脚本报告CORS错误 & 在该情境中响应已抵达，检查来源许可 \\
+下单超时 & 请求或响应可能丢失；按API重试约定避免重复操作 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+用原始IP替换URL主机名可能改变虚拟主机选择或证书校验，不能简单当成等价网站访问测试。
+
+\subsection{术语补充}
+
+方法的safe/idempotent定义参照\href{https://www.rfc-editor.org/rfc/rfc9110.html\#section-9.2}{RFC 9110 \S9.2}。现场提及的OAuth用于委托授权；身份认证可由其上的\href{https://openid.net/specs/openid-connect-core-1_0.html\#Introduction}{OpenID Connect}提供。以上为对讲义术语的补充。
+
+\subsection{一分钟回顾}
+
+HTTP定义应用消息，持久连接减少握手，新鲜缓存减少请求，304验证减少正文传输。DNS沿委派查询，TTL控制缓存期限。REST按资源组织操作，同一次下单重试沿用幂等键。登录凭据、资源权限、事务和CORS分别处理身份、访问权、更新一致性与网页来源读取许可。
+\endgroup

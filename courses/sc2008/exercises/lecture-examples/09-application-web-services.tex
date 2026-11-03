@@ -1,0 +1,142 @@
+% Based on templates/lecture-example.tex. Lecture examples only.
+% Recorded = SC2008_M2-L5_Application.pdf; Live = SC2008 Week 12 Web Services.pdf.
+% All page references are PDF page numbers; recorded Part II restarts slide numbers.
+% Original questions/paraphrased demonstration scenarios with complete conditions.
+% No conversational checks, learner answers or self-authored quiz questions.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC2008-L09-EX}{第 09 讲：Application Layer 与 Web Services}
+
+\textbf{日期与来源：}2026-11-03。录播指M2-L5 Application，现场指Week 12 Web Services；页码按PDF计。E01--E05为录播例题与变式，E06--E08整理现场演示情境，均保留必要条件与解答。
+
+\exercisequestion{SC2008-L09-E01}{网页成功、图片404与API超时}
+
+\textbf{来源与关联：}录播pp.~33--34；\relatedtopic{SC2008-L09-T01}{HTTP消息与结果}。
+
+\textbf{题目。}浏览器请求\nolinkurl{/index.html}得到200和HTML正文，\nolinkurl{/team-photo.png}得到404，\nolinkurl{/api/scores}超时且没有HTTP响应。分别能据此判断什么？把API请求改成POST能修复超时或提供加密吗？
+
+\begin{workedsolution}
+200表明该HTML请求成功。404表明图片请求已有HTTP层回复，应检查请求路径、文件名与资源配置。API超时只表明截止时间前未取得响应，原因需结合连接、过滤和服务运行情况继续判断。POST改变请求语义，不自行修复连接超时或加密内容；通信加密由HTTPS提供。各资源分别请求，因此同一页面中可以同时出现这些结果。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L09-E02}{一个HTML与两张图片的连接等待时间}
+
+\textbf{来源与关联：}录播pp.~40--41；\relatedtopic{SC2008-L09-T02}{连接复用}。
+
+\textbf{题目。}一个HTML文档引用同一服务器上的两张图片，浏览器收到HTML后才知道图片URL。RTT=40 ms，三个对象顺序获取，无内容或连接缓存、无流水线或并行。比较每个对象新建TCP连接与复用一个持久连接的RTT数和时间。忽略DNS、TLS、处理、损失和对象传输时间。
+
+\begin{workedsolution}
+一个新连接需要约1 RTT建立，再用1 RTT发送请求并取得响应；握手第三条ACK可与请求一起发出。三个对象的计算为
+\[
+\begin{aligned}
+ T_{\rm nonpersistent}&=3(1+1)RTT=6\times40=240\text{ ms},\\
+ T_{\rm persistent}&=(1+3)RTT=4\times40=160\text{ ms}.
+\end{aligned}
+\]
+节省$2RTT=80$ ms，来自省去两次额外TCP连接建立；三次HTTP请求／响应仍需进行。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L09-E03}{新鲜缓存、304验证与重新传图片}
+
+\textbf{来源与关联：}录播pp.~50--51；\relatedtopic{SC2008-L09-T02}{HTTP缓存}。
+
+\textbf{题目。}$t=0$浏览器保存\texttt{/logo.png}，响应含\texttt{max-age=60}和ETag \texttt{"logo-v1"}。初始响应年龄可忽略，无强制刷新或其他缓存限制。分别判断$t=20$ s再次使用，以及$t=70$ s服务器内容未变或已变成v2时，需要什么网络交互，是否重新传图片正文。70 s的两种情况相互独立。
+
+\begin{workedsolution}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}p{2.8cm}Xp{2.1cm}@{}}
+\toprule
+情形 & 网络动作 & 图片正文 \\
+\midrule
+20 s，仍新鲜 & 本地复用，无新HTTP请求 & 不传 \\
+70 s，仍是v1 & 条件GET带\texttt{If-None-Match: "logo-v1"}，返回304 & 不传 \\
+70 s，已是v2 & 同样发条件GET，返回200、新ETag及新表示 & 传新图片 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+直接复用省去一次请求／响应；304验证仍发生网络交换，但省去图片正文。缓存过期与内容改变是两个独立判断。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L09-E04}{DNS记录更新后，旧地址还能用多久}
+
+\textbf{来源与关联：}录播pp.~97--98；\relatedtopic{SC2008-L09-T03}{DNS TTL与迁移}。
+
+\textbf{题目。}10:00解析器缓存\texttt{www.example.com}的A记录\texttt{203.0.113.10}，TTL=600 s；10:02管理员把权威记录改为\texttt{203.0.113.20}；10:05客户端查询原解析器。问可能返回哪个地址、原缓存何时到期，以及其他访客为何可能更早拿到新地址。按普通TTL缓存，无强制刷新或serve-stale（过期后继续服务）扩展；不考虑页面缓存和已有连接。
+
+\begin{workedsolution}
+缓存于10:10到期，即10:00后的600 s。10:05时剩余300 s，解析器仍可返回\texttt{203.0.113.10}。权威记录在10:02改变，不会推送替换所有解析器的现存缓存。其他解析器若没有旧记录，或旧记录已过期，便可更早取得\texttt{203.0.113.20}。提前降低TTL须给旧长TTL缓存留足消退时间。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L09-E05}{首次访问网页的ARP、DNS、TCP与HTTP}
+
+\textbf{来源与关联：}录播pp.~102--106；\relatedtopic{SC2008-L09-T03}{DNS查询}、\relatedtopic{SC2008-L09-T06}{完整访问与排障}。
+\nopagebreak[4]
+
+\textbf{题目。}电脑L的IP为\texttt{192.168.40.10/24}、MAC为$M_L$；网关G的IP为\texttt{192.168.40.1}、MAC为$M_G$，同时提供DNS解析。打开\texttt{http://www.example.com/}，DNS答案为服务器W的\texttt{198.51.100.80}。ARP/DNS缓存为空、没有TCP连接；路由和NAT正常，使用UDP DNS、普通HTTP，无损失或代理。列出电脑在LAN上交换的帧及MAC/IP地址。出站观察点在NAT之前，入站在NAT之后。另将DNS解析器改为远端\texttt{203.0.113.53}，判断ARP目标与DNS查询的地址。
+
+\begin{workedsolution}
+下表用$L_I=\texttt{192.168.40.10}$、$G_I=\texttt{192.168.40.1}$、$W_I=\texttt{198.51.100.80}$表示IP。ARP没有IP报头，但其自身包含发送者和目标协议地址字段。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}cp{5.5cm}XX@{}}
+\toprule
+帧 & 用途 & 源MAC$\to$目的MAC & 源IP$\to$目的IP \\
+\midrule
+1 & ARP：谁有\texttt{192.168.40.1} & $M_L\to$广播 & 无IP报头 \\
+2 & ARP Reply：G返回$M_G$ & $M_G\to M_L$ & 无IP报头 \\
+3 & DNS查询网站的A记录 & $M_L\to M_G$ & $L_I\to G_I$ \\
+4 & DNS回答\texttt{198.51.100.80} & $M_G\to M_L$ & $G_I\to L_I$ \\
+5 & TCP SYN，目的端口80 & $M_L\to M_G$ & $L_I\to W_I$ \\
+6 & TCP SYN+ACK & $M_G\to M_L$ & $W_I\to L_I$ \\
+7 & TCP ACK & $M_L\to M_G$ & $L_I\to W_I$ \\
+8 & TCP承载HTTP GET & $M_L\to M_G$ & $L_I\to W_I$ \\
+9 & 首个HTTP响应内容 & $M_G\to M_L$ & $W_I\to L_I$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+电脑通过ARP取得本地下一跳MAC，通过DNS取得远端服务器IP。DNS解析器与网关相同，所以已有$M_G$可供后续网页通信复用；无需ARP查询远端W。该表是一种教学拆分，ACK可与数据合并，请求／响应也可跨多个段。
+
+\textbf{远端DNS变式：}仍ARP查询\texttt{192.168.40.1}；DNS查询的以太网目的地址是$M_G$，IP目的地址是\texttt{203.0.113.53}。远端服务器不在电脑的广播域内。改为基于TCP的HTTPS时，TCP建立后还需相应TLS握手，再传加密HTTP消息。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L09-E06}{PUT/PATCH与下单重试的幂等键}
+
+\textbf{来源与关联：}现场pp.~28--32；\relatedtopic{SC2008-L09-T04}{方法与重复请求}。以下整理讲义演示情境。
+
+\textbf{情境。}(a) MiniMart资料包含\texttt{name}和\texttt{address}。只想修改地址时怎样提交？若PUT只提交\texttt{name}，示例如何回应？(b) 创建订单的POST已使服务器建立订单1，但201响应丢失。客户端重试时，如何避免创建订单2？
+
+\begin{workedsolution}
+\textbf{(a)} PATCH可只提交\texttt{address}，保留其他字段；PUT提交完整新表示。MiniMart对缺少字段的PUT返回422，并要求提供全部字段。
+
+\textbf{(b)} 给本次下单指定唯一幂等键，例如讲义的\texttt{7f9c2a}。服务器保存“\texttt{7f9c2a}$\to$订单1”，重试携带\emph{同一个}键，服务器识别后返回订单1，不新建订单。新的一次下单才换新键。幂等依赖服务端的记录和去重；有效登录token负责身份，与这个业务去重键用途不同。
+
+POST一般不保证幂等，客户端不能仅凭超时确定第一次未处理。幂等判断看重复执行的预期效果，响应可以不同；例如DELETE第一次204、第二次404，最终都保持资源已删除。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L09-E07}{已登录用户访问他人订单与库存事务}
+
+\textbf{来源与关联：}现场pp.~62--65；\relatedtopic{SC2008-L09-T05}{身份、权限与一致性}。以下整理讲义演示情境。
+
+\textbf{情境。}Ravi是账户2，凭有效token请求\texttt{GET /api/orders/1}；订单1属于Mei Ling（账户1）。服务器需要做哪些检查，MiniMart怎样回应？另一次下单需要创建订单并扣库存，应怎样组织更新，库存不足怎样回应？
+
+\begin{workedsolution}
+先认证token属于Ravi，再核对订单所有者。$1\ne2$，故拒绝返回订单；MiniMart使用404，避免确认其他用户订单的存在。删除此权限检查会使修改URL编号的用户读取他人数据。
+
+创建订单与扣库存放入同一数据库事务，保证相关更新一起成功或一起回滚；库存不足返回409，且不创建订单。事务处理多项更新的一致性，幂等键处理重复请求，两者各有职责。
+\end{workedsolution}
+
+\exercisequestion{SC2008-L09-E08}{HTTP已返回200，浏览器为何仍报CORS错误}
+
+\textbf{来源与关联：}现场pp.~68--72；\relatedtopic{SC2008-L09-T06}{源与CORS}。以下整理讲义演示情境。
+
+\textbf{情境。}前端页面在\texttt{http://localhost:5173}，API在\texttt{http://localhost:5001}。服务器日志确认GET已返回200和数据，但响应缺少CORS许可，浏览器的JavaScript报告\texttt{Failed to fetch}。说明原因、应配置什么，以及\texttt{curl}为何可能正常。
+
+\begin{workedsolution}
+两者端口不同，属于不同源。该情境中浏览器已收到200，但同源策略阻止把跨源响应交给页面脚本。后端应向获准的源返回\texttt{Access-Control-Allow-Origin: http://localhost:5173}；涉及预检时还需允许相应方法和请求头。
+
+CORS由浏览器执行，\texttt{curl}不受同样的脚本读取限制。CORS核对网页来源，用户身份和订单权限仍由后端分别检查。若是另一种预检失败场景，实际请求也可能尚未发出，因此应结合Network记录判断。
+\end{workedsolution}
+\endgroup
