@@ -1,0 +1,201 @@
+% Actual class: 12, 2026-11-03 (Week 12).
+% Source: LEC07 Imaging Geometry - 2026, PDF pp. 25--46;
+%         LEC08 Stereo Vision - 2026, PDF pp. 1--16.
+% Supplement: LEC07 Flipping Session, PDF p. 15;
+%             transcripts 79747, 79748, 79750, 79751.
+% Boundary: LEC07 complete; LEC08 matching starts at PDF p. 17, deferred.
+% Checked: source formulas/diagrams, original PoseNet Sec. 3.2,
+%          symbolic calibration rows and depth derivative, numerical examples.
+
+\section{第 12 节课：相机标定与双目测深}
+\label{lecture:SC4061-L12}
+
+\lecturemeta
+  {SC4061-L12}
+  {2026-11-03}
+  {LEC07 Imaging Geometry -- 2026；LEC08 Stereo Vision -- 2026}
+  {LEC07 pp.~25--46；翻转课堂 p.~15；LEC08 pp.~1--16}
+  {字幕 79747、79748（标定）；79750、79751（立体视觉与三角测量）}
+  {学习范围已确认（2026-11-03）}
+
+上讲得到投影模型 $\lambda(u,v,1)^T=M\bm P_w^h$，其中 $M=K[R\mid t]$。
+本讲先用已知的三维点与像素对应关系求相机参数，再用双目对应点恢复深度。
+对应点匹配算法从 LEC08 p.~17 开始，留待下一讲。
+
+\lecturetopic{SC4061-L12-T01}{传统标定：从点对应关系求投影矩阵}
+
+\subsubsection*{输入、输出与方程}
+
+Camera calibration（相机标定）利用已知世界点与像素的对应关系求投影矩阵 $M$。
+标定板或立方体具有已知尺寸：先建立世界坐标系、计算角点的三维位置，再检测照片中同一批角点的像素位置。
+
+一般 $3\times4$ 投影矩阵有十二个元素，扣除整体非零尺度后有十一自由度。
+沿用讲义的尺度选择 $m_{34}=1$，每对点给出
+\[
+  u=\frac{m_{11}X+m_{12}Y+m_{13}Z+m_{14}}{m_{31}X+m_{32}Y+m_{33}Z+1},
+  \qquad
+  v=\frac{m_{21}X+m_{22}Y+m_{23}Z+m_{24}}{m_{31}X+m_{32}Y+m_{33}Z+1}.
+\]
+有限投影要求分母非零；设 $m_{34}=1$ 则要求原矩阵该元素非零，否则应换用其他尺度归一化。
+消去分母并移项，将除 $m_{34}$ 外的十一未知元素按行序排列为 $\bm\theta$，
+每对点得到两个\emph{线性}方程：
+\[
+  \underbrace{\left[\begin{array}{*{11}{r}}
+    X&Y&Z&1&0&0&0&0&-uX&-uY&-uZ\\
+    0&0&0&0&X&Y&Z&1&-vX&-vY&-vZ
+  \end{array}\right]}_{A_i}\bm\theta
+  =\begin{bmatrix}u\\v\end{bmatrix}.
+\]
+叠加 $n$ 对点即得 $A\bm\theta=\bm b$，其中 $A\in\mathbb R^{2n\times11}$。
+
+\subsubsection*{最少点数、退化配置与最小二乘}
+
+方程数量要求 $2n\ge11$，因此至少需要 $\boxed{6}$ 对点；唯一确定一般矩阵还要求
+$\operatorname{rank}(A)=11$。
+\textbf{几何条件补充：}若单张照片中的所有标定点共面，可选世界坐标使它们均满足 $Z=0$；
+此时 $m_{13},m_{23},m_{33}$ 对应的系数列全部为零，增加共面点也无法补足这些约束。
+平面棋盘格标定通常结合多个拍摄姿态与内参约束求解。
+
+实际角点定位存在误差，采用 least squares（最小二乘）求解
+\[
+  \hat{\bm\theta}=\arg\min_{\bm\theta}\|A\bm\theta-\bm b\|_2^2
+  =A^+\bm b,
+\]
+其中 $A^+$ 为 pseudoinverse（伪逆）。\textbf{数值实现补充：}满列秩时，代数上可写为
+$(A^TA)^{-1}A^T\bm b$；数值计算通常使用 QR 或 SVD 求解，避免显式求逆。
+更多分布合理、对应正确的点能提高估计稳定性；求出 $M$ 后可进一步分解得到 $K,R,t$。
+
+\lecturetopic{SC4061-L12-T02}{深度学习标定：DeepFocal 与 PoseNet}
+
+DeepFocal 从单张自然图像估计焦距（内参），PoseNet 从单张 RGB 图像估计相机位置与朝向（位姿）。
+
+\subsubsection*{DeepFocal：从水平视野角换算焦距}
+
+讲义采用零 skew（轴倾斜项）、方形像素、主点居中等简化条件，并以相机坐标描述空间点。
+设图像宽度为 $w$、焦距为 $f$，由半个视野对应的直角三角形得
+\[
+  \tan\frac{H_\theta}{2}=\frac{w/2}{f}
+  \quad\Longrightarrow\quad
+  \boxed{H_\theta=2\arctan\frac{w}{2f}},
+  \qquad
+  \boxed{f=\frac{w}{2\tan(H_\theta/2)}}.
+\]
+$w$ 与 $f$ 使用相同单位；图像宽度按像素计时，焦距也按像素计。
+固定 $w$ 时，焦距越大，horizontal field of view（水平视野角）越小。
+DeepFocal 将 AlexNet 最后的分类层改为单节点回归层，形成
+$\text{image}\to\hat H_\theta\to\hat f$。
+它从训练数据学习自然图像与焦距的联系，无须输入已知标定板的角点；估计仍依赖数据分布和相机模型假设。
+计算见\relatedexercise{SC4061-L12-E01}{焦距与水平视野角}。
+
+\subsubsection*{PoseNet：位置、朝向与训练标签}
+
+相机位姿有三个位置自由度与三个旋转自由度。PoseNet 用
+$\bm p=[\bm x,\bm q]$ 表示，其中 $\bm x\in\mathbb R^3$ 为相机在场景坐标系中的位置，
+$\bm q$ 为朝向的四元数表示。
+网络把 GoogLeNet 的分类器改成回归器，并在末端回归器之前加入 2048 维全连接特征层。
+
+\textbf{表示核对：}原始 PoseNet 输出 $3+4=7$ 个数，以单位四元数表示旋转，仍对应六个自由度；
+测试时将四元数归一化。主讲义 p.~42 的 ``6D vector'' 应与 ``6-DoF pose'' 区分。
+依据 Kendall 等，\emph{PoseNet: A Convolutional Network for Real-Time 6-DOF Camera Relocalization}，
+\href{https://arxiv.org/abs/1505.07427}{原论文 \S3.2}。
+
+训练标签可由 SfM（Structure from Motion，运动恢复结构）生成：
+从场景的多张图像或视频估计三维结构和各帧相机位姿，再组成图像--位姿训练对。
+推理时输入一张图像即可估计位姿，但该坐标定位依赖已学习的场景信息；
+新场景通常需要相应的数据或适配，见\relatedexercise{SC4061-L12-E03}{单图定位的适用范围}。
+
+\subsubsection*{位置与朝向的损失权重}
+
+讲义采用的损失形式为
+\[
+  \boxed{L=\|\bm x-\hat{\bm x}\|_2+\beta\|\bm q-\hat{\bm q}\|_2}.
+\]
+两项分别衡量位置误差与朝向表示误差，$\beta$ 平衡其数值尺度与相对权重。
+下标 $2$ 表示欧氏范数；这里的公式没有把范数再平方。
+四元数表示的欧氏误差也不同于以度为单位的旋转角误差。
+增大 $\beta$ 会提高朝向项的相对权重，可能改变两个预测的损失排序，
+见\relatedexercise{SC4061-L12-E02}{PoseNet 损失权重比较}。
+
+\lecturetopic{SC4061-L12-T03}{双目几何：由视差计算深度}
+
+\subsubsection*{两条视线提供深度约束}
+
+单个像素只确定经过光心的一条空间射线：
+$(X,Y,Z)$ 与 $(kX,kY,kZ)$（$k>0$）具有相同的 $X/Z,Y/Z$，因而投影相同。
+Stereo vision（立体视觉）使用不同光心观察同一个空间点。
+已知相机参数且对应点正确时，两条不退化的视线可确定该点；存在测量噪声时估计最符合两条视线的位置。
+因此，恢复深度需要相机几何与 cross-view correspondence（跨视图对应关系）。
+
+\subsubsection*{平行双目模型与视差公式}
+
+设两台相机朝向相同、焦距同为 $f$，右光心沿左相机的 $+X$ 方向平移 $T>0$。
+$T$ 称为 baseline（基线长度）。空间点在左右相机坐标系中分别为
+$(X,Y,Z)$ 与 $(X-T,Y,Z)$，其中 $Z>0$ 为沿光轴的深度。
+采用相同方向、相对于各自主点的水平图像坐标，有
+\[
+  x_L=f\frac XZ,\qquad x_R=f\frac{X-T}{Z}.
+\]
+定义 disparity（视差）为水平坐标差：
+\[
+  \boxed{d=x_L-x_R=\frac{fT}{Z}},\qquad
+  \boxed{Z=\frac{fT}{d}}.
+\]
+固定 $f,T$，近处视差大、远处视差小。这里的 $d$ 是图像坐标差，通常按像素计；
+parallax（视差现象）也可用视线夹角描述，但上述公式使用坐标差。
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/stereo-depth-geometry}
+  \caption{依据 LEC08 pp.~11--12 原创重绘的水平截面。绿色线段为虚拟成像平面，
+  $x_L,x_R$ 从各自主点向同一方向量起；右相机中的物体横坐标为 $X-T$。}
+  \label{fig:sc4061-l12-stereo}
+\end{figure}
+
+\textbf{单位与像素约定。}若 $d$ 用 pixel，$f$ 也应使用 pixel，$Z$ 与 $T$ 同单位。
+直接用原始像素列坐标时应扣除各自主点：
+$d=(u_L-c_{x,L})-(u_R-c_{x,R})$；主点一致时才简化为 $u_L-u_R$。
+例如，$f=800\,\mathrm{pixel}$、$T=0.1\,\mathrm m$ 时，
+$d=40\,\mathrm{pixel}$ 对应 $Z=2\,\mathrm m$，$d=20\,\mathrm{pixel}$ 对应 $Z=4\,\mathrm m$
+（辅助数值说明）。
+
+\lecturetopic{SC4061-L12-T04}{深度误差与 Stereo Rectification}
+
+\subsubsection*{小视差误差如何放大为深度误差}
+
+在 $f,T$ 固定、$d>0$ 时，对 $Z=fT/d$ 求导：
+\[
+  \frac{\partial Z}{\partial d}=-\frac{fT}{d^2}.
+\]
+对满足 $|\delta d|\ll d$ 的视差误差，线性化得到
+\[
+  \delta Z\approx-\frac{fT}{d^2}\delta d,
+  \qquad
+  |\delta Z|\approx\frac{fT}{d^2}|\delta d|
+  =\boxed{\frac{Z^2}{fT}|\delta d|}.
+\]
+\begin{itemize}
+  \item 其余量固定时，深度加倍，绝对深度误差约变成四倍；远处更难测准。
+  \item 同一深度、焦距和视差误差下，增大基线能减小深度误差。
+    $T\to0$ 时 $d\to0$，深度估计趋于病态；同一光心无法提供所需的平移基线。
+  \item 固定其余条件，增大像素单位的焦距可降低该误差项，但会缩小固定宽度图像的视野。
+\end{itemize}
+例如前述相机系统在 $|\delta d|=1\,\mathrm{pixel}$ 时，
+$Z=2\,\mathrm m$ 与 $4\,\mathrm m$ 的一阶深度误差分别约为 $0.05\,\mathrm m$ 与 $0.20\,\mathrm m$。
+基线选择还受设备尺寸、视野重叠、遮挡和匹配难度约束；
+误差公式中的 $|\delta d|$ 在真实系统中也会受这些因素影响。
+
+\subsubsection*{将一般双目图像校正为对齐视图}
+
+当相机有相对旋转或内参不同时，原图的水平像素差通常不能直接代入简单双目公式。
+Stereo rectification（立体校正）对左右图像分别施加 homography（单应变换），
+重投影到对齐的虚拟成像平面，使对应点落在同一水平线上。
+这是计算机对图像的变换，无须实际转动拍摄时的相机。
+
+校正后沿同一行寻找对应点、计算视差，并使用\emph{校正后的}焦距和坐标约定换算深度。
+已知基线的尺度，才能得到相同尺度下的深度；仅把两图对齐并不会自动提供真实长度。
+
+\subsection{一分钟回顾}
+
+传统标定至少需要六对非退化的 3D--2D 对应点。DeepFocal 估计焦距，PoseNet 估计相机位姿。
+平行双目深度为 $Z=fT/d$，焦距与视差须同单位；小误差为 $|\delta Z|\approx Z^2|\delta d|/(fT)$。
+远处或短基线下测深更敏感，立体校正则将两图变换为便于沿行匹配的对齐视图。

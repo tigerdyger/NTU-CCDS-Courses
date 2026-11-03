@@ -1,0 +1,77 @@
+% Related lecture: SC4061-L12.
+% Source: LEC07 Imaging Geometry - Flipping Session, PDF p. 15,
+%         Peer-Instruction Question 6, parts 1--3.
+% Original formal questions; conversational checks and slide mini-quizzes excluded.
+% Source page and calculations verified; no forced page breaks between questions.
+
+\exercisegroup{SC4061-L12-EX}{第 12 讲：相机标定与双目测深}
+
+\examplemeta
+  {SC4061-L12-EX}
+  {2026-11-03}
+  {LEC07 Imaging Geometry -- Flipping Session，文件 p.~15，Question 6}
+  {三个分题的题干、公式及答案已核对}
+  {学习范围已确认（2026-11-03）}
+
+\exercisequestion{SC4061-L12-E01}{焦距与水平视野角}
+\nopagebreak[4]
+
+\textbf{来源：}翻转课堂 p.~15，Question 6.1。
+\textbf{对应：}\relatedtopic{SC4061-L12-T02}{DeepFocal}。
+\nopagebreak[4]
+
+\textbf{题目。}DeepFocal 使用 $H_\theta=2\arctan(w/(2f))$。
+图像宽度为 $w=800\,\mathrm{pixel}$、焦距为 $f=400\,\mathrm{pixel}$，求水平视野角。
+当焦距增至 $800\,\mathrm{pixel}$ 而图像宽度不变时，视野角怎样变化？
+
+\begin{checkedsolution}
+\begin{align*}
+  H_\theta=2\arctan\frac{800}{2\times400}
+  &=2\arctan1=\boxed{90^\circ},\\
+  H_\theta'=2\arctan\frac{800}{2\times800}
+  &=2\arctan0.5\approx\boxed{53.13^\circ}.
+\end{align*}
+固定图像宽度，增大焦距会缩小视野；视野角与焦距的关系含反正切函数，焦距加倍不会使视野角恰好减半。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L12-E02}{PoseNet 损失权重比较}
+\nopagebreak[4]
+
+\textbf{来源：}翻转课堂 p.~15，Question 6.2。
+\textbf{对应：}\relatedtopic{SC4061-L12-T02}{位置与朝向的损失权重}。
+\nopagebreak[4]
+
+\textbf{题目。}PoseNet 的课程损失为
+$L=\|\bm x-\hat{\bm x}\|_2+\beta\|\bm q-\hat{\bm q}\|_2$。
+预测 A 的位置误差为 $1.0$、朝向表示误差为 $0.4$；预测 B 的两项误差分别为 $2.0$、$0.1$。
+分别在 $\beta=1$ 与 $\beta=10$ 时判断哪个预测的损失更小，并说明权重为何影响选择。
+
+\begin{checkedsolution}
+\begin{center}
+\begin{tabular}{@{}cccc@{}}
+  \toprule
+  $\beta$ & $L_A$ & $L_B$ & 较小者 \\
+  \midrule
+  1 & $1+1(0.4)=1.4$ & $2+1(0.1)=2.1$ & A \\
+  10 & $1+10(0.4)=5$ & $2+10(0.1)=3$ & B \\
+  \bottomrule
+\end{tabular}
+\end{center}
+A 的位置误差更小，B 的朝向误差更小；提高 $\beta$ 更重视朝向，因此较优预测由 A 变为 B。
+题中给出的两项已经是范数，朝向\emph{表示}误差也不能直接读成角度误差。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L12-E03}{单图定位的适用范围}
+\nopagebreak[4]
+
+\textbf{来源：}翻转课堂 p.~15，Question 6.3。
+\textbf{对应：}\relatedtopic{SC4061-L12-T02}{PoseNet 的场景信息与监督标签}。
+\nopagebreak[4]
+
+\textbf{题目。}PoseNet 能从一张图像估计相机位姿，是否说明它不需要场景专属信息，
+就能在任意此前未见过的场景中准确定位？解释原因。
+
+\begin{checkedsolution}
+不能。单图描述推理时的输入数量；训练仍使用场景图像及对应位姿标签，学习外观与位置、朝向的关系。
+SfM 自动生成的标签也属于场景专属信息。陌生场景通常需要相应数据或模型适配。
+\end{checkedsolution}
