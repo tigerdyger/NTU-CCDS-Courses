@@ -1,0 +1,194 @@
+% Based on templates/lecture.tex; actual class 12, 2026-11-04 (Week 12).
+% Sources: Lec5_week12.pdf pp. 4--57; lec5_recording.pdf pp. 4--66.
+% Transcript: 82225 - 0_lbx3ri71 - PID 117.txt (no timestamps).
+% Source scope and worked examples checked; finished notes await user review.
+% Live pp. 39--41 and 52--54 are Optional. BPE end-marker convention is explicit.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 12 节课：预训练与文本生成}
+\label{lecture:SC4002-L12}
+
+\noteintro{
+\textbf{日期与来源：}2026-11-04（Week 12）；\texttt{Lec5\_week12.pdf} pp.~4--57、\texttt{lec5\_recording.pdf} pp.~4--66；字幕 82225（无时间戳）。Lec5 为后半学期模块编号。资料及例题已核对，成稿待审阅；Optional 内容随节标明。
+}
+
+\textbf{本讲主线。}用大量普通文本预训练，再用带标签数据适配情感分类等任务；生成任务还需通过解码规则，把下一 token 的概率分布转成文字。
+
+\lecturetopic{SC4002-L12-T01}{Subword 与上下文表示：解决两类词表示问题}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~4--15；录播版 pp.~4--13。
+
+整词词表将未登录词（out-of-vocabulary, OOV）映射为 \texttt{<UNK>}，也难以共享词内部结构。Subword tokenization（子词切分）用可复用的字符或片段组成词，缓解生词问题；能否表示任意输入还取决于基础字符覆盖、是否采用字节级回退等设计。
+
+\subsubsection{BPE 的训练与使用}
+
+Byte-Pair Encoding（BPE）从字符和词尾标记开始，反复执行：按词频统计\emph{当前符号}的相邻对，合并最高频的一对，将新符号加入词表，并更新语料表示。达到合并预算或目标词表大小后停止；并列最高频时需采用确定的选择规则。
+
+若 \texttt{newest} 出现 6 次、\texttt{widest} 出现 3 次，二者中的 \texttt{e s} 对共计 $6+3=9$ 次。合并为 \texttt{es} 后，下一轮统计的是 \texttt{(es,t)} 等新相邻对。每次增加一个新符号，原符号保留。测试文本复用训练得到的词表及有序合并规则，不重新统计测试语料来学习 tokenizer。BERT 使用 WordPiece；它与 BPE 都属于子词方法，但合并准则不同。
+
+\textbf{词尾约定。}讲义的六步示例需排除 \texttt{</w>} 参与合并，才能复现；按全部相邻对规则，第 3 步会改变，详见下方例题。原始规则见 \href{https://aclanthology.org/P16-1162.pdf}{Sennrich et al., 2016，\S3.2 与 Algorithm 1}。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L12-E01}{加权计数、六次合并与最终词表}。
+
+\subsubsection{Contextual representation（上下文表示）}
+
+子词切分确定输入单位；上下文编码器根据周围文字更新其表示。例如 \texttt{I record the record} 中，同一词形分别作动词和名词，初始查表向量可以相同，输出表示随上下文改变。
+
+现场版 p.~15 给定 \texttt{record}、\texttt{music}、\texttt{archive} 的向量分别为 $[1,0]$、$[0,2]$、$[2,0]$，两种情境使用权重 $[0.3,0.7]$：
+\[
+ 0.3[1,0]+0.7[0,2]=[0.3,1.4],\qquad
+ 0.3[1,0]+0.7[2,0]=[1.7,0].
+\]
+这组给定数值展示上下文汇总如何改变表示；完整 Transformer 还包含位置表示、投影、FFN 等运算。
+
+\lecturetopic{SC4002-L12-T02}{Knowledge transfer：把已学参数用于目标任务}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~17--19；录播版 pp.~15--22。
+
+Transfer learning（迁移学习）复用源任务学到的参数，为目标任务提供初始化或特征。语言模型的预测目标可从普通文本自动构造，因此预训练不要求逐条人工标注。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+复用层次 & 迁移的内容 & 目标任务中的使用方式 \\
+\midrule
+静态词向量 & Word2Vec / GloVe 的 embedding 表 & 初始化词表示，再训练任务模型 \\
+上下文编码器 & BERT 等整套 encoder 参数 & 产生逐 token 或整句表示，接任务输出层 \\
+生成式模型 & GPT / T5 等预训练模型参数 & 将任务组织成文本输入与输出，再按需适配 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+按讲义分类，transductive transfer（直推式迁移）保持任务相同而改变领域或语言，如电影评论到书评的情感分类；inductive transfer（归纳式迁移）改变目标任务并使用目标标签，源阶段可采用自监督。Sequential transfer（顺序迁移）先预训练再适配；multi-task learning（多任务学习）同时优化多个任务。迁移效果需在目标任务上评估。
+
+\begin{center}
+\input{figures/pretraining-classification-flow}
+\end{center}
+{\small\textit{原创流程图，依据现场版 pp.~18--25。图示 encoder 的 MLM 预训练与句子分类微调；原始 BERT 的附加目标见下文。}}
+
+\lecturetopic{SC4002-L12-T03}{预训练目标、模型架构与微调方式}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~21--41；录播版 pp.~24--58。
+
+\subsubsection{MLM：在选中位置预测原 token}
+
+Masked language modeling（掩码语言建模，MLM）将输入 $x$ 中的部分 token 遮盖或替换，得到 $\widetilde x$，再利用双向上下文预测原 token。设选中位置集合为 $M$，则
+\[
+ \mathcal L_{\mathrm{MLM}}
+ =-\sum_{i\in M}\log p_\theta(x_i\mid\widetilde x),\qquad
+ \mathbf p_i=\operatorname{softmax}(W_{\mathrm{vocab}}\mathbf h_i+\mathbf b).
+\]
+输出层读取上下文隐藏状态 $\mathbf h_i$。对未选中的可见位置，本例没有单独的 MLM 损失项，但它们参与上下文计算，相关参数仍可接收梯度。
+
+原始 BERT 选中约 $15\%$ 的 token；在\emph{选中的位置}中，$80\%$ 换成 \texttt{[MASK]}，$10\%$ 换成随机 token，$10\%$ 保持原样。三类都预测原 token，均参与损失。这减少了模型对特殊遮盖标记的依赖。原始 BERT 还使用 Next Sentence Prediction（下一句预测，NSP）；RoBERTa 移除 NSP，SpanBERT 关注连续 span 的表示。详见录播版 pp.~35--43；原始目标与比例亦见 \href{https://aclanthology.org/N19-1423.pdf}{Devlin et al., 2019，\S3.1}。
+
+\subsubsection{CLM：按前缀预测下一 token}
+
+Causal language modeling（因果语言建模，CLM）将序列概率分解为
+\[
+ p_\theta(x_1,\ldots,x_T)=\prod_{t=1}^{T}p_\theta(x_t\mid x_{<t}),\qquad
+ \mathcal L_{\mathrm{CLM}}=-\sum_{t=1}^{T}\log p_\theta(x_t\mid x_{<t}).
+\]
+输入 \texttt{<BOS>, The, movie, was} 分别预测 \texttt{The, movie, was, good}。训练时用真实前缀，每个输入位置的标签是下一 token；因果 attention mask 将未来位置的分数置为 $-\infty$，softmax 后权重为 $0$，从而可在一次前向计算中同时训练多个预测位置。生成时后文尚未产生，仍需逐 token 接续，直到结束符或其他停止条件。
+
+MLM 的 \texttt{[MASK]} 是输入 token；causal mask 是 attention 的可见范围限制，两者作用不同。损失可求和或按有效目标数取平均；padding 等无效位置应排除。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L12-E02}{MLM 与 CLM 的目标对齐、总损失和平均损失}。
+
+\subsubsection{三类架构与信息来源}
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+架构 & 信息可见范围 & 典型模型与任务 \\
+\midrule
+Encoder-only & 输入序列内双向 attention & BERT：MLM、整句分类、逐 token 分类 \\
+Decoder-only & 目标序列的因果前缀 & GPT：CLM、自回归生成，也可适配分类 \\
+Encoder--decoder & 完整源句 $x$ 与目标前缀 $y_{<t}$ & T5：翻译、摘要及 text-to-text 任务 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+条件生成满足 $p(y\mid x)=\prod_t p(y_t\mid y_{<t},x)$。Encoder 读取完整源句；decoder 的 self-attention 读取已给定目标前缀，cross-attention 的 $Q$ 来自 decoder，$K,V$ 来自 encoder 输出。目标前缀不包含当前待预测 token。
+
+T5 将任务统一为文本到文本，例如给源句加翻译任务前缀，输出译文；分类也可输出类别名称。架构表描述常规使用方式：encoder 能预测被遮盖的词，而从左到右续写还需要相应的训练与解码安排。
+
+\textbf{Attention 权重与词表概率。}现场版 p.~34 的可见前缀分数为 $[0.2,0.7,1.2]$，softmax 得到约 $[0.186,0.307,0.506]$，用于汇总三个\emph{位置}的信息。得到隐藏状态后，再经过词表输出层，才产生 \texttt{learning/models/pizza} 的概率 $[0.70,0.18,0.12]$。后者是讲义给定的输出分布，不能仅从 attention 权重复算。
+
+\subsubsection{分类微调：任务输出层与参数更新}
+
+句子分类在输入前加入 \texttt{[CLS]}，取其最终上下文表示 $\mathbf h_{\mathrm{CLS}}$：
+\[
+ \mathbf p=\operatorname{softmax}(W_c\mathbf h_{\mathrm{CLS}}+\mathbf b),
+ \qquad \mathcal L_{\mathrm{cls}}=-\log p(y_{\mathrm{gold}}\mid x).
+\]
+Full fine-tuning（全量微调）更新 encoder 与任务输出层；frozen feature extraction（冻结特征提取）固定 encoder，只训练输出层。Token classification（逐 token 分类，如 NER）对各 $\mathbf h_i$ 使用共享分类层，而非只读取 \texttt{[CLS]}。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L12-E03}{二维 \texttt{[CLS]} 表示的情感分类概率与损失}。
+
+\subsubsection{Optional：参数高效微调}
+
+现场版 pp.~39--41 的 parameter-efficient fine-tuning（PEFT）通过冻结大部分基础参数，降低梯度与优化器状态等微调开销。LoRA 沿用讲义记法
+\[
+ W'=W+AB,\qquad
+ W\in\mathbb R^{d\times d},\quad
+ A\in\mathbb R^{d\times r},\quad B\in\mathbb R^{r\times d},\quad r\ll d.
+\]
+对这一矩阵，冻结 $W$、只训练 $A,B$，可训练参数为 $2dr$，原矩阵仍有 $d^2$ 个参数。Adapter 插入降维、非线性、升维的小模块并配合残差连接，主要训练新增模块。统计系统总参数时仍须计入冻结的基础模型。
+
+\lecturetopic{SC4002-L12-T04}{文本生成：解码规则与质量评估}
+\nopagebreak[4]
+\textbf{来源：}现场版 pp.~43--57；录播版 pp.~60--66。现场版 pp.~52--54 的具体评估方法标为 Optional。
+
+\textbf{Greedy 与 beam search。}模型给出 $p(y_t\mid y_{<t},x)$，decoding（解码）将分布转成输出；推理时选择 token 不更新模型权重。Greedy decoding 每步选概率最高者，局部最优未必形成全局最优序列。
+
+Beam search（束搜索）维护 $k$ 条候选前缀。每轮扩展当前候选，再在\emph{全部扩展结果}中保留累计得分最高的 $k$ 条，常用分数为
+\[
+ S(y_{1:t})=\sum_{j=1}^{t}\log p(y_j\mid y_{<j},x).
+\]
+分数越大越好，$-2.5$ 优于 $-2.8$；若图中已给累计分数，就直接比较，不能再次沿路径把累计值相加。有限 beam 节省搜索量，但不能保证保留全局最优路径。
+
+\textbf{讲义例题：}\relatedexercise{SC4002-L12-E04}{Beam size 为 2 时的六轮候选更新}。
+
+\textbf{抽样与候选截断。}Sampling（抽样）按概率选择 token，可产生不同输出；直接从完整词表抽样可能抽到不合适的低概率词。截断方法先限制候选，再重新归一化：
+\begin{itemize}
+ \item \textbf{Top-$k$ sampling：}保留当前概率最高的 $k$ 个 token，抽取一个继续。这里的 $k$ 是 token 候选数；beam size 是同时保留的序列数。
+ \item \textbf{Top-$p$ / nucleus sampling：}按概率降序，取累计概率至少为 $p$ 的最小前缀集合，再抽样；候选数量随分布变化。
+\end{itemize}
+用现场版 p.~34 的 $[0.70,0.18,0.12]$ 演示上述规则：top-$2$ 保留前两个，归一化为
+\[
+ [0.70/0.88,0.18/0.88]\approx[0.795,0.205].
+\]
+Top-$p$ 在 $p=0.8$ 时同样保留两个，在 $p=0.9$ 时需要全部三个。这是将给定分布用于规则的辅助演算。
+
+\textbf{Temperature（温度）}作用于 logits $s_w$：
+\[
+ p_\tau(w)=\frac{\exp(s_w/\tau)}{\sum_v\exp(s_v/\tau)},\qquad\tau>0.
+\]
+$\tau<1$ 使分布更集中，$\tau>1$ 使其更平缓。正温度缩放不改变当前 logits 的排序，因此纯 greedy 的当步选择不变；抽样概率则会改变。多样性与任务正确性需要分别评估。
+
+\textbf{评估开放式输出。}翻译、摘要、对话和故事的可接受答案范围不同；即使翻译，也可能有多种准确表达。单个参考答案不能覆盖所有合理输出。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+评估方式 & 主要依据 & 解释结果时的条件 \\
+\midrule
+词面重合 & BLEU、ROUGE 等比较词或词组匹配、覆盖 & 合理改写可能重合低；高重合也可能漏掉否定等关键差异 \\
+模型表示 & BERTScore 等利用上下文向量匹配 & 语义匹配分数还需结合事实正确性检查 \\
+人工评估 & 流畅性、连贯性、事实一致性、任务完成情况等 & 使用明确标准，考虑多个评估者及其分歧 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection*{一分钟回顾}
+
+Subword 处理切分，上下文编码器结合周围信息。MLM 预测选中位置，CLM 按前缀预测下一 token；全量微调同时更新主体与任务输出层。解码决定如何选词，生成质量结合任务标准、自动指标与人工判断评估。
+\endgroup

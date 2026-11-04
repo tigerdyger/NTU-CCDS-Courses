@@ -1,0 +1,22 @@
+% Original diagram based on Lec5_week12.pdf pp. 18--25.
+% Shows MLM pretraining and sentence classification; NSP omitted from the diagram.
+\begin{tikzpicture}[
+ >=Latex,font=\small,
+ box/.style={draw=noteBlue,fill=blue!3,rounded corners,minimum width=3.8cm,minimum height=.9cm,align=center},
+ flow/.style={->,thick,noteBlue}
+]
+ \node[box] (text) at (0,0) {普通文本\\选中部分 token};
+ \node[box] (mlm) at (5.3,0) {MLM 预训练\\预测原 token};
+ \node[box] (weights) at (10.6,0) {预训练的\\Encoder 参数 $\theta$};
+ \node[box] (labels) at (0,-2) {带标签影评\\句子与情感类别};
+ \node[box] (encoder) at (5.3,-2) {Encoder $\theta$\\输出 $\mathbf h_{\mathrm{CLS}}$};
+ \node[box,draw=ntuRed,fill=ntuRed!5] (head) at (10.6,-2) {分类层 $\phi$\\类别分布 $p(y\mid x)$};
+ \draw[flow] (text) -- (mlm);
+ \draw[flow] (mlm) -- (weights);
+ \draw[flow] (labels) -- (encoder);
+ \draw[flow] (encoder) -- (head);
+ \draw[->,thick,ntuRed] (weights.south) -- (10.6,-1)
+   -- node[above,font=\footnotesize] {用已有参数初始化} (5.3,-1) -- (encoder.north);
+ \node[align=center,font=\footnotesize,text width=14.5cm] at (5.3,-3.1)
+   {类别交叉熵提供监督：全量微调更新 $\theta$ 与 $\phi$；冻结特征提取只更新 $\phi$。};
+\end{tikzpicture}

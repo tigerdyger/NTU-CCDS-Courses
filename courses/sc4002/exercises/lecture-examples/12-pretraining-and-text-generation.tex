@@ -1,0 +1,167 @@
+% Based on templates/lecture-example.tex; related lecture SC4002-L12.
+% Source: Lec5_week12.pdf pp. 5--13, 22, 25--27, 45--46.
+% Genuine lecture examples; calculations checked, no dialogue checks retained.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4002-L12-EX}{第 12 讲：预训练与文本生成}
+
+\textbf{日期与来源：}2026-11-04；\texttt{Lec5\_week12.pdf} pp.~5--13、22、25--27、45--46。四组讲义例题，条件与数值已核对，成稿待审阅；BPE 词尾约定单独说明。
+
+\exercisequestion{SC4002-L12-E01}{BPE：按词频合并相邻符号}
+\nopagebreak[4]
+\textbf{题目（现场版 pp.~5--13）。}语料如下。初始词表由字符和词尾标记 \texttt{</w>} 组成，复现讲义的六次合并，并求最终表示与词表大小。
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+初始符号序列 & 词频 \\
+\midrule
+\texttt{l o w </w>} & 5 \\
+\texttt{l o w e r </w>} & 2 \\
+\texttt{n e w e s t </w>} & 6 \\
+\texttt{w i d e s t </w>} & 3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{计算约定：}为复现图示顺序，本题暂不合并包含 \texttt{</w>} 的符号对；并列时使用讲义选定的一对。该额外条件未在讲义 p.~5 的算法描述中明确写出。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L12-T01}{子词训练、加权计数与规则复用}。
+
+\begin{workedsolution}
+\texttt{(e,s)} 与 \texttt{(s,t)} 都出现 $6+3=9$ 次，\texttt{(l,o)} 与 \texttt{(o,w)} 都出现 $5+2=7$ 次。先选 \texttt{(e,s)}；之后每次都根据已合并表示重新计数。
+\begin{center}
+\small
+\begin{tabular}{@{}clrl@{}}
+\toprule
+步骤 & 合并 & 频数 & 产生的词内表示变化 \\
+\midrule
+1 & \texttt{e + s} $\to$ \texttt{es} & 9 & \texttt{n e w es t}；\texttt{w i d es t} \\
+2 & \texttt{es + t} $\to$ \texttt{est} & 9 & \texttt{n e w est}；\texttt{w i d est} \\
+3 & \texttt{l + o} $\to$ \texttt{lo} & 7 & \texttt{lo w}；\texttt{lo w e r} \\
+4 & \texttt{lo + w} $\to$ \texttt{low} & 7 & \texttt{low}；\texttt{low e r} \\
+5 & \texttt{n + e} $\to$ \texttt{ne} & 6 & \texttt{ne w est} \\
+6 & \texttt{ne + w} $\to$ \texttt{new} & 6 & \texttt{new est} \\
+\bottomrule
+\end{tabular}
+\end{center}
+表中省略未改变的词尾标记；最终四个词为
+\[
+ \texttt{low </w>},\quad \texttt{low e r </w>},\quad
+ \texttt{new est </w>},\quad \texttt{w i d est </w>}.
+\]
+初始符号为 \texttt{l,o,w,e,r,n,s,t,i,d,</w>}，共 11 个；新增 \texttt{es,est,lo,low,ne,new} 六个符号，因此词表大小为 $\boxed{17}$。
+
+\textbf{若词尾也参与合并：}在前两步仍依次选择 \texttt{es}、\texttt{est} 的条件下，第 3 步应合并 \texttt{(est,</w>)}，频数为 $9$，而非先合并频数为 $7$ 的 \texttt{(l,o)}。因此复现 BPE 必须同时固定语料频数、词尾处理、并列选择与停止条件。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L12-E02}{MLM 与 CLM：哪些位置计算损失？}
+\nopagebreak[4]
+\textbf{题目（现场版 pp.~25--27）。}对句子 \texttt{The movie was good}，分别考虑：
+\begin{enumerate}
+ \item MLM 输入为 \texttt{[MASK] movie was [MASK]}，选中位置的原 token 为 \texttt{The}、\texttt{good}，模型分配给它们的概率为 $0.80$、$0.40$。
+ \item CLM 输入为 \texttt{<BOS>, The, movie, was}，对应下一 token 概率为 $0.60,0.50,0.80,0.25$。
+\end{enumerate}
+列出预测目标，使用自然对数求总负对数似然（NLL）和平均目标损失。仅统计题目列出的目标，不额外加入标点或结束符。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L12-T03}{预训练目标与标签对齐}。
+
+\begin{workedsolution}
+MLM 只对选中的两个位置求和：
+\[
+ L_{\mathrm{MLM}}=-\ln0.80-\ln0.40
+ =0.223144+0.916291=\boxed{1.139434},\qquad
+ \overline L_{\mathrm{MLM}}=\boxed{0.569717}.
+\]
+\texttt{movie} 和 \texttt{was} 提供可见上下文，没有单独的 MLM 损失项。
+
+CLM 的输入与标签按一位错开：
+\begin{center}
+\small
+\begin{tabular}{@{}llrr@{}}
+\toprule
+输入位置的 token & 要预测的 token & $p(\mathrm{gold})$ & $-\ln p(\mathrm{gold})$ \\
+\midrule
+\texttt{<BOS>} & \texttt{The} & 0.60 & 0.510826 \\
+\texttt{The} & \texttt{movie} & 0.50 & 0.693147 \\
+\texttt{movie} & \texttt{was} & 0.80 & 0.223144 \\
+\texttt{was} & \texttt{good} & 0.25 & 1.386294 \\
+\bottomrule
+\end{tabular}
+\end{center}
+故
+\[
+ L_{\mathrm{CLM}}=-\ln(0.60\times0.50\times0.80\times0.25)
+ =\boxed{2.813411},\qquad
+ \overline L_{\mathrm{CLM}}=\boxed{0.703353}.
+\]
+预测 \texttt{good} 时可见 \texttt{<BOS>, The, movie, was}；训练能同时计算这些位置的输出，但各位置均须遵守因果可见范围。两种目标的条件信息不同，上述平均值不用于判定哪种模型更优。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L12-E03}{BERT 分类：从句向量到监督损失}
+\nopagebreak[4]
+\textbf{题目（现场版 p.~22）。}给定二维 encoder 输出
+\[
+ \mathbf h_{\mathrm{CLS}}=[1.2,-0.4]^\top,\qquad W_c=I_2,\qquad\mathbf b=\mathbf0.
+\]
+类别顺序为 \texttt{[positive,negative]}。求 logits、两类概率，以及真实标签为 positive 时的交叉熵；说明全量微调时更新哪些部分。
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L12-T03}{句子分类与参数更新范围}。
+
+\begin{workedsolution}
+\[
+ \mathbf z=W_c\mathbf h_{\mathrm{CLS}}+\mathbf b=[1.2,-0.4]^\top,
+ \qquad
+ \mathbf p=\frac{[e^{1.2},e^{-0.4}]^\top}{e^{1.2}+e^{-0.4}}
+ \approx[0.832018,0.167982]^\top.
+\]
+真实类别的损失为
+\[
+ \mathcal L=-\ln p(\mathrm{positive})=\ln(1+e^{-1.6})\approx\boxed{0.183901}.
+\]
+全量微调更新 $W_c,\mathbf b$，并将梯度传回 encoder 参数；冻结 encoder 时只更新分类层。本例的单位矩阵是给定的当前参数值，不是训练过程中必须保持不变的约束。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L12-E04}{Beam search：在全部扩展中保留两条路径}
+\nopagebreak[4]
+\textbf{题目（现场版 pp.~45--46）。}翻译例句 \texttt{il m'a entart\'{e}}，取 beam size $k=2$。下表列出各轮当前 beam 的候选扩展与讲义给定的\emph{累计对数概率}，每轮选出最好的两条。图示只展示前六轮，不补设结束符的概率。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}c>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+轮次 & 候选扩展及累计分数（一） & 候选扩展及累计分数（二） \\
+\midrule
+1 & \texttt{he}: $-0.7$ & \texttt{I}: $-0.9$ \\
+2 & \texttt{he hit}: $-1.7$；\texttt{he struck}: $-2.9$ & \texttt{I was}: $-1.6$；\texttt{I got}: $-1.8$ \\
+3 & \texttt{I was hit}: $-2.9$；\texttt{I was struck}: $-3.8$ & \texttt{he hit me}: $-2.5$；\texttt{he hit a}: $-2.8$ \\
+4 & \texttt{he hit me with}: $-3.3$；\texttt{he hit me on}: $-3.5$ & \texttt{he hit a pie}: $-3.4$；\texttt{he hit a tart}: $-4.0$ \\
+5 & \texttt{he hit me with a}: $-3.7$；\texttt{he hit me with one}: $-4.3$ & \texttt{he hit a pie with}: $-4.5$；\texttt{he hit a pie in}: $-4.8$ \\
+6 & \texttt{he hit me with a pie}: $-4.3$；\texttt{he hit me with a tart}: $-4.6$ & \texttt{he hit me with one pie}: $-5.0$；\texttt{he hit me with one tart}: $-5.3$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{对应知识点：}\relatedtopic{SC4002-L12-T04}{累计序列分数与有限宽度搜索}。
+
+\begin{workedsolution}
+按分数从大到小选择；表中已是累计值，直接比较：
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}cXX@{}}
+\toprule
+轮次 & 保留的第一条 & 保留的第二条 \\
+\midrule
+1 & \texttt{he}：$-0.7$ & \texttt{I}：$-0.9$ \\
+2 & \texttt{I was}：$-1.6$ & \texttt{he hit}：$-1.7$ \\
+3 & \texttt{he hit me}：$-2.5$ & \texttt{he hit a}：$-2.8$ \\
+4 & \texttt{he hit me with}：$-3.3$ & \texttt{he hit a pie}：$-3.4$ \\
+5 & \texttt{he hit me with a}：$-3.7$ & \texttt{he hit me with one}：$-4.3$ \\
+6 & \texttt{he hit me with a pie}：$-4.3$ & \texttt{he hit me with a tart}：$-4.6$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+第 2 轮领先的 \texttt{I was} 在第 3 轮全部淘汰；第 5、6 轮的两条保留项都可以来自同一个父候选。因此筛选范围是所有扩展结果，而非给每个父候选固定保留一个后继。到第 6 轮，已保留前缀中得分最高的是 \texttt{he hit me with a pie}；有限 beam 不能保证全搜索空间最优。
+\end{workedsolution}
+\endgroup
