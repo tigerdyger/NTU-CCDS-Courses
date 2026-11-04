@@ -1,0 +1,21 @@
+% Original schematic based on Tutorial 11 Q3 and Lecture 11 pp. 67--70.
+\begin{tikzpicture}[
+ font=\small,>=Stealth,
+ box/.style={draw=noteBlue,fill=noteBlue!4,rounded corners,
+ minimum width=1.8cm,minimum height=.8cm,align=center},
+ flow/.style={->,thick,noteBlue}
+]
+\node[box] (x) at (0,0) {图像输入\\784};
+\node[box] (h1) at (2.6,0) {$h_1$\\625};
+\node[box] (h2) at (5.2,0) {$h_2$\\100};
+\node[box,minimum width=2.4cm] (dec) at (8.4,0) {两层解码器\\$100\to625\to784$};
+\node[box] (rec) at (11.6,0) {重建图像\\目标为 $x$};
+\node[box,draw=ntuRed,fill=ntuRed!4,minimum width=2.4cm] (cls) at (8.4,-1.6) {分类层\\Linear + Softmax};
+\node[box,draw=ntuRed,fill=ntuRed!4] (prob) at (11.6,-1.6) {10 类概率\\目标为 $y$};
+\draw[flow] (x)--node[above] {$E_1$}(h1);
+\draw[flow] (h1)--node[above] {$E_2$}(h2);
+\draw[flow] (h2)--(dec);
+\draw[flow] (dec)--(rec);
+\draw[->,thick,ntuRed] (h2.south)--(5.2,-1.6)--(cls.west);
+\draw[->,thick,ntuRed] (cls)--(prob);
+\end{tikzpicture}

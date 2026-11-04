@@ -1,0 +1,156 @@
+% Adapted from templates/tutorial.tex; actual session 11, 2026-11-04 (Week 12).
+% Sources: tute11.pdf pp. 1--2, Q1--Q3; 11_autoencoders.pdf pp. 11--16,
+% 37--65 and 67--70. Both tutorial pages inspected visually.
+% Q2(c) omits numerical sparsity parameters. No training or experiment run.
+% KL derivative checked symbolically for 0 < rho, mean activation < 1.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4001-TUT11}{Tutorial 11：自编码器的重建、稀疏与去噪}
+\label{tutorial:SC4001-TUT11}
+
+\tutorialmeta
+  {SC4001-TUT11}
+  {2026-11-04（Week 12）}
+  {\texttt{tute11.pdf} pp.~1--2，Q1--Q3；设计方法对应 Lecture 11}
+  {题意与设计公式已核对；Q2(c) 缺少参数；未提供实验输出，训练未运行}
+  {已讲解整理，笔记待审阅}
+
+\exercisequestion{SC4001-TUT11-Q01}{Q1：四维表示重建五种二值图案}
+\nopagebreak[4]
+\textbf{题目（p.~1）。}五个 $3\times3$ 图案按行展平后组成下列矩阵，每行为一个样本：
+\[
+X=\begin{bmatrix}
+1&1&1&0&0&0&0&0&0\\
+1&0&0&1&0&0&1&0&0\\
+0&0&1&0&1&0&1&0&0\\
+1&0&0&0&1&0&0&0&1\\
+1&0&0&1&0&0&1&1&1
+\end{bmatrix}.
+\]
+设计含 4 个隐藏单元的 AE，以学习率 $\alpha=0.1$ 做梯度下降，报告收敛后的权重、偏置、隐藏激活与重建结果；再加入 $\beta=0.5$、$\rho=0.1$ 的稀疏约束，重复比较。
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L11-T01}{普通 AE 与绑定权重}、\relatedtopic{SC4001-L11-T03}{稀疏约束}。
+
+\textbf{1. 网络与参数。}结构为 $9\to4\to9$。以下采用 Lecture 11 例题的 sigmoid 与 tied weights（绑定权重）方案；Q1 本身未指定激活函数、损失及是否绑定权重。按样本为行的约定，
+\[
+H=\sigma(XW+b),\qquad \hat X=\sigma(HW^\top+c),
+\]
+其中 $W\in\mathbb R^{9\times4}$、$b\in\mathbb R^4$、$c\in\mathbb R^9$，偏置按行广播；$H\in\mathbb R^{5\times4}$，$\hat X\in\mathbb R^{5\times9}$。隐藏层的 4 个输出是连续值；绑定权重表示复用参数及其转置，不进行矩阵求逆。
+
+\textbf{2. 重建训练。}沿用讲义二值例题的 binary cross-entropy（BCE，二元交叉熵）总和：
+\[
+J_{\rm rec}=-\sum_{i=1}^{5}\sum_{k=1}^{9}
+\left[X_{ik}\ln\hat X_{ik}+(1-X_{ik})\ln(1-\hat X_{ik})\right].
+\]
+随机初始化权重，反复前向计算、求损失、反向传播，并对 $\theta\in\{W,b,c\}$ 更新
+\[
+\theta\leftarrow\theta-0.1\nabla_\theta J_{\rm rec}.
+\]
+同一 $W$ 参与编码与解码，其梯度包含两处贡献。复现需固定初始化种子、损失归一化及停止条件；例如损失变化低于设定容差，并设最大迭代次数。以 $O_{ik}=\mathbf1[\hat X_{ik}>0.5]$ 计算
+\[
+\text{bit errors}=\sum_{i=1}^{5}\sum_{k=1}^{9}\mathbf1[O_{ik}\ne X_{ik}].
+\]
+阈值判断正确时，连续输出仍可偏离 $0/1$，因此 bit errors 为零不要求 BCE 为零。最终应保存 $W,b,c,H,\hat X$、二值重建和误差；其具体数值依赖训练，题目不确定一组唯一权重。
+
+\textbf{3. 稀疏版本。}对第 $j$ 个隐藏单元，定义跨五个样本的平均激活
+\[
+\bar\rho_j=\frac15\sum_{i=1}^{5}H_{ij},\qquad
+J_{\rm sparse}=J_{\rm rec}+\beta\sum_{j=1}^{4}\mathrm{KL}(\rho\|\bar\rho_j),
+\]
+\[
+\mathrm{KL}(\rho\|\bar\rho_j)=
+\rho\ln\frac{\rho}{\bar\rho_j}
++(1-\rho)\ln\frac{1-\rho}{1-\bar\rho_j}.
+\]
+本题代入 $\rho=0.1,\beta=0.5$，仍按梯度下降更新全部参数。$\rho$ 指定目标平均激活，$\beta$ 控制惩罚的相对强度。为说明梯度方向，在 $0<\rho,\bar\rho_j<1$ 下，
+\[
+\frac{\partial\mathrm{KL}(\rho\|\bar\rho_j)}{\partial\bar\rho_j}
+=-\frac{\rho}{\bar\rho_j}+\frac{1-\rho}{1-\bar\rho_j}
+=\frac{\bar\rho_j-\rho}{\bar\rho_j(1-\bar\rho_j)}.
+\]
+高于目标时，惩罚倾向于降低平均激活；低于目标时则相反。约束作用于跨样本平均值，不要求每次激活都等于 $0.1$，也不规定每张图恰好激活固定比例的单元。比较普通与稀疏 AE 时，应分别报告重建误差、隐藏激活和各 $\bar\rho_j$，而非直接比较含不同惩罚项的总损失。
+
+\exercisequestion{SC4001-TUT11-Q02}{Q2：随机图像上的容量与稀疏性}
+\nopagebreak[4]
+\textbf{题目（p.~1）。}生成 100 张 $10\times10$ 图片，各像素独立采自 $U(0,1)$。用 MSE 分别训练：(a) 49 个隐藏单元的 undercomplete AE；(b) 144 个单元的 overcomplete AE；(c) 144 个单元的 sparse AE，比较所学特征。
+
+\textbf{参数缺项：}\verify{原题 Q2(c) 写了“以下稀疏与惩罚参数”，但未列出 $\rho,\beta$ 的数值，须另行确认。}
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L11-T03}{瓶颈、容量与稀疏激活}。
+
+\textbf{1. 结构与损失。}每张图展平为 $x_i\in\mathbb R^{100}$；按讲义的样本平均定义，
+\[
+J_{\rm MSE}=\frac1N\sum_{i=1}^{N}\|\hat x_i-x_i\|_2^2,\qquad N=100.
+\]
+若实现再除以像素数，损失和梯度尺度都会改变；需统一归一化，尤其是重建项与稀疏项的相对尺度。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+模型 & 结构 & 约束与比较重点 \\
+\midrule
+Undercomplete（欠完备） & $100\to49\to100$ & 通过瓶颈压缩；观察重建中保留及丢失的信息 \\
+Overcomplete（过完备） & $100\to144\to100$ & 容量更大，较容易保留或复制输入 \\
+Sparse（稀疏） & $100\to144\to100$ & 加入平均激活惩罚，观察选择性响应与重建代价 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{2. 随机数据的限制。}独立均匀像素没有自然图像中稳定的边缘、笔画和空间相关性，因此不能预期必然学到清晰的边缘特征。训练样本只有 100 张，非线性模型也可能记忆有限样本；瓶颈不直接决定训练误差。过完备模型重建良好可能来自近似复制，稀疏惩罚过强则可能损害重建。实际排序需由实验给出；若检验泛化，应另生成独立随机图片。
+
+\textbf{3. 区分权重与激活。}按 Q1 记法，$W\in\mathbb R^{100\times m}$ 的第 $j$ 列排回 $10\times10$，得到该单元的\emph{输入权重图}。一张图片对应的 $h\in\mathbb R^m$ 则可排成 $7\times7$（49 单元）或 $12\times12$（144 单元）的\emph{激活图}；该网格仅用于显示，不对应原图空间位置。比较时结合原图与重建图、权重模式、不同输入的激活分布及平均激活，采用相同数据与评估规则。
+
+\exercisequestion{SC4001-TUT11-Q03}{Q3：MNIST 去噪、堆叠与分类}
+\nopagebreak[4]
+\textbf{题目（pp.~1--2）。}(a) 对 MNIST 设计含 625 个隐藏单元的去噪 AE，采用乘性噪声和交叉熵；破坏比例 $10\%$、学习率 $\alpha=0.1$、batch size $128$、稀疏目标 $\rho=0.02$、惩罚系数 $\beta=0.4$，绘制学习曲线、权重与测试图的隐藏激活。(b) 增加一层 100 个隐藏单元，按此前方法训练，并观察特征图、曲线、权重与激活。(c) 在第二层表示上加 Softmax 分类层，报告学习曲线、权重及测试准确率。
+
+\textbf{对应讲义：}\relatedtopic{SC4001-L11-T02}{去噪 AE}、\relatedtopic{SC4001-L11-T03}{稀疏约束}、\relatedtopic{SC4001-L11-T04}{逐层预训练与分类}。
+
+\textbf{(a) 单层去噪重建。}将 $28\times28$ 图像归一化至 $[0,1]$ 并展平，网络为 $784\to625\to784$。沿用讲义的 masking noise（遮蔽噪声）：
+\[
+\tilde x=m\odot x,\qquad m_k\sim\operatorname{Bernoulli}(0.9),\qquad
+\hat x=D(E(\tilde x)).
+\]
+每个像素独立以 $10\%$ 概率置零，保留值不再缩放；这是期望破坏比例，不要求每张图固定置零同样数量的像素。训练目标为\textbf{干净的 $x$}。输出逐像素使用 sigmoid，损失为
+\[
+J=J_{\rm BCE}(\hat x,x)+0.4\sum_{j=1}^{625}\mathrm{KL}(0.02\|\bar\rho_j).
+\]
+隐藏激活用 sigmoid，以便沿用 Q1 的 Bernoulli KL 约束；训练时可用 batch 估计平均激活。784 个像素不互斥，输出层不在像素之间做 softmax。去噪依赖笔画之间的联系；把受损输入本身当作目标会改变任务。
+
+\textbf{读图。}分别记录重建损失与稀疏项，比较训练与验证曲线，并排观察干净图、受损图和重建图。每个隐藏单元的 784 个输入权重排成 $28\times28$；单张图的 625 个隐藏激活可排成 $25\times25$。前者表示单元对像素组合的敏感方向，后者表示它们对当前样本的响应。
+
+\textbf{(b) 两层编码与逐层训练。}采用 Lecture 11 的堆叠方案，两层编码为 $784\to625\to100$；完整重建路径为
+\[
+784\xrightarrow{E_1}625\xrightarrow{E_2}100
+\xrightarrow{D_2}625\xrightarrow{D_1}784.
+\]
+按 greedy layer-wise pretraining（贪心逐层预训练）：\nopagebreak[4]
+\begin{enumerate}
+ \item 训练第一层：$\tilde x\to h_1\to\hat x$，目标为干净图像 $x$。
+ \item 固定第一层编码器，取得干净的 $h_1$；破坏 $h_1$ 后训练 $\tilde h_1\to h_2\to\hat h_1$，目标为 $h_1$，更新第二层编码器及其解码器。
+ \item 接成完整网络，以最终图像重建损失整体微调；若同时保留两层稀疏项，应在实现中明确各项及权重。
+\end{enumerate}
+这是与讲义一致的训练方案，题目未强制规定预训练方式。第二层单元的 625 个输入权重连接第一层特征；即使排成 $25\times25$，也不是原图像素模板。若观察原图空间中的响应，可进一步通过解码路径可视化。增加层数是否改善重建或分类，需分别评估。
+
+\begin{center}
+\input{figures/tutorial11-autoencoder-classifier}
+\end{center}
+{\small 原创结构图：上支路用于重建；转为分类时移除解码器，使用下支路。}
+
+\textbf{(c) 保留编码器，训练分类层。}输入图像经两层编码得到 $h_2\in\mathbb R^{100}$，接 10 类分类器。此处按单样本列向量记法，
+\[
+s=W_{\rm cls}h_2+b_{\rm cls},\qquad
+p(y=k\mid x)=\frac{e^{s_k}}{\sum_{\ell=0}^{9}e^{s_\ell}},
+\qquad W_{\rm cls}\in\mathbb R^{10\times100}.
+\]
+数字类别互斥，适合 softmax。AE 预训练的目标来自图片；分类阶段使用真实标签，最小化
+\[
+J_{\rm cls}=-\frac1N\sum_{i=1}^{N}\ln p(y_i\mid x_i),\qquad
+\mathrm{Accuracy}=\frac{\#\{\text{测试集预测正确的图片}\}}{N_{\rm test}}.
+\]
+可联合微调编码器和分类层，也可固定编码器作对照。以训练集拟合、验证集选择设置，保留测试集作最终评估；报告分类损失、准确率曲线和各层权重。重建误差与分类准确率回答不同问题，不能互相替代。本题未提供训练输出，收敛参数、实际曲线及测试准确率均须由后续实验或参考结果补充。
+\endgroup
