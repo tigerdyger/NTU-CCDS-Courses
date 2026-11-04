@@ -1,0 +1,20 @@
+% Original diagram of the source notebook's recurrent attention decoder.
+\begin{tikzpicture}[
+ >=Latex,font=\small,
+ box/.style={draw=noteBlue,fill=blue!3,rounded corners,minimum width=3.7cm,minimum height=.85cm,align=center},
+ flow/.style={->,thick,noteBlue}
+]
+ \node[box] (enc) at (0,0) {Encoder GRU\\逐词读取法语};
+ \node[box] (states) at (5.1,0) {全部 Encoder 输出\\$h_1,\ldots,h_N$};
+ \node[box] (previous) at (0,-1.6) {前词向量 $e_{t-1}$\\与状态 $s_{t-1}$};
+ \node[box] (attention) at (5.1,-1.6) {计算位置权重 $\alpha_t$\\加权汇总 $c_t$};
+ \node[box,draw=ntuRed,fill=ntuRed!5] (out) at (10.2,-1.6) {融合前词与 $c_t$\\GRU 更新、词表预测};
+ \draw[flow] (enc) -- (states);
+ \draw[flow] (enc) -- node[right,font=\footnotesize] {$s_0=h_N$} (previous);
+ \draw[flow] (states) -- (attention);
+ \draw[flow] (previous) -- (attention);
+ \draw[flow] (attention) -- (out);
+ \draw[->,thick,ntuRed] (out.south) -- (10.2,-2.6)
+   -- node[below,font=\footnotesize] {下一步：更新状态与前词，重新读取源句} (0,-2.6)
+   -- (previous.south);
+\end{tikzpicture}

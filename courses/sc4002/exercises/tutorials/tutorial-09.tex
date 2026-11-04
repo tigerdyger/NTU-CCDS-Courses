@@ -1,0 +1,155 @@
+% Based on templates/tutorial.tex; actual tutorial session 09, 2026-11-04.
+% Source: week12-tut.pdf, Week 12, PDF pp. 1--3, Q1--Q3 and Attention notebook.
+% Q3(1) calls encoder--decoder attention self-attention; corrected to cross-attention.
+% Notebook inspected 2026-11-04: 46 cells, no saved outputs; no training executed.
+% Notebook SHA256: d6b02e04e6a05a9d4c8ce094b547f8cbec2a7b1a376569006fc29c595964dfc9.
+% Source and reasoning checked; final notes await user review.
+
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4002-TUT09}{Tutorial 09：Attention 与 Transformer}
+\label{tutorial:SC4002-TUT09}
+
+\tutorialmeta
+  {SC4002-TUT09}
+  {2026-11-04（Week 12）}
+  {\texttt{week12-tut.pdf}，pp.~1--3，Q1--Q3；末尾 Attention notebook}
+  {题意、公式与源码已核对；未提供官方答案；编程部分未运行训练}
+  {已完成讨论，笔记成稿待审阅}
+
+\exercisequestion{SC4002-TUT09-Q01}{Q1：带 Attention 的文章问答}
+\nopagebreak[4]
+\textbf{题目（pp.~1--2）。}文章为 \emph{The Nile is the longest river in the world. It flows through northeastern Africa.}，问题为 \texttt{Which river is the longest?}。给定 encoder 状态 $h_1,\ldots,h_N$ 与 decoder 状态 $s_1,\ldots,s_T$，说明：(1) 输入与逐词解码；(2) 下表两个 attention 分布的含义及可能输出；(3) 问题改为 \texttt{Where does the longest river flow?} 后的变化；(4) 长文章中多条河流的信息带来的困难与改进。
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L11-T01}{按需读取源句}。
+
+\textbf{1. 输入与逐步生成。}输入同时包含文章与问题，可用分隔符连接后编码。已知当前 $s_t$，先给各输入位置打分，再在\emph{全部输入位置}上归一化：
+\[
+ e_{t,i}=\operatorname{score}(s_t,h_i),\qquad
+ \alpha_{t,i}=\frac{\exp(e_{t,i})}{\sum_{j=1}^{N}\exp(e_{t,j})},\qquad
+ c_t=\sum_{i=1}^{N}\alpha_{t,i}h_i.
+\]
+将当前状态与 context vector（上下文向量）拼接，得到词表上的输出分布，例如
+\[
+ p(y_t\mid y_{<t},x)=\operatorname{softmax}\!\left(W_o[s_t;c_t]+b_o\right).
+\]
+第一次 softmax 分配\textbf{输入位置权重}，第二次分配\textbf{输出词表概率}。生成从 \texttt{<SOS>} 开始，将选出的词作为下一步输入、更新状态并重新计算 attention，直到 \texttt{<EOS>} 或长度上限。
+
+\textbf{2. 解释给定权重。}下表保留原题全部非零位置，其余输入位置在两步均为 0；每列权重之和均为 1。
+\begin{center}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+输入位置 & 第一步 $\alpha_{1,i}$ & 第二步 $\alpha_{2,i}$ \\
+\midrule
+文章开头的 \texttt{The} & 0.4 & 0.0 \\
+文章中的 \texttt{Nile} & 0.2 & 0.6 \\
+文章中的 \texttt{longest} & 0.1 & 0.1 \\
+文章中的 \texttt{river} & 0.1 & 0.1 \\
+问题中的 \texttt{river} & 0.1 & 0.1 \\
+问题中的 \texttt{longest} & 0.1 & 0.1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+关注点由冠词转向河名，与依次生成 \texttt{The Nile} 相符。Attention 决定如何读取输入，具体输出仍取决于状态与词表预测层；这些权重支持一种合理解释，不能单独确定输出词。
+
+\textbf{3. 改问地点。}问题改变后，输入表示与解码需求改变，attention 分布通常也会改变。按题目预期，生成地点答案时应重点读取 \texttt{northeastern Africa}；生成两个词的不同步骤可以关注不同位置。训练良好也不要求每一步的最大权重都严格落在答案词本身。
+
+\textbf{4. 长文章。}更多河流描述增加无关或相似信息，也增加每步打分、汇总的开销。可先检索相关段落再做细粒度 attention，或采用分层 attention，先选段落、再关注段内词。Top-$k$ sparse attention（稀疏注意力）只保留相关分数最高的 $k$ 个位置，并对保留分数重新归一化；选择依据应是任务相关性，而非仅位置邻近。若先对全部位置打分再选 top-$k$，全量打分成本仍在；预筛选候选位置才能减少这部分计算，同时需避免遗漏答案依据。
+
+\exercisequestion{SC4002-TUT09-Q02}{Q2：Self-attention、代词与重复词}
+\nopagebreak[4]
+\textbf{题目（p.~2）。}输入句子为 \texttt{The cat sat on the mat, and it was happy, accompanied by another cat.}。说明：(1) self-attention 如何帮助建立 \texttt{it} 与第一处 \texttt{cat} 的联系；(2) \texttt{it} 的权重计算；(3) 如何区分两个 \texttt{cat}；(4) 两个词的最终表示可能有何不同。
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L11-T02}{Self-attention 与上下文表示}。
+
+\textbf{1--2. 打分与信息汇总。}令 $x_j$ 为输入层中已结合位置信息的表示，或前一层的上下文表示；采用列向量记法：
+\[
+ q_j=W_Qx_j,\qquad k_j=W_Kx_j,\qquad v_j=W_Vx_j.
+\]
+对于 \texttt{it}，scaled dot-product attention（缩放点积注意力）为
+\[
+ e_{\mathrm{it},j}=\frac{q_{\mathrm{it}}^\top k_j}{\sqrt{d_k}},\qquad
+ \alpha_{\mathrm{it},j}=\frac{\exp(e_{\mathrm{it},j})}{\sum_\ell\exp(e_{\mathrm{it},\ell})},\qquad
+ z_{\mathrm{it}}=\sum_j\alpha_{\mathrm{it},j}v_j.
+\]
+$d_k$ 为 query/key 维度；本题整句已知，求和覆盖全部有效输入位置。Softmax 产生权重，\textbf{加权汇总 value 才产生 attention 输出}。若第一处 \texttt{cat} 权重较高，其信息便更多地进入 \texttt{it} 的表示；其他词提供动作、语法等线索。
+
+\textbf{3. 区分重复词。}只查同一张词 embedding 表时，两个 \texttt{cat} 的词向量相同。Positional encoding（位置编码）或相对位置信息让不同位置可区分；后续层的 contextual representation（上下文表示）还结合各自语境，因而可产生不同的 $Q,K,V$。若完全没有位置差异或其他上下文差异，仅用相同 embedding 作相同投影，就无法靠词形本身区分两处。
+
+\textbf{4. 表示中的角色。}第一处 \texttt{cat} 是坐在垫子上、感到开心的主体，也是本句 \texttt{it} 的通常指代对象；第二处为陪伴它的另一只猫。两个表示都保留“猫”的含义，并可包含各自不同的动作、修饰与句法角色。模型学习的是上下文特征，而非给两个词永久指定两个固定向量。
+
+\exercisequestion{SC4002-TUT09-Q03}{Q3（Advanced）：Transformer 翻译与词义消歧}
+\nopagebreak[4]
+\textbf{题目（pp.~2--3）。}用各含一个 block 的 encoder、decoder，将 \texttt{The quick brown fox jumps over the lazy dog} 译成法语。解释：(1) encoder 到 decoder 的信息传递；(2) multi-head attention 如何理解 \texttt{jumps over}；(3) Add \& Norm 的作用；(4) 如何确定 \texttt{over} 的词义。
+
+\textbf{对应讲义：}\relatedtopic{SC4002-L11-T01}{Cross-attention}、\relatedtopic{SC4002-L11-T03}{Transformer block}。
+
+\textbf{1. 跨序列读取。}Encoder self-attention 编码完整英文；decoder 的 masked self-attention 编码已给定的法语前缀。随后 cross-attention 使用 decoder 当前表示生成 $Q$，使用 encoder 输出生成 $K,V$，按 $Q$ 与 $K$ 的匹配权重汇总 $V$，把源句信息融入 decoder。输出再经残差、归一化、FFN 等运算及词表预测层，产生下一个法语 token。原题将跨 encoder--decoder 的运算称为 self-attention，此处采用准确名称 \textbf{cross-attention（交叉注意力）}。
+
+\textbf{2. 多头读取不同关系。}各 head 使用独立投影；一个 head 可以关注 \texttt{jumps--fox} 的动作与主语关系，另一个关注 \texttt{over--dog} 的跨越与对象关系。各头结果拼接后再投影，供后续层使用。这些是可能学到的关注方式，源码或架构并未预先指定每个 head 的语法职责。
+
+\textbf{3. Add \& Norm。}按题目所用的子层后归一化（Post-LN）结构，省略 dropout，子层输入 $x$ 与输出 $F(x)$ 维度相同时：
+\[
+ y=\operatorname{LayerNorm}\bigl(x+F(x)\bigr).
+\]
+Residual connection（残差连接）保留输入信息，并提供更直接的梯度传播路径。Layer normalization（层归一化）对\emph{每个 token 的特征维度}求均值、方差并归一化，再施加可学习的缩放和平移，使训练更稳定；它不依赖跨样本的 batch 统计量。
+
+\textbf{4. 词义消歧。}本句的 \texttt{jumps}、\texttt{fox} 与 \texttt{the lazy dog} 支持“越过”的空间含义。Encoder 通过 self-attention 汇总上下文并由后续运算形成表示；decoder 再结合源句信息与已生成法语前缀，选择符合这一含义及目标语语法的表达。
+
+\exercisequestion{SC4002-TUT09-C01}{编程阅读：GRU 加 Attention 的法译英模型}
+\nopagebreak[4]
+\textbf{来源与范围。}原题 p.~3 链接的
+\href{https://colab.research.google.com/drive/1nAUqAP4BQF2xFSq5V-50Bn_xEzx_m0Jm?usp=sharing}{Translation with a Sequence to Sequence Network and Attention}
+notebook，作者署名 Sean Robertson。已读取 46 个单元格；未保存运行输出，本次仅分析源码，未启动训练。以下代码说明按 \texttt{EncoderRNN}、\texttt{AttnDecoderRNN}、\texttt{train} 与 \texttt{evaluate} 的实际实现整理。
+
+\textbf{1. 数据与模型。}法语是输入，英语是目标。文本转小写、去重音、分离标点，再映射成两套词表的整数 ID，由 embedding 层查表；实际输入未显式构造 one-hot 向量。代码筛选两端长度均小于 10 的句子，限制英语开头形式，之后加入 \texttt{<EOS>}，总长度最多 10。模型为单层 GRU，embedding 与 hidden size 均为 256，decoder embedding 后有 dropout，概率为 0.1。
+
+Encoder 逐词计算 $h_i=\operatorname{GRU}(\operatorname{Embed}(x_i),h_{i-1})$，保留全部输出供 attention 读取；末状态初始化 decoder，首个目标输入为 \texttt{<SOS>}。
+\begin{center}
+\input{figures/tutorial09-attention-flow}
+\end{center}
+{\small\textit{按 notebook 重绘；回路表示下一次解码调用。}}
+
+\textbf{2. 固定长度的位置权重。}记 $e_{t-1}$ 为上一个目标词经过 embedding 与 dropout 后的向量，$s_{t-1}$ 为传入状态，代码先执行
+\[
+ \alpha_t=\operatorname{softmax}\!\left(W_a[e_{t-1};s_{t-1}]+b_a\right),
+ \qquad c_t=\sum_{i=1}^{10}\alpha_{t,i}h_i.
+\]
+这里 $W_a$ 将 $512$ 维拼接向量直接映射成 $10$ 个位置分数，未逐个计算 $\operatorname{score}(s,h_i)$。其余未使用的 encoder 输出行补零。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+源码中的量或操作 & 形状 & 含义 \\
+\midrule
+\texttt{encoder\_outputs} & $10\times256$ & 保存全部源位置，空余行置零 \\
+\texttt{attn\_weights} & $1\times10$ & 当前步的位置权重 \\
+\texttt{torch.bmm} 输入 & $(1\times1\times10)$ 与 $(1\times10\times256)$ & 批量矩阵乘法完成加权汇总 \\
+\texttt{attn\_applied} & $1\times1\times256$ & 当前上下文 $c_t$ \\
+词表输出 & $1\times |V_{\rm en}|$ & 各英语 token 的对数概率 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+随后融合前词与上下文，更新 GRU，再产生输出：
+\begin{align*}
+ u_t&=\operatorname{ReLU}\!\left(W_c[e_{t-1};c_t]+b_c\right),\qquad
+ s_t=\operatorname{GRU}(u_t,s_{t-1}),\\
+ \log p_t&=\operatorname{logsoftmax}(W_os_t+b_o).
+\end{align*}
+这是简化的循环网络 attention；Q2、Q3 使用内容相关的 query/key 匹配。
+
+\textbf{3. 训练与生成。}\texttt{NLLLoss} 累加各已计算步骤的目标负对数概率，反传更新 encoder 与 decoder。\texttt{teacher\_forcing\_ratio=0.5} 是\emph{每个句子对抽一次}：整句用真实前词，或整句用预测词；后者遇预测 EOS 即停止。训练用 SGD，学习率 $0.01$，随机抽取句子对更新 $75{,}000$ 次（非 epoch 数）。生成用 greedy decoding，反馈自身预测，遇 EOS 或达到 10 步即结束。
+
+\textbf{4. 图表与实现检查。}代码提供 loss 曲线和翻译展示函数。Attention 图的列为源句位置、行为生成步骤，格子为读取权重；语言词序不同，高权重可偏离对角线。复现需处理：
+\begin{itemize}
+ \item \textbf{补齐位置：}原 softmax 覆盖全部 10 个槽位；应先将无效位置分数设为 $-\infty$，避免空余行分走权重。
+ \item \textbf{评估模式：}\texttt{evaluate} 仅用 \texttt{torch.no\_grad()}，dropout 仍启用；还需调用 \texttt{.eval()}，继续训练时恢复 \texttt{.train()}。
+ \item \textbf{评估数据：}\texttt{evaluateRandomly} 从训练所用的 \texttt{pairs} 池抽句子；泛化性能需用独立测试集评估。
+\end{itemize}
+Notebook 末尾还建议更换语言或任务、使用预训练词向量、调整网络规模，以及先用自编码任务训练 encoder 再迁移；这些属于扩展实验，本次未执行。
+
+\endgroup
