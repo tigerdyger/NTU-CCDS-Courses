@@ -1,0 +1,96 @@
+% Based on templates/lecture.tex; actual session 23, 2026-11-06 (Week 12).
+% IO and Disk.pdf, slides 10.20--10.46; video titles only, no video content read.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 23 节课：磁盘调度、磁盘管理与 RAID}
+\label{lecture:SC2005-L23}
+
+\lecturemeta
+  {SC2005-L23}
+  {2026-11-06（第十二教学周）}
+  {IO and Disk，Part 10: I/O System \& Disk}
+  {10.20--10.46（PDF pp.~20--46）；磁盘调度、管理、可靠性与总结}
+  {Disk Scheduling；Disk Reliability and Summary；仅按标题对应，视频未读取}
+  {已完成学习并要求整理；讲义与例题已核对}
+
+\linespread{1.1}\selectfont
+\setlength{\parskip}{0.3em}
+
+\keyidea{磁盘调度安排块请求的服务顺序，减少寻道或改善等待；分区与格式化组织可用存储空间；条带化利用多盘并行，镜像通过副本容忍磁盘故障。}
+
+\lecturetopic{SC2005-L23-T01}{磁盘调度：路径、方向与等待}
+
+\textbf{来源：10.20--10.37；采用机械硬盘模型。}寻道需要移动磁头，讲义以 seek distance（寻道距离）近似衡量 seek time（寻道时间）的成本。若磁头依次经过柱面 $h_0,h_1,\ldots,h_m$，总移动量为
+\[
+  D=\sum_{i=0}^{m-1}|h_{i+1}-h_i|.
+\]
+$D$ 的单位是柱面间距，换算成时间还需寻道时间模型。Disk bandwidth（磁盘带宽）为完成传输的总字节数除以从首个请求到最后一次传输完成的总耗时；减少寻道可以提高有效带宽。
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+算法 & 服务规则 & 主要取舍 \\
+\midrule
+FCFS & First-Come, First-Served，按到达顺序服务 & 简单、不会被后来请求插队；磁头可能大幅往返 \\
+SSTF & Shortest-Seek-Time-First，每次选离当前位置最近的待处理请求 & 局部减少寻道；持续负载下远处请求可能饥饿 \\
+SCAN & 沿一个方向服务到磁盘边界，再反向服务；电梯算法 & 扫描持续推进，改善远处请求的服务机会 \\
+C-SCAN & Circular SCAN，只单向服务；到边界后空程返回另一端 & 等待通常更均匀，但回程也消耗时间 \\
+C-LOOK & 单向服务到最远的待处理请求，再回到另一端的待处理请求 & 省去到物理边界的无用移动；回程仍计距离 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+LOOK 是 SCAN 的对应改进：到当前方向最后一个待处理请求就反向，并在反向途中服务；C-LOOK 保持单向服务，回程不服务中间请求。
+
+\textbf{计算规则。}确定初始位置、方向与磁盘边界后，写完整路径并累计相邻位置的距离。SCAN/C-SCAN 可能经过无请求的边界，循环算法的空程也计距离。讲义统计到最后一个请求完成，五种路径及结果见\relatedexercise{SC2005-L23-E01}{磁盘调度共同例题}。
+
+\textbf{饥饿与选择。}有限且不再增加的请求集可以全部处理完。持续到达时，SSTF 可能不断选择附近请求而推迟远处请求；扫描式策略通常更适合高负载，等待时间仍取决于到达模式及扫描能否持续推进。SSTF 的局部最近选择不保证整批路径最短。连续文件分配通常产生相近请求，链接或索引分配允许数据块分散，可能增加寻道。
+
+\lecturetopic{SC2005-L23-T02}{物理格式化、分区与文件系统}
+
+\textbf{来源：10.38--10.39。}Low-level / physical formatting（低级／物理格式化）建立控制器能识别和读写的扇区结构；partitioning（分区）划出存储区域；logical formatting（逻辑格式化）建立文件系统的描述信息、空闲空间管理、目录与文件元数据结构。
+
+Partition（分区）描述空间边界，file system（文件系统）描述区域内文件的组织方式。Volume（逻辑卷）是供上层使用的逻辑存储空间：一块物理设备可以包含多个卷，一个卷也可以通过存储管理机制跨越多块设备。
+\begin{center}
+\input{figures/disk-volume-layout}
+
+{\small 据讲义 10.39 原创重绘；逻辑卷与物理磁盘无须一一对应。}
+\end{center}
+
+\lecturetopic{SC2005-L23-T03}{条带化、镜像与 RAID 层次}
+
+\textbf{来源：10.40--10.44。}Striping（条带化）把数据块分散到多块盘，允许并行传输；mirroring（镜像）保存相同数据的副本，使一块盘故障后仍可读取另一份。
+
+\textbf{块分配。}若数据块从 $0$ 编号、磁盘从 $1$ 编号，$n$ 盘轮转条带化的分配规则为
+\[
+  \boxed{\operatorname{disk}(i)=(i\bmod n)+1}.
+\]
+四盘时，Disk 1--4 分别保存 $\{0,4,8,\ldots\}$、$\{1,5,9,\ldots\}$、$\{2,6,10,\ldots\}$、$\{3,7,11,\ldots\}$。讲义 10.41 的 Disk 2 旁 ``Block 10'' 应为 ``Block 9''；Block 10 属于 Disk 3。条带化的实际速度取决于请求是否可并行及控制器、连接带宽。
+
+\textbf{RAID（Redundant Array of Independent Disks）。}下面的容量按等容量磁盘、忽略管理开销计算，$C$ 为单盘容量；组合级别采用双副本、$n$ 为偶数。
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lp{3.35cm}lX@{}}
+\toprule
+级别 & 组织方式 & 有效容量 & 故障容忍 \\
+\midrule
+RAID 0 & 非冗余条带化，$n$ 块盘 & $nC$ & 无副本，单盘故障即可丢失部分数据 \\
+RAID 1 & 两块盘互为镜像 & $C$ & 一块盘故障后由另一块提供数据 \\
+RAID 0+1 & 条带组之间再镜像 & $nC/2$ & 需保留至少一个完整可用的条带组 \\
+RAID 1+0 & 镜像对之间再条带化 & $nC/2$ & 每个镜像对至少保留一块可用盘 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{center}
+\input{figures/raid-layering}
+
+{\small 据讲义 10.43--10.44 用四盘示意组合层次；RAID 1+0 也称 RAID 10。}
+\end{center}
+
+\textbf{故障判断补充。}图左 D1 故障后，条带组 A 不再完整，依靠组 B；B 内再坏一盘就失去完整组。图右 D1、D3 故障后，各镜像对仍分别保留 D2、D4，数据可用；若 D1、D2 同时故障，同一对两份数据都丢失。\textbf{多盘故障按分组判断。}镜像应对设备故障；误删或错误修改可能同步到副本，仍需要独立备份。
+
+\textbf{一分钟回顾。}磁盘调度先确定方向与边界，再累计相邻位置的移动；空程也有成本。物理格式化建立扇区，分区划出区域，逻辑格式化建立文件系统。条带化允许多盘并行，镜像保存副本；RAID 0 无冗余，RAID 0+1 镜像整个条带组，RAID 10 则要求每个镜像对至少保留一块可用盘。
+\endgroup

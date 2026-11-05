@@ -1,0 +1,30 @@
+% Original four-drive hierarchy based on IO and Disk.pdf, slides 10.43--10.44.
+% Left: mirror of stripes; right: stripe of two-drive mirrors.
+\begin{tikzpicture}[font=\footnotesize,>=Latex,
+  layer/.style={draw=noteBlue,fill=noteBlue!5,rounded corners=2pt,
+    minimum width=2.1cm,minimum height=0.65cm,align=center},
+  disk/.style={draw,fill=gray!8,minimum width=0.95cm,
+    minimum height=0.6cm,align=center}]
+  \node at (3,0.7) {RAID 0+1：镜像条带组};
+  \node[layer] (m) at (3,0) {Mirror（镜像）};
+  \node[layer] (sa) at (1.4,-0.95) {Stripe A};
+  \node[layer] (sb) at (4.6,-0.95) {Stripe B};
+  \draw[->] (m) -- (sa);
+  \draw[->] (m) -- (sb);
+  \foreach \name/\x/\parent in {D1/0.7/sa,D2/2.1/sa,D3/3.9/sb,D4/5.3/sb}{
+    \node[disk] (left\name) at (\x,-1.9) {\name};
+    \draw[->] (\parent) -- (left\name);
+  }
+  \begin{scope}[shift={(7.5,0)}]
+    \node at (3,0.7) {RAID 10：条带化镜像对};
+    \node[layer] (s) at (3,0) {Stripe（条带化）};
+    \node[layer] (ma) at (1.4,-0.95) {Mirror A};
+    \node[layer] (mb) at (4.6,-0.95) {Mirror B};
+    \draw[->] (s) -- (ma);
+    \draw[->] (s) -- (mb);
+    \foreach \name/\x/\parent in {D1/0.7/ma,D2/2.1/ma,D3/3.9/mb,D4/5.3/mb}{
+      \node[disk] (right\name) at (\x,-1.9) {\name};
+      \draw[->] (\parent) -- (right\name);
+    }
+  \end{scope}
+\end{tikzpicture}

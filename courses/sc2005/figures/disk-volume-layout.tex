@@ -1,0 +1,18 @@
+% Original schematic based on IO and Disk.pdf, slide 10.39.
+\begin{tikzpicture}[font=\footnotesize,>=Latex,
+  part/.style={draw=noteBlue,fill=noteBlue!5,minimum height=0.75cm,
+    minimum width=2.4cm,align=center}]
+  \node at (2.65,1.05) {一块设备包含两个卷};
+  \node[part] (a) at (1.25,0) {分区 A / 卷 1};
+  \node[part] (b) at (4.05,0) {分区 B / 卷 2};
+  \node[draw,rounded corners,fit=(a)(b),inner sep=5pt] (disk) {};
+  \node[below=6pt of disk] {物理设备 1};
+  \begin{scope}[shift={(7.7,0)}]
+    \node at (2.65,1.05) {一个卷跨越两块设备};
+    \node[part] (c) at (1.25,0) {设备 2：分区 C};
+    \node[part] (d) at (4.05,0) {设备 3：分区 D};
+    \draw[thick,noteBlue] (c.south) -- ++(0,-0.4)
+      -- ($(d.south)+(0,-0.4)$) -- (d.south);
+    \node at (2.65,-1.05) {共同组成卷 3};
+  \end{scope}
+\end{tikzpicture}
