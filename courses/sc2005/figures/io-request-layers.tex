@@ -1,0 +1,16 @@
+% Original schematic based on IO and Disk.pdf, slide 10.5.
+\begin{tikzpicture}[
+  font=\footnotesize,>=Latex,
+  layer/.style={draw=noteBlue,fill=noteBlue!5,rounded corners=2pt,
+    minimum width=2.2cm,minimum height=0.85cm,align=center}
+]
+  \node[layer] (app) at (0,0) {应用程序\\I/O 请求};
+  \node[layer] (kernel) at (2.9,0) {内核 I/O 子系统\\通用管理};
+  \node[layer] (driver) at (5.8,0) {驱动程序\\设备专用软件};
+  \node[layer,fill=gray!10] (controller) at (8.7,0) {控制器\\硬件};
+  \node[layer,fill=gray!10] (device) at (11.6,0) {设备\\实际读写};
+  \draw[->] (app) -- (kernel);
+  \draw[->] (kernel) -- (driver);
+  \draw[->] (driver) -- (controller);
+  \draw[->] (controller) -- (device);
+\end{tikzpicture}

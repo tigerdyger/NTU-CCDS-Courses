@@ -1,0 +1,104 @@
+% Based on templates/lecture.tex; actual session 22, 2026-11-05 (Week 12).
+% IO and Disk.pdf, slides 10.1--10.19; video titles only, no video content read.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 22 节课：I/O 系统与磁盘读写}
+\label{lecture:SC2005-L22}
+
+\lecturemeta
+  {SC2005-L22}
+  {2026-11-05（第十二教学周）}
+  {IO and Disk，Part 10: I/O System \& Disk}
+  {10.1--10.19（PDF pp.~1--19）；I/O 管理、磁盘结构与读写时间}
+  {Intro and IO System Design and Implementation；Intro and Disk Structure；仅按标题对应，视频未读取}
+  {已完成学习并要求整理；讲义与例题已核对}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\keyidea{文件系统确定要访问的磁盘块，I/O 子系统协调请求与数据传输，驱动和控制器操作设备。机械硬盘的读写时间包含寻道、旋转等待和传输；顺序读取通过减少重复定位提高效率。}
+
+\lecturetopic{SC2005-L22-T01}{I/O 分层与设备管理}
+
+\textbf{来源：10.1--10.6。}设备在数据单位（字符流或块）、访问方式（顺序或随机）、传输时序、独占或共享、速度与读写方向上存在差异。I/O 系统的两个设计目标是 efficiency（效率），减少设备等待与处理开销；以及 generality（通用性），向程序提供统一接口，由下层处理硬件差异。
+
+\begin{center}
+\input{figures/io-request-layers}
+
+{\small 据讲义 10.5 原创重绘；箭头表示请求逐层下达，完成状态由底层向上报告。}
+\end{center}
+
+\textbf{Device driver（设备驱动程序）是软件}，将通用请求转换为设备命令，处理状态和错误；\textbf{device controller（设备控制器）是硬件}，控制实际设备执行操作。Bus（总线）连接处理器、内存与控制器。上层程序调用 \texttt{read()} 等接口，无须直接操作不同设备的控制寄存器。
+
+\textbf{I/O scheduling（I/O 调度）}安排排队请求的服务顺序。磁盘请求的位置不同，调整顺序可以减少磁头移动。具体磁盘调度算法安排在下一节。
+
+\lecturetopic{SC2005-L22-T02}{缓冲、缓存与假脱机}
+
+\textbf{来源：10.7--10.8。}三种机制都可能暂存数据，区别在于用途。
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{3.15cm}XX@{}}
+\toprule
+机制 & 主要作用 & 典型情境 \\
+\midrule
+Buffering（缓冲） & 协调传输双方的速度或传输单位差异 & 数据先进入内存缓冲区，再由程序取走；小份输入可组成较大的处理单位 \\
+Caching（缓存） & 保留数据副本，加快后续访问 & 文件块留在内存，再次读取时减少磁盘访问 \\
+Spooling（假脱机） & 保存输出作业，协调设备的逐个服务 & 多个打印任务先进入队列，打印机依次处理 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+缓冲可以吸收短时间的速度差；输入长期快于消费速度时，有限缓冲区仍会装满。同一块内存可以兼具缓冲和缓存作用。打印程序提交作业后可继续执行，实际输出由 spool 队列协调。
+
+\lecturetopic{SC2005-L22-T03}{阻塞、异步与双缓冲}
+
+\textbf{来源：10.9--10.12。}Blocking I/O（阻塞式 I/O）在请求无法立即完成时，让调用进程进入 Waiting / Blocked 状态；I/O 完成后进入 Ready 状态，再等待 CPU 调度。\textbf{CPU 可以运行其他就绪进程}。
+
+Asynchronous I/O（异步 I/O）在请求被接受后返回，调用者继续处理不依赖本次结果的工作，完成时再接收通知并使用结果。
+
+\textbf{Double buffering（双缓冲）。}用两个缓冲区交替接收和交付数据：
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+阶段 & 设备 & 程序 \\
+\midrule
+启动 & 第一批读入 $b_1$ & 等待第一批数据 \\
+交替一 & 第二批读入 $b_2$ & 处理 $b_1$ 中的数据 \\
+交替二 & 第三批读入已空出的 $b_1$ & 处理 $b_2$ 中的数据 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+读取与处理可重叠，缓冲区再次写入前必须用完旧数据。\textbf{辅助时间模型：}若每批 I/O 耗时 $T_I$，另一阶段处理耗时 $T_P$，且两阶段可独立重叠、忽略协调开销，则串行每批需 $T_I+T_P$，流水线稳定阶段的批次间隔约为 $\max(T_I,T_P)$；启动、收尾仍需时间。改善的是流水线吞吐量。
+
+\textbf{一次读取的路径。}系统调用进入内核后，先检查请求能否直接满足（如缓存命中）；否则交给驱动，必要时阻塞调用进程。驱动向控制器下达命令，设备完成操作并产生中断，中断处理程序与驱动更新完成状态，内核交付结果并使相关等待进程就绪。系统调用、驱动执行、中断处理、必要的进程切换以及数据复制都消耗资源，故 I/O 成本不只包括设备工作时间。
+
+\lecturetopic{SC2005-L22-T04}{磁盘结构与读写时间}
+
+\textbf{来源：10.13--10.19；以下采用机械硬盘模型。}
+
+\noindent\begin{minipage}[c]{0.51\textwidth}
+Platter（盘片）上的同心圆为 track（磁道），每条磁道划分为 sector（扇区）；不同盘面上同半径的磁道组成 cylinder（柱面）。磁头沿半径移动以选择磁道，盘片旋转使目标扇区经过磁头。
+
+操作系统使用一维块编号访问设备，底层将编号映射到存储位置。本讲例题取每扇区 512 B；文件系统的一个分配块可以包含多个扇区。
+\end{minipage}\hfill
+\begin{minipage}[c]{0.46\textwidth}
+\centering
+\resizebox{\linewidth}{!}{\input{figures/disk-positioning}}
+
+{\footnotesize 据讲义 10.15--10.16 原创示意。}
+\end{minipage}\par
+
+\textbf{三个时间分量。}Seek time（寻道时间）用于移动磁头到目标磁道；rotational latency（旋转等待时间）用于等待目标扇区；transfer time（传输时间）用于实际读写数据。\textbf{位于正确磁道仍可能需要旋转等待。}总时间为定位时间加传输时间，定位时间包含寻道与旋转等待。
+
+设转一圈需 $T_{\mathrm{rev}}$，每磁道有 $S$ 个扇区。目标扇区角度均匀分布时，平均旋转等待为 $T_{\mathrm{rev}}/2$。若 $N$ 个连续扇区在同一磁道上、只需一次定位，则
+\[
+  \boxed{T_{\mathrm{I/O}}=
+  \underbrace{T_{\mathrm{seek}}+\frac{T_{\mathrm{rev}}}{2}}_{T_{\mathrm{position}}}
+  +\underbrace{\frac{N}{S}T_{\mathrm{rev}}}_{T_{\mathrm{transfer}}}}.
+\]
+跨磁道时按题意另计定位或切换成本。\textbf{计算统一采用 10.17 的参数：}$T_{\mathrm{seek}}=10$ ms、$T_{\mathrm{rev}}=8$ ms、平均等待 4 ms、$S=1024$，故一次平均定位为 14 ms。
+
+讲义 10.18 的随机读按\textbf{每个扇区单独定位}计算，$N$ 个扇区约需 $N(14+8/1024)$ ms；10.19 的顺序读将定位成本分摊到连续数据上。KB、MB 在这些例题中采用二进制换算。完整条件和计算见\relatedexercise{SC2005-L22-E01}{分散扇区随机读取}与\relatedexercise{SC2005-L22-E02}{连续数据顺序读取}。请求大小本身不能确定定位次数，须结合数据布局判断。
+
+\textbf{一分钟回顾。}驱动是软件，控制器是硬件，通用 I/O 子系统协调请求。缓冲解决传输不匹配，缓存加速重复访问，假脱机组织输出作业。阻塞让调用进程等待，异步与双缓冲可重叠 I/O 和处理。机械硬盘时间分为寻道、旋转等待和传输；计算时先数清定位次数，再计算连续数据的传输时间。
+\endgroup

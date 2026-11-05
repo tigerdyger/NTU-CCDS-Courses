@@ -1,0 +1,63 @@
+% Based on templates/lecture-example.tex.
+% Original worked examples: IO and Disk.pdf, slides 10.17--10.19.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2005-L22-EX}{第 22 讲：磁盘随机与顺序读取时间}
+
+\examplemeta
+  {SC2005-L22-EX}
+  {2026-11-05}
+  {IO and Disk 10.17--10.19（PDF pp.~17--19）}
+  {按讲义原例题整理，补全换算及定位条件}
+  {已完成学习并要求整理}
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\exercisequestion{SC2005-L22-E01}{分散扇区的随机读取}
+\textbf{题意与来源。}讲义 10.17--10.18：平均寻道时间 10 ms，转一圈 8 ms，平均旋转等待 4 ms；每扇区 512 B，每磁道 1024 个扇区。先求随机读一个扇区的平均时间，再求读取总共 4 KB、128 KB、1 MB 的时间。\textbf{每个扇区分别随机定位}，各次访问依次完成；沿用课件的二进制单位，$1\,\mathrm{KB}=1024$ B、$1\,\mathrm{MB}=1024^2$ B。对应\relatedtopic{SC2005-L22-T04}{磁盘读写时间}。
+
+\begin{workedsolution}
+单个扇区需要一次寻道、一次旋转等待及一个扇区的传输：
+\[
+  T_1=10+4+\frac{1}{1024}\times8
+  =14.0078125\text{ ms}\approx14\text{ ms}.
+\]
+总扇区数为数据字节数除以 512，独立访问 $N$ 次需 $NT_1$。按讲义取每次约 14 ms：
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+数据量 & 扇区数 $N$ & 总时间（按 $T_1\approx14$ ms） \\
+\midrule
+4 KB & $4\times1024/512=8$ & $8\times14=112$ ms \\
+128 KB & $128\times1024/512=256$ & $256\times14=3584$ ms $=3.584$ s \\
+1 MB & $1024^2/512=2048$ & $2048\times14=28672$ ms $=28.672$ s \\
+\bottomrule
+\end{tabular}
+\end{center}
+保留单扇区传输时间时，三项分别为 112.0625 ms、3.586 s、28.688 s。主要成本来自重复定位；连续排列的多个扇区无需每个都单独定位，应按其布局计算。
+\end{workedsolution}
+
+\exercisequestion{SC2005-L22-E02}{连续数据的顺序读取}
+\textbf{题意与来源。}讲义 10.17、10.19：使用相同参数，即寻道 10 ms、整圈旋转 8 ms、平均旋转等待 4 ms、扇区 512 B、每磁道 1024 个扇区，估算连续读取 4 KB、128 KB、1 MB 的时间。KB、MB 仍按二进制换算；前两项假定数据全部落在同一磁道；1 MB 按占满两条完整磁道、每磁道各付一次平均定位时间计算。对应\relatedtopic{SC2005-L22-T04}{磁盘读写时间}。
+
+\begin{workedsolution}
+\textbf{4 KB 与 128 KB。}一次平均定位为 $10+4=14$ ms，只在其后增加连续数据的传输时间：
+\[
+  T_{4\mathrm{KB}}=14+\frac{8}{1024}\times8
+  =\boxed{14.0625\text{ ms}},\qquad
+  T_{128\mathrm{KB}}=14+\frac{256}{1024}\times8
+  =\boxed{16\text{ ms}}.
+\]
+数据量增大而定位次数不变，因此增加的主要是传输时间。
+
+\textbf{1 MB。}每磁道容量为 $1024\times512=524288$ B，即 512 KiB。1 MiB 占两条完整磁道，每条磁道需 $14+8=22$ ms，故
+\[
+  T_{1\mathrm{MB}}=2(14+8)=\boxed{44\text{ ms}}.
+\]
+44 ms 采用讲义的两磁道定位模型。若起点未对齐磁道边界，1 MiB 可跨三条磁道；实际磁道切换成本需按硬件或题目条件给定。
+
+\textbf{比较。}分散读取的每个扇区都付定位成本，顺序读取则让一次定位服务更多数据。计算前先确定扇区数、跨越磁道数和定位次数，不能仅凭请求大小决定耗时。
+\end{workedsolution}
+\endgroup
