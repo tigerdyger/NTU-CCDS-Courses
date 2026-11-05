@@ -1,0 +1,17 @@
+% Original redraw of Tutorial 6, p. 1, Figure Q5.2; numeric x scale.
+\begin{tikzpicture}[x=0.61cm,y=1.35cm,>=Latex,font=\small]
+ \draw[->] (0,0) -- (22,0) node[right] {$x$};
+ \draw[->] (0,0) -- (0,1.45) node[above] {$\mu(x)$};
+ \draw[gray!45,dotted] (0,1) node[left,black] {$1$} -- (21,1);
+ \draw[noteBlue,thick] (0,0) -- (3,1) -- (7,0);
+ \draw[verifyOrange,thick,dashed] (4,0) -- (6,1) -- (9,1) -- (12,0);
+ \draw[teal!70!black,thick,dash dot] (9,0) -- (12,1) -- (16,1) -- (21,0);
+ \draw[violet,thick,densely dotted] (15,0) -- (18,1) -- (21,1);
+ \foreach \x in {0,3,4,6,7,9,12,15,16,18,21}{
+  \draw (\x,0.03) -- (\x,-0.03) node[below] {\scriptsize $\x$};
+ }
+ \node[above,noteBlue] at (3,1) {$A_{11}$};
+ \node[above,verifyOrange] at (7.5,1) {$A_{12}$};
+ \node[above,teal!70!black] at (14,1) {$A_{13}$};
+ \node[above,violet] at (19.5,1) {$A_{14}$};
+\end{tikzpicture}
