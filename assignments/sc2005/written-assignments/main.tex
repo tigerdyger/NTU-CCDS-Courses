@@ -1114,4 +1114,114 @@ Indexed allocation（索引分配）通过索引定位数据块，支持随机�
 {\small\textbf{补充来源：}McKusick 等，\href{https://www.cs.columbia.edu/~junfeng/11sp-w4118/lectures/ffs.pdf}{A Fast File System for UNIX}，两种分配大小的实现例。}
 \end{checkedsolution}
 
+% Written assignment: SC2005-HW08
+% Source: user-supplied NTULearn Lecture Quiz 8, completed Questions 1--5;
+% IO and Disk, slides 10.4--10.5, 10.9, 10.16, 10.42--10.43.
+% Completion/check date: 2026-11-06. No grades or LMS export included.
+\section{Lecture Quiz 8}
+\label{homework:SC2005-HW08}
+
+\exercisemeta
+  {SC2005-HW08}
+  {2026-11-06}
+  {NTULearn Lecture Quiz 8；IO and Disk 10.4--10.5、10.9、10.16、10.42--10.43}
+  {五道题已完成，并根据讲义与平台反馈核对}
+  {是（2026-11-06）}
+
+\exercisequestion{SC2005-HW08-Q01}{Question 1：Device Drivers}
+
+\textbf{题干：} Which of the following statements regarding device drivers is \textbf{not true}?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item Device drivers manage only the basic I/O hardware devices.
+  \item Device drivers present a uniform device access interface to the kernel I/O subsystem.
+  \item Add new I/O device doesn't need to change I/O interface and kernel I/O subsystem.
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L22-T01}
+
+\begin{checkedsolution}
+Device driver（设备驱动程序）封装特定设备的操作方式，将通用请求转换为设备命令，向 kernel I/O subsystem（内核 I/O 子系统）提供统一接口；管理范围不限于 basic I/O devices。新增设备符合已有接口时，可通过新增或加载相应驱动接入，无须改变通用 I/O 接口与子系统。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW08-Q02}{Question 2：Asynchronous I/O 与进程状态}
+
+\textbf{题干：} Which state will a process be after performing an asynchronous I/O system call?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item running
+  \item waiting
+  \item ready
+\end{enumerate}
+
+\textbf{正确答案：A}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L22-T03}
+
+\begin{checkedsolution}
+Asynchronous I/O（异步 I/O）在请求排队后返回，进程继续执行不依赖本次 I/O 结果的代码，完成时再接收通知。因此本题选择 Running（运行态）。Blocking I/O（阻塞式 I/O）则在等待设备完成时进入 Waiting，完成后转入 Ready，再等待调度。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW08-Q03}{Question 3：Hard Disk Drive 访问时间}
+
+\textbf{题干：} Read or write performance of a hard disk drive depends on
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item data transfer time
+  \item seek time
+  \item rotational latency
+  \item all of the above
+\end{enumerate}
+
+\textbf{正确答案：D}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L22-T04}
+
+\begin{checkedsolution}
+机械硬盘需要先移动磁头至目标磁道，再等待目标扇区转到磁头下，最后传输数据。忽略排队与控制器开销时，
+\[
+  T_{\mathrm{I/O}}=T_{\mathrm{seek}}+T_{\mathrm{rotation}}+T_{\mathrm{transfer}}.
+\]
+三项分别为 seek time（寻道时间）、rotational latency（旋转等待时间）与 data transfer time（数据传输时间），均影响读写性能。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW08-Q04}{Question 4：Hard Disk Drive 访问时间（重复题）}
+
+\textbf{题干：} Read or write performance of a hard disk drive depends on
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item data transfer time
+  \item seek time
+  \item rotational latency
+  \item all of the above
+\end{enumerate}
+
+\textbf{正确答案：D}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L22-T04}
+
+\begin{checkedsolution}
+本题与 Question 3 的题干、选项相同，保留原题号。机械硬盘的读写性能同时受寻道、旋转等待和数据传输时间影响，故仍选 D。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-HW08-Q05}{Question 5：RAID 1 有效容量}
+
+\textbf{题干：} Consider a set of four hard-disks, each of 200 GB storage capacity. What are the corresponding storage capacities if they are configured using RAID level 1?
+
+\begin{enumerate}[label=\Alph*.,leftmargin=2.4em]
+  \item 200 GB
+  \item 400 GB
+  \item 600 GB
+  \item 800 GB
+\end{enumerate}
+
+\textbf{正确答案：B}\qquad
+\textbf{对应讲义：}\texttt{SC2005-L23-T03}
+
+\begin{checkedsolution}
+按讲义 10.42--10.43 的双盘镜像模型，每个 logical disk（逻辑盘）由两块互为副本的 physical disks（物理盘）组成。四块盘两两配对，每对提供 200 GB，有效总容量为
+\[
+  C_{\mathrm{usable}}=\frac{4}{2}\times200=400\ \text{GB}.
+\]
+这里统计两个镜像对的可用容量之和。若另行指定四块盘保存同一份数据、组成四副本镜像，则容量为 200 GB；计算前应明确镜像分组与副本数。
+\end{checkedsolution}
+
 \end{document}
