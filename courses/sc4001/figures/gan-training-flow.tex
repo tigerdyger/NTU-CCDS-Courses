@@ -1,0 +1,21 @@
+% Original schematic based on 12_gan.pdf pp. 22, 29--30.
+\begin{tikzpicture}[
+ font=\small,>=Stealth,
+ box/.style={draw=noteBlue,fill=noteBlue!4,rounded corners,
+   text width=1.8cm,minimum height=0.95cm,align=center,inner sep=4pt},
+ flow/.style={->,thick,noteBlue}
+]
+\node[box] (z) at (0,0) {随机输入\\$z\sim p(z)$};
+\node[box] (g) at (3.1,0) {生成器\\$G_\theta$};
+\node[box] (fake) at (6.2,0) {生成样本\\$\hat x=G(z)$};
+\node[box] (d) at (9.3,0) {判别器\\$D_\phi$};
+\node[box] (out) at (12.4,0) {真假分数\\$(0,1)$};
+\node[box] (real) at (6.2,1.65) {真实样本\\$x\sim p_{\rm data}$};
+\draw[flow] (z)--(g);
+\draw[flow] (g)--(fake);
+\draw[flow] (fake)--(d);
+\draw[flow] (d)--(out);
+\draw[flow] (real.east)-|(d.north);
+\draw[flow,dashed] (d.south)--++(0,-0.8)-|node[pos=0.5,below,align=center]
+  {更新 $G$ 时：梯度经过 $D$，固定 $D$ 的参数}(g.south);
+\end{tikzpicture}

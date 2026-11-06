@@ -1,0 +1,109 @@
+% Source: 12_gan.pdf pp. 32--50, 56--62, 78.
+% Prepared from templates/lecture-example.tex.
+% E04 adds a labelled simultaneous-gradient calculation to the source toy game.
+
+\exercisegroup{SC4001-L12-EX}{第 12 讲：生成对抗网络}
+
+\examplemeta
+  {SC4001-L12-EX}
+  {2026-11-06}
+  {12\_gan：损失数值示例、Example 1--2 与 Non-convergence Example}
+  {损失与补充推导已复算；实验结果按讲义解读，未重跑训练}
+  {已整理，待审阅}
+
+\exercisequestion{SC4001-L12-E01}{损失值与优化方向}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L12-T02}{Minimax 与交替训练}。
+
+\textbf{题目（pp.~32--50 的数值示例）。}对一张真实样本 $x$ 和一张生成样本 $G(z)$，比较两种判别输出：A 为 $D(x)=0.8,D(G(z))=0.2$，B 为 $D(x)=0.2,D(G(z))=0.8$。使用自然对数，计算判别器目标 $V=\log D(x)+\log(1-D(G(z)))$，再比较生成器原始损失，说明双方各自偏好的方向。
+
+\begin{workedsolution}
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+情形 & $\log D(x)$ & $\log(1-D(G(z)))$ & $V$ \\
+\midrule
+A & $\ln0.8\approx-0.223144$ & $\ln0.8\approx-0.223144$ & $-0.446287$ \\
+B & $\ln0.2\approx-1.609438$ & $\ln0.2\approx-1.609438$ & $-3.218876$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+$D$ 最大化 $V$，因此偏好 A；最小化 $L_D=-V$ 得到相同方向。
+
+更新 $G$ 时，真实样本项对其参数的导数为零，只比较 $L_G^{\rm MM}=\ln(1-D(G(z)))$。生成样本得分由 $0.2$ 增至 $0.8$ 时，损失从 $-0.223144$ 降至 $-1.609438$，因此 $G$ 希望生成样本被判断为真实。
+
+作为损失定义的对照，非饱和目标 $L_G^{\rm NS}=-\ln D(G(z))$ 在这两个得分处分别为 $1.609438$ 和 $0.223144$，也偏好更大的生成样本得分。两种目标的优化方向一致，梯度大小不同。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L12-E02}{Example 1：从均匀噪声学习一维 Gaussian 数据}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L12-T01}{学习数据分布}、\relatedtopic{SC4001-L12-T02}{对抗训练}。
+
+\textbf{题目（pp.~56--60）。}目标数据的均值与标准差均为 $1$；生成器输入为 $z\sim U(-1,1)$。按讲义构建生成器与判别器，解释如何训练，以及如何通过采样直方图和 loss 曲线检查结果。
+
+\begin{workedsolution}
+\nopagebreak[4]
+题干目标为 $x\sim\mathcal N(1,1)$，两个参数分别是均值与方差，此处标准差也等于 $1$。网络结构为
+\[
+ G:\ 1\to5\to5\to1,\qquad
+ D:\ 1\to10\to10\to1.
+\]
+两者均有两个 tanh 隐藏层；$G$ 输出层为线性映射，$D$ 输出为二分类 sigmoid。讲义的“四层”包含输入层，并非四个隐藏层。
+
+每次抽取真实 Gaussian 样本和均匀噪声，用真实与生成样本训练 $D$，再通过固定参数的 $D$ 更新 $G$。学习目标是匹配整体分布，随机输入 $z$ 与真实样本之间没有指定的一一配对关系。
+
+讲义分别展示训练前、$25\,000$ 次和 $70\,000$ 次迭代后的直方图，每幅使用 $10\,000$ 个采样点。比较重点是中心、宽度和形状是否接近目标；loss 的变化还包含两个网络相互适应的影响，不能单独证明分布匹配。
+
+\textbf{图文核对。}p.~56 指定均值、标准差均为 $1$，但 pp.~57--59 图中的横轴为 $[-1,1]$、峰值接近 $0$，与题干不一致。\verify{结果图是否经过额外变换或沿用其他实验，需配套 notebook 核实。}此处按题干记录网络任务，图仅用于说明分布形状的比较。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L12-E03}{Example 2：MNIST 生成器与判别器的维度}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L12-T03}{图像生成结构}。
+
+\textbf{题目（pp.~61--62）。}从每维取自 $U(-1,1)$ 的 $100$ 维噪声向量生成 $28\times28$ 灰度 MNIST 图像。写出讲义中两个全连接网络的维度与激活函数，说明输出含义及训练图的读法。
+
+\begin{workedsolution}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+网络 & 维度与激活 & 输出解释 \\
+\midrule
+$G$ & $100\to256\to512\to1024\to784$；隐藏层 ReLU，输出 tanh & $784$ 个数排回 $28\times28\times1$ 像素网格 \\
+$D$ & $784\to1024\to512\to256\to1$；隐藏层 ReLU，输出 sigmoid & 一个真假分数，训练标签为真实 $1$、生成 $0$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+真实图片先展平为 $784$ 维。由于 $G$ 输出范围是 $[-1,1]$，实现时真实像素也应缩放到相同范围；这是依据输出激活补充的预处理要求。
+
+这个判别器只判断真假。$z$ 提供生成变化，显式的类别控制需另加条件输入。
+
+p.~62 展示起始及第 $10,20,30,40,50$ 个 epoch 的生成图，可观察从无明显结构到出现笔画和可辨认数字的过程。图中可检查笔画合理性、类别变化与样本重复情况；对分布覆盖的判断还需结合评估指标。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L12-E04}{双人目标的旋转趋势}
+
+\textbf{对应知识点：}\relatedtopic{SC4001-L12-T04}{训练不稳定与不收敛}。
+
+\textbf{题目（Non-convergence Example，p.~78）。}考虑局部示意目标 $V(x,y)=xy$，一方对 $x$ 最小化，另一方对 $y$ 最大化。解释双方为何会不断改变更新方向。以下再补充一个明确的离散版本：$x,y\in\mathbb R$，采用相同步长 $\eta>0$，用同一时刻的 $x,y$ 同时更新，计算一步后到原点的距离。
+
+\begin{workedsolution}
+偏导为 $\partial V/\partial x=y$、$\partial V/\partial y=x$。故 $x$ 沿 $-y$ 方向移动，$y$ 沿 $+x$ 方向移动；一方跨过零点后，另一方的更新方向随之改变，形成旋转趋势。
+
+\textbf{补充推导：同时梯度更新。}在上述离散规则下，
+\[
+ x'=x-\eta y,\qquad y'=y+\eta x.
+\]
+令 $r^2=x^2+y^2$，展开得到
+\[
+ \begin{aligned}
+ (r')^2
+ &=(x-\eta y)^2+(y+\eta x)^2\\
+ &=x^2-2\eta xy+\eta^2y^2+y^2+2\eta xy+\eta^2x^2\\
+ &=(1+\eta^2)r^2.
+ \end{aligned}
+\]
+非零起点满足 $r'>r$，因此这种同时更新向外旋转，不能收敛到原点；原点本身保持不变。这说明各自沿正确的下降或上升方向更新，也不保证双人优化收敛。讲义用它说明局部动力学；具体半径公式依赖本题给定的同时更新规则，不直接套用于交替更新的 GAN。
+\end{workedsolution}
