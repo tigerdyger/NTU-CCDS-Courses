@@ -1,0 +1,36 @@
+% LEC08 Stereo Vision, PDF pp. 31 and 43. Questions grouped by method.
+\exercisegroup{SC4061-L13-EX}{第 13 讲：立体匹配与三维重建}
+
+\examplemeta
+  {SC4061-L13-EX}
+  {2026-11-10}
+  {LEC08 Stereo Vision -- 2026，p.~31（Q1--4）、p.~43（Q1--2）}
+  {已核对题干、计算与选项}
+  {已学习}
+
+\exercisequestion{SC4061-L13-E01}{两个候选窗口的 SSD}
+\nopagebreak[4]
+\textbf{讲义 p.~31，Q1。}在两个 $5\times5$ 候选窗口中，A 的每个像素都比模板亮 2 个灰度单位；B 有 24 个像素与模板相同，另一个亮 11 个单位。按 \relatedtopic{SC4061-L13-T01}{SSD} 选哪个？
+
+\begin{checkedsolution}
+逐像素平方后再求和，$C_A=25\times 2^2=100$，$C_B=24\times0^2+11^2=121$，因此选 A（选项 A）。虽然 B 有 24 个像素完全匹配，但剩下一个像素的平方差已超过 A 的总和。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L13-E02}{可见性、对应关系与匹配方法}
+\nopagebreak[4]
+\textbf{讲义 p.~31，Q2--4。}一个表面点在右图被挡住，会破坏外观匹配的哪项假设？若两图中都选到了像点，什么条件使它们能用于三角测量？视点相差较大时应怎样寻找候选？
+
+\begin{checkedsolution}
+被挡住的表面点只在一个视图中可见，违反无遮挡假设（Q2，B）。
+三角测量要求两个像点来自同一个三维点（Q3，C）；它们的横坐标通常不同，坐标差正是测深使用的视差。
+视点差异大时，优先匹配随视点变化较小的局部特征（Q4，B），例如比较角点附近的描述子。见\relatedtopic{SC4061-L13-T02}{特征匹配}。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-L13-E03}{固定相机后怎样重建场景}
+\nopagebreak[4]
+\textbf{讲义 p.~43，Q1--2。}两台相机固定在三脚架上。从拍摄标定物到恢复新场景中一个点的位置，需要哪些对应关系？如何使用该点的四个方程？
+
+\begin{checkedsolution}
+先在标定物上建立已知三维点与各图二维像点的对应，求出两台相机各自的投影矩阵。保持相机位姿，再在新场景的左右图之间找出同一个点的两次二维观测，最后求三维坐标（Q2，B）。
+每个二维观测贡献两行，将四行一起组成 $W\bm X=\bm q$，以伪逆求 $\hat{\bm X}=W^+\bm q$（Q1，B）。四行都保留，每个像素坐标都参与估计。见\relatedtopic{SC4061-L13-T03}{三角测量的方程}。
+\end{checkedsolution}
