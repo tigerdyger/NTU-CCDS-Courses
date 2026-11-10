@@ -1,0 +1,94 @@
+% Tutorial Twelve, tut12.pdf, printed p. 12-1 (PDF p. 1), Questions 1--4.
+% Source has no solutions. Q1 follows IO and Disk slides 10.5 and 10.7--10.9.
+\begingroup
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+
+\exercisegroup{SC2005-TUT12}{Tutorial 12：I/O 系统与磁盘调度}
+\label{tutorial:SC2005-TUT12}
+
+\noteintro{
+{\small 2026-11-10（第十三教学周）。来源：\texttt{tut12.pdf}，\emph{I/O Systems; Disk}，p.~12-1（PDF p.~1），Questions 1--4。原题未附答案；判断依据为课堂讲义，磁盘调度结果按题给数据计算。}
+}
+
+\exercisequestion{SC2005-TUT12-Q01}{判断缓冲、非阻塞 I/O 与设备驱动的作用}
+
+\textbf{题目。}判断三项说法并说明理由。对应讲义为\relatedtopic{SC2005-L22-T01}{I/O 分层}、\relatedtopic{SC2005-L22-T02}{缓冲与缓存}及\relatedtopic{SC2005-L22-T03}{I/O 调用方式}。
+
+\begin{checkedsolution}
+\textbf{(a)「用 buffering 提高刚写完又反复读取的文件的访问效率」——按讲义判错。}
+讲义 10.7--10.8 把这个例子归入 caching（缓存）：写过的文件块仍有副本留在内存，重读可以直接命中。Buffering（缓冲）在传输过程中暂存数据，例如把若干小批写入合并成较大的一次传输。
+
+\textbf{(b)「非阻塞 I/O 调用使进程进入等待态」——错。}
+若当下没有数据可读，非阻塞读取可以立即返回，告诉调用者稍后重试。进程可以继续执行，无须为这次 I/O 等待设备就绪。
+
+\textbf{(c)「设备驱动属于 kernel I/O subsystem」——按讲义的分层图判错。}
+图 10.5 把通用内核 I/O 子系统和各设备驱动画在上下两层。上层安排请求，调用下层驱动；驱动属于内核软件，负责向相应的硬件控制器发出具体命令。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT12-Q02}{顺序读文件：重叠读盘和计算}
+
+\textbf{题目。}进程用一个缓冲区，每次同步读取一个文件块，处理完才读下一块，直至文件结束。(a) 怎样缩短处理整个文件的时间？(b) 若机械磁盘上的进程大都这样顺序读取，哪种文件分配方式有利于 I/O？
+
+\begin{checkedsolution}
+\textbf{(a) 异步预读配合\relatedtopic{SC2005-L22-T03}{双缓冲}。}先将第 1 块读入 A。CPU 处理 A 时，同时把第 2 块读入 B；随后 CPU 处理 B，磁盘把第 3 块读入已用完的 A。每次交换前要确认下一块已读好，复用缓冲区前要确认旧数据已处理完。若每块读盘耗时 $R$、处理耗时 $C$，充分重叠后，稳态下每处理完一块约用 $\max(R,C)$，原循环则需 $R+C$。
+
+\textbf{(b) \relatedtopic{SC2005-L21-T01}{连续分配}（contiguous allocation）。}让一个文件中逻辑相邻的块在盘上也相邻。按顺序读取时，磁头可以连续传输较长的一段数据，减少重新定位的开销。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT12-Q03}{随机读取一万块，为什么测不出 SCAN 的优势？}
+
+\textbf{题目。}厂商称其驱动用 SCAN 按柱面扫描，同一柱面的多个请求再按扇区顺序排列。测试程序随机读取分散在盘上的 $10\,000$ 个块，测得的性能与 FCFS 相当。(a) 能否据此断定厂商说谎？(b) 什么情况下重排请求没有收益，甚至使系统变慢？
+
+\begin{checkedsolution}
+\textbf{(a) 单凭这个结果无法判断。}关键是磁盘每次选请求时有几个候选。假如测试程序同步逐次提交读取，而且没有其他进程同时读盘，每次就只有一个请求可选。即使地址随机且请求总数很多，SCAN 和 FCFS 仍会服务同一串柱面，同柱面的扇区排序也没有机会起作用。
+
+\textbf{(b) 队列很短，或到达顺序已经接近物理顺序。}前者缺少可重排的请求，后者本来就很少寻道。若维护和搜索队列所用的时间超过节省的磁头定位时间，整体性能会下降。对应讲义见\relatedtopic{SC2005-L23-T01}{磁盘调度与磁头路径}。
+\end{checkedsolution}
+
+\exercisequestion{SC2005-TUT12-Q04}{按到达时刻执行 SSTF，计算平均服务时间}
+
+\textbf{题目。}磁盘柱面编号 $0$--$199$，磁头从 $0$ 出发。移动 $T$ 个柱面耗时 $20+0.1T$ ms，每次请求还需旋转等待 $2$ ms、传输 $8$ ms。按下表给出的到达时刻和目标柱面，用最短寻道时间优先（SSTF）求每个请求的平均服务时间。
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrrrrrrrr@{}}
+\toprule
+到达时刻（ms） & 0 & 15 & 20 & 23 & 30 & 35 & 50 & 65 & 70 & 88 \\
+目标柱面       & 45 & 132 & 35 & 4 & 23 & 50 & 70 & 40 & 10 & 35 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{checkedsolution}
+每次完成一个请求，再从\textbf{已经到达}的请求中选距离当前磁头最近的一个。本次服务耗时为 $S=30+0.1T$ ms。第一次完成时为 $34.5$ ms，去柱面 $50$ 的请求还差 $0.5$ ms 才到，因此磁头从 $45$ 去 $35$。第二次完成时为 $65.5$ ms，此时去 $40$ 的请求已到；另一个去 $35$ 的请求要到 $88$ ms 才出现。
+
+\begin{center}
+\small
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+磁头移动 & 移动柱面数 $T$ & 到达（ms） & 开始（ms） & 服务 $S$（ms） & 完成（ms） \\
+\midrule
+$0\to45$   &45 & 0 &   0.0 &34.5 & 34.5 \\
+$45\to35$  &10 &20 &  34.5 &31.0 & 65.5 \\
+$35\to40$  & 5 &65 &  65.5 &30.5 & 96.0 \\
+$40\to35$  & 5 &88 &  96.0 &30.5 &126.5 \\
+$35\to23$  &12 &30 & 126.5 &31.2 &157.7 \\
+$23\to10$  &13 &70 & 157.7 &31.3 &189.0 \\
+$10\to4$   & 6 &23 & 189.0 &30.6 &219.6 \\
+$4\to50$   &46 &35 & 219.6 &34.6 &254.2 \\
+$50\to70$  &20 &50 & 254.2 &32.0 &286.2 \\
+$70\to132$ &62 &15 & 286.2 &36.2 &322.4 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+十次服务共移动 $224$ 个柱面。每个请求平均占用磁盘的时间为
+\[
+ \overline S=\frac{10\times30+0.1\times224}{10}
+            =\boxed{32.24\ \mathrm{ms}}.
+\]
+若从请求\emph{到达}起算到完成，还要计入排队。例如去 $132$ 的请求只占用磁盘 $36.2$ ms，却在到达后 $322.4-15=307.4$ ms 才完成。按表中各行的“完成减到达”取平均，得到 $135.56$ ms。见\relatedtopic{SC2005-L22-T04}{磁盘读写时间}和\relatedtopic{SC2005-L23-T01}{SSTF 调度规则}。
+\end{checkedsolution}
+
+\endgroup
