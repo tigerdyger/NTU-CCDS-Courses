@@ -1,0 +1,105 @@
+% Tutorial 8, Week 13. Problems p. 1: Q1(a--e), Q2(a--c).
+% Solutions pp. 2--7: Q1; pp. 8--9: additional SSD problem; pp. 10--13: Q3 = Problems Q2.
+\begingroup
+\setlength{\parskip}{0.4em}
+\exercisegroup{SC4061-TUT08}{Tutorial 08：Stereo Vision}
+\label{tutorial:SC4061-TUT08}
+
+\noteintro{
+{\small 2026-11-10（第十三教学周）。\emph{LEC08 Stereo Vision -- Tutorial Problems} 第 1 页有两题。配套 \emph{Tutorial Solutions} 第 2--7 页解第 1 题，第 10--13 页的 Q3 对应题册第 2 题；第 8--9 页的 Q2 为补充题。}
+}
+
+\exercisequestion{SC4061-TUT08-Q01}{第 1 题：由视差测深，基线至少要多长？}
+
+\textbf{题设。}两台针孔相机朝向相同、焦距均为 $f$，右光心相对左光心沿 $x$ 方向平移 $T>0$。同一空间点在两幅图上的水平坐标分别为 $x_l,x_r$，均从各自主点量起，向右为正。记视差 $d=x_l-x_r$。对应讲义见\relatedtopic{SC4061-L12-T03}{双目几何}与\relatedtopic{SC4061-L12-T04}{误差与立体校正}。
+
+\begin{checkedsolution}
+\textbf{(a) 由相似三角形求深度。}如图，右相机所见的横向坐标为 $X_r=X_l-T$，两台相机所见的深度均为 $Z$。
+\par\noindent
+\begin{minipage}[c]{0.44\linewidth}
+\centering
+\begin{tikzpicture}[x=1.02cm,y=0.83cm,>=Latex,font=\small]
+  \coordinate (L) at (0,0); \coordinate (R) at (4.2,0); \coordinate (P) at (2.6,2.5);
+  \draw[dashed,gray] (0,0)--(0,2.55) (4.2,0)--(4.2,2.55);
+  \draw[black!65] (-.3,.78)--(1.12,.78) (3.35,.78)--(4.53,.78);
+  \draw[noteBlue,thick] (L)--(P); \draw[ntuRed,thick] (R)--(P);
+  \draw[<->] (0,-.55)--node[fill=white,inner sep=1pt] {$T$}(4.2,-.55);
+  \fill (L) circle(1.6pt) node[below left] {$O_l$};
+  \fill (R) circle(1.6pt) node[below right] {$O_r$};
+  \fill (P) circle(1.6pt) node[above] {$P$};
+  \fill[noteBlue] (.8112,.78) circle(1.6pt) node[above left] {$x_l$};
+  \fill[ntuRed] (3.7008,.78) circle(1.6pt) node[above right] {$x_r$};
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.53\linewidth}
+\[
+ x_l=\frac{fX_l}{Z},\qquad x_r=\frac{f(X_l-T)}{Z}.
+\]
+两式相减得到 $d=fT/Z$，故 $\boxed{Z=fT/d}$。图中右像点在主点左侧，$x_r<0$；代入时保留坐标的符号。
+\end{minipage}
+\par
+
+\Needspace{4\baselineskip}
+\textbf{(b) 视差的测量误差会带来多大的深度误差？}固定 $f,T$，有 $\mathrm dZ/\mathrm dd=-fT/d^2$。测得的视差偏大时，算出的深度偏小。对 $|\delta d|\ll d$ 的小误差，取一阶近似：
+\[
+ |\delta Z|\approx\frac{fT}{d^2}|\delta d|
+ =\frac{Z^2}{fT}|\delta d|,\qquad
+ \frac{|\delta Z|}{Z}\approx\frac{|\delta d|}{d}.
+\]
+
+\textbf{(c) 在 $10\,\mathrm m$ 处将相对深度误差控制在 $1\%$。}CCD 每行 $2048$ 像素，宽 $8\,\mathrm{mm}$，焦距为 $16\,\mathrm{mm}$。按参考解答忽略错配，只考虑整像素定位：左右坐标各有至多半个像素的取整误差，视差的最坏误差为 $1$ 像素。像素间距为 $8/2048=1/256\,\mathrm{mm}$，焦距换成像素就是 $f_{\rm px}=16\times256=4096$。要使 $1/d_{\rm px}\le 0.01$，视差须至少为 $100$ 像素。代回 (a)，一阶估算的最短基线为
+\[
+ T_{\min}\approx\frac{10\,\mathrm m\times100}{4096}
+ =0.24414\,\mathrm m\approx\boxed{24.4\,\mathrm{cm}}.
+\]
+
+\textbf{(d) 长、短基线怎样取舍？}在相同深度、焦距和视差测量误差下，长基线使视差变大，深度估计更准。但两图的局部外观差异和遮挡往往增加，匹配更难。短基线使同一表面在两幅图上看起来更接近，代价是远处的小视差对像素误差更敏感。
+
+\textbf{(e) 朝向和焦距不同，能否只变换图像来校正？}可以。对已标定的针孔相机，保留两台相机各自的光心，为它们选择同一虚拟朝向和焦距，使虚拟水平轴沿基线方向。分别用一个 $3\times3$ 单应矩阵将原图重投影到校正视图。绕各自光心改变观察方向和改变焦距，像点变换都与场景深度无关，因此每幅图可用一个矩阵完成。校正后对应点位于同一行，两光心间的平移仍提供测深所需的水平视差。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT08-S01}{补充题：用互相关计算整幅 SSD 分数图}
+
+\textbf{来源与题意。}解答册 Q2（第 8--9 页）。让实数模板 $G$ 在图像 $I$ 上滑动，求每个窗口与模板的平方差之和。忽略边界，只比较模板完整落在图内的位置。见\relatedtopic{SC4061-L13-T01}{外观匹配与 SSD}。
+
+\begin{checkedsolution}
+设 $I_{x,y}(i,j)=I(x+i,y+j)$，以下各项都对模板位置 $(i,j)$ 求和。展开平方：
+\[
+ S(x,y)=\sum_{i,j} I_{x,y}(i,j)^2
+       +\sum_{i,j}G(i,j)^2-2\sum_{i,j}I_{x,y}(i,j)G(i,j).
+\]
+第一项让全 1 模板与 $I^2$ 互相关，得到各窗口内的平方和；第二项是固定的模板能量；第三项含图像与模板的互相关。对实数 \texttt{double} 数组，MATLAB 的一行写法为
+\begin{center}
+{\small\verb|S = xcorr2(I.^2,ones(size(G))) + G(:)'*G(:) - 2*xcorr2(I,G);|}
+\end{center}
+\texttt{xcorr2} 会输出边界在内的完整相关结果。只在有效窗口中取 SSD 最小值，得到最佳候选位置。
+\end{checkedsolution}
+
+\exercisequestion{SC4061-TUT08-Q02}{第 2 题：由两个已标定视图恢复一个三维点}
+
+\textbf{题设。}已知两台相机在同一世界坐标系下的投影矩阵，以及同一空间点在左右图中的像素位置。写出投影方程，推导四行三列的线性系统，并说明实际测量为何需要最小二乘。对应解答册 Q3（第 10--13 页）与\relatedtopic{SC4061-L13-T03}{三角测量}。
+
+\begin{checkedsolution}
+\textbf{(a) 透视投影。}记 $\bm X=(X,Y,Z)^T$，对任一相机有
+\[
+ \lambda (u,v,1)^T=P(X,Y,Z,1)^T,\qquad P=K[R\mid t].
+\]
+$P$ 是已知的 $3\times4$ 矩阵，$\lambda$ 是该像点的齐次尺度。
+
+\textbf{(b) 一台相机给两行，两台相机合成四行。}把 $P$ 的第 $k$ 行写成 $[\,\bm r_k^T\mid b_k\,]$。第一、二行分别除以第三行，消去 $\lambda$。以横坐标为例，交叉相乘得到 $u(\bm r_3^T\bm X+b_3)=\bm r_1^T\bm X+b_1$。纵坐标同理，故每台相机贡献
+\[
+ A\bm X=\bm b,\qquad
+ A=\begin{bmatrix}(u\bm r_3-\bm r_1)^T\\(v\bm r_3-\bm r_2)^T\end{bmatrix},
+ \qquad \bm b=\begin{bmatrix}b_1-u b_3\\b_2-v b_3\end{bmatrix}.
+\]
+将左右相机各自的 $A,\bm b$ 按行叠起来，就得到
+\[
+ W=\begin{bmatrix}A_l\\A_r\end{bmatrix}\in\mathbb R^{4\times3},
+ \quad \bm q=\begin{bmatrix}\bm b_l\\\bm b_r\end{bmatrix}\in\mathbb R^4,
+ \qquad \boxed{\hat{\bm X}=W^+\bm q}.
+\]
+$W^+$ 是伪逆。若 $W$ 的三列线性无关，最小二乘解唯一，此时可写成 $W^+=(W^TW)^{-1}W^T$。
+
+\textbf{(c) 几何上为什么可能没有精确解？}每个像点决定一条从相应光心出发的射线。理想的对应点给出相交射线；像素定位或标定有误差时，两条射线可能在三维空间里错开。此时没有空间点能同时满足全部四行方程，伪逆给出使 $\|W\bm X-\bm q\|_2^2$ 最小的估计。
+\end{checkedsolution}
+\endgroup
