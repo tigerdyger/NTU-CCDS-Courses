@@ -1,0 +1,4 @@
+# Default-deny: assessed work, personal information, and generated files stay local.
+*
+!/.gitignore
+!/README.md
