@@ -1,0 +1,113 @@
+% Based on templates/tutorial.tex. Week 13, 2026-11-11.
+% Tutorial 10.pdf pp. 1--2, Q1(1--4), Q2(1--3), Q3(1--3), Code Exercise.
+% Colab: 57 cells, inspected code and saved outputs; no training rerun.
+% Notebook SHA256: 5c06588e98c594a37c8f97ecca62c0e2715ff9a040d6b090cb1be15c083dbf6a.
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4002-TUT10}{Tutorial 10：BERT、GPT 与指令微调}
+\label{tutorial:SC4002-TUT10}
+
+\tutorialmeta
+  {SC4002-TUT10}
+  {2026-11-11（Week 13）}
+  {\texttt{Tutorial 10.pdf}，pp.~1--2，Q1--Q3 与 Transformer Models 编程练习}
+  {已核对题目、公式、Colab 源码与保存输出；训练未重跑}
+  {已完成讨论，成稿待审阅}
+
+\exercisequestion{SC4002-TUT10-Q01}{Q1：BERT 如何从填词迁移到分类？}
+\nopagebreak[4]
+\textbf{题目（p.~1）。}将 \textit{The quick brown fox jumps over the lazy dog} 中的两个词遮住，给出 masked language modeling（MLM）的输入、标签和损失，再选两个下游任务，说明如何利用双向上下文并微调 BERT。参见\relatedtopic{SC4002-L12-T03}{预训练目标与微调方式}。
+
+\textbf{1--2. 构造训练样本。}按题面将九个词从 1 开始编号，选第 4 和第 9 个位置。模型看到的 $\tilde{x}$ 是：
+\begin{center}
+  \texttt{The quick brown [MASK] jumps over the lazy [MASK]}
+\end{center}
+两个位置的标签分别是原词 \texttt{fox} 和 \texttt{dog}。对同一次前向计算，取这两个位置在原词上的预测概率，损失为
+\[
+  \mathcal L_{\mathrm{MLM}}
+  =-\log p_\theta(x_4=\texttt{fox}\mid\tilde{x})
+   -\log p_\theta(x_9=\texttt{dog}\mid\tilde{x}).
+\]
+若按目标数取平均，上式除以 2。其余七个词都参与上下文编码，只有两个被选中的位置产生 MLM 损失。
+
+\textbf{3--4. 更换任务头并微调。}保留预训练 encoder，将 MLM 词表预测头换成任务分类头。两种任务的区别在于标签对应什么、从哪些位置读取表示。
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lXX@{}}
+\toprule
+任务 & 双向上下文的用途 & 表示、输出与监督信号 \\
+\midrule
+命名实体识别（NER） & \textit{She works at Apple} 的前文和 \textit{Apple released a phone} 的后文都支持将 Apple 标为组织。 & 对各标注位置的 $h_i$ 共享一个线性分类层，预测 BIO 标签（如 B-ORG、I-ORG、O），在有标签的位置上计算交叉熵。\\
+情感分析 & “原以为会好看，结果很失望”中，预期和实际感受不同，整句偏负面。 & 读取最终的 $h_{\mathrm{[CLS]}}$，接句级线性分类层，用整条评论的一个情感标签计算交叉熵。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+若 NER 标签按原词给出，而 tokenizer 将一个词拆成多个子词，可只在首个子词上计算该词的损失，并忽略特殊位置和 padding。全量微调时，任务损失通过反向传播更新分类头及参与预测的 BERT 编码器参数。
+
+\exercisequestion{SC4002-TUT10-Q02}{Q2：GPT 在哪个位置预测下一词？}
+\nopagebreak[4]
+\textbf{题目（p.~1）。}解释 decoder-only 模型的 masked self-attention。对前缀 \texttt{<START> I love}，假设只有一个注意力头且不加位置编码，说明下一词预测怎样读取前缀。再将模型用于影评 \textit{This movie was fantastic.} 的情感分类。参见\relatedtopic{SC4002-L11-T02}{缩放点积注意力}、\relatedtopic{SC4002-L12-T03}{因果语言模型}。
+
+\textbf{1. 可见范围。}第 $t$ 个位置用 $x_1,\ldots,x_t$ 预测 $x_{t+1}$。将因果掩码加到注意力分数上，再做 softmax。按 \texttt{<START>}、\texttt{I}、\texttt{love} 排列，行是 query，列是被读取的位置：
+\[
+  M=\begin{pmatrix}
+  0&-\infty&-\infty\\
+  0&0&-\infty\\
+  0&0&0
+  \end{pmatrix}.
+\]
+对角线是 $0$，保留当前位置的分数。未来位置加 $-\infty$ 后，softmax 权重为零。因此即使训练时后面还接有 \texttt{NLP}，\texttt{love} 也只能用前三个位置预测它。
+
+\textbf{2. 从 \texttt{love} 读取三个位置。}令 $x_j$ 为第 $j$ 个位置的输入向量。最后一个位置提供 $q_3=W_Qx_3$；三个位置各提供 $k_j=W_Kx_j$ 和 $v_j=W_Vx_j$。最后一行的注意力输出为
+\[
+ e_j=\frac{q_3^\top k_j}{\sqrt{d_k}},\qquad
+ \alpha_j=\frac{\exp(e_j)}{\sum_{\ell=1}^{3}\exp(e_\ell)},\qquad
+ z_3=\sum_{j=1}^{3}\alpha_jv_j .
+\]
+$d_k$ 是 query/key 的维数。这里的三个权重对应三个\emph{输入位置}；模型经过后续网络层后，再将最终隐藏向量映射到\emph{词表}，得到下一 token 的概率。
+
+\textbf{3. 从生成改为整句分类。}取最后一个非 padding 位置的最终表示 $h_L$。在因果掩码下，这个位置能读取整条影评，即使最后一个 token 是句号也成立。给 $h_L$ 接两类输出层，计算 $\operatorname{softmax}(W_ch_L+b_c)$，用真实情感标签计算交叉熵。训练好的分类器对此句预期输出 \texttt{Positive}。
+
+\exercisequestion{SC4002-TUT10-Q03}{Q3：示例进入提示词还是训练损失？}
+\nopagebreak[4]
+\textbf{题目（p.~2）。}比较 prompting 与 fine-tuning，为同一条影评构造 zero-shot 和 few-shot 提示，并说明 instruction fine-tuning 怎样利用多任务数据。参见\relatedtopic{SC4002-L13-T01}{上下文学习}、\relatedtopic{SC4002-L13-T02}{指令微调}。
+
+\textbf{1. 判别依据。}用十条带标签的影评做 few-shot prompting 时，把示例放在待分类影评之前，模型在本次推理中读取它们，权重固定。做监督微调时，用影评预测标签，将预测与真实标签的损失反向传播，更新可训练参数。
+
+\textbf{2. 两份可直接使用的提示。}两者共用指令“判断整条影评的情感，只输出 Positive 或 Negative”。指令后的内容如下：
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+方式 & 指令后的输入（最后一项由模型补全）\\
+\midrule
+Zero-shot & This movie was fantastic. $\to$ ? \\
+Few-shot & I expected the worst, but I loved it. $\to$ Positive\newline
+The trailer was great, but the film disappointed me. $\to$ Negative\newline
+This movie was fantastic. $\to$ ? \\
+\bottomrule
+\end{tabularx}
+\end{center}
+两种提示都预期得到 \texttt{Positive}。两条示例还展示了标签的拼写，以及怎样判断带转折的影评：看作者对电影本身的整体评价。示例是否提高准确率，需在其他带标签的影评上检验。
+
+\textbf{3. 指令微调。}每条样本包含任务指令、可选的输入材料和目标回答。例如“用一句话概括”搭配新闻与示范摘要。训练时给定指令、材料和目标回答的真实前缀，让模型预测下一个目标 token。将翻译、摘要、分类等任务混合训练，目的是让模型能按当前指令选择任务和回答格式。留出整个任务类型做测试，可以检验这种能力能否迁移到新任务。
+
+\exercisequestion{SC4002-TUT10-C01}{编程阅读：从 BERT 航空评论分类到 BART 生成}
+\nopagebreak[4]
+\textbf{来源。}原题 p.~2 的 \href{https://colab.research.google.com/drive/1k2mXI486kCSDXKrlahgxmgin8iGBWJXL?usp=sharing}{HuggingFace tutorial}（Mathieu Ravaut）。下列配置与指标来自 notebook 的源码及保存输出。
+
+\textbf{分类数据与模型。}\texttt{tasosk/airlines} 的正、负面航空评论分别标为 1、0，训练、验证、测试集各有 3,239、562、240 条。每批 16 条，序列长度上限 256。BERT 的 \texttt{attention\_mask} 标记有效 token 与 padding；有效 token 之间可以双向读取。
+
+\texttt{bert-base-cased} 输出的 \texttt{last\_hidden\_state} 形状为 $B\times L\times768$。取 \texttt{[:, 0, :]} 得到每条评论的 \texttt{[CLS]} 表示，经过 $768\to512$ 线性层、ReLU 和 $512\to1$ 线性层，得到一个 logit $z$。二分类只需一个正类概率 $\sigma(z)$，负类概率为 $1-\sigma(z)$。训练时将原始 $z$ 交给 \texttt{BCEWithLogitsLoss}，该函数已包含 sigmoid 运算。
+
+\textbf{哪些参数被更新？}配置为 \texttt{freeze\_pretrained=True}。BERT 提供特征，只有分类头参与更新。两层权重和偏置共
+\[
+  (768+1)\times512+(512+1)\times1=394{,}241
+\]
+个可训练参数。保存的测试损失为 $0.4335$，ROC-AUC 为 $0.9236$（代码将 AUC 乘以 100，显示 $92.3611$）。ROC-AUC 衡量正面样本相对于负面样本的得分排序；计算准确率还需要选定分类阈值并逐条比对标签。
+
+\textbf{生成对照。}最后换用 encoder--decoder 模型 \texttt{facebook/bart-base}。训练条件生成模型时，可以传入目标序列做 teacher forcing；本例直接调用 \texttt{generate()}，由 decoder 根据源句和已生成前缀逐 token 解码。保存示例的输入和解码文本恰好都是 \textit{Hello, my dog is cute}。
+\endgroup
