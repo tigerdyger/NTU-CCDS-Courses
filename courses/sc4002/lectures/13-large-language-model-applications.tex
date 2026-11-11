@@ -1,0 +1,65 @@
+% Based on templates/lecture.tex. Class 13, 2026-11-11, Week 13.
+% Lec6-recorded.pdf pp. 3--50; review.pdf pp. 1--62 (p. 63 closes the deck).
+% Transcript 83275, no timestamps. Source examples and page ranges checked.
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 13 节课：大语言模型的应用与指令学习}
+\label{lecture:SC4002-L13}
+
+\noteintro{\textbf{2026-11-11（Week 13）。}后半学期 Lec6。新课来自 \texttt{Lec6-recorded.pdf} pp.~3--50 与录播字幕 83275（无时间戳）。老师在录播中说明这是最后一讲，现场课安排为后半学期复习与答疑。\texttt{review.pdf} pp.~1--62 为复习内容，p.~63 为结束页。}
+
+\lecturetopic{SC4002-L13-T01}{Prompting：用指令和示例改变生成条件}
+设 $x$ 是当前输入，$y_{<t}$ 是已经生成的回答，$\theta$ 是模型参数。GPT 的 decoder 在每一步给出 $p_\theta(y_t\mid x,y_{<t})$。提示词改变 $x$，因此同一个模型可以续写、翻译或回答问题。接入工具后，生成也可以触发动作。WebShop 中，用户给出商品要求，模型发起搜索，读返回的商品信息，再决定查看或选择哪件商品。工具返回的结果进入下一次预测的上下文。（录播 pp.~3--17。）
+
+\textbf{In-context learning（上下文学习）。}推理时，把任务说明、已完成的示例和待处理的输入放进同一个提示词。Zero-shot、one-shot、few-shot 按其中示范了几组完整的输入与答案来区分。待摘要的新闻是任务材料；文章再长，只要没有示范摘要，仍是 zero-shot。更换示例会改变模型的预测，这一过程没有梯度更新。（录播 pp.~18--24；\relatedexercise{SC4002-L13-E01}{英译法示例}。）
+
+\textbf{Chain-of-thought prompting（思维链提示，CoT）。}多步算术题可以在示例里展示中间计算，也可以只用一条指令要求列出步骤。Shot 数描述给了几个示例，CoT 描述提示是否引导模型展开中间步骤，两者可以组合。写出算式便于逐步核查，算式本身仍可能出错。（录播 pp.~25--30；\relatedexercise{SC4002-L13-E02}{食堂苹果与高尔夫球}。）
+
+\lecturetopic{SC4002-L13-T02}{Instruction fine-tuning：用示范答案训练模型}
+基础模型收到“给六岁孩子解释登月”时，可能继续列出“给孩子解释引力”等题目。这是合理的文本续写，却没有完成用户要求的解释。Instruction fine-tuning（指令微调）收集多种任务的“指令与材料 $x$、示范回答 $y^*$”配对，让模型练习直接作答。（录播 pp.~32--39。）
+
+沿用第 12 讲的条件生成记号，单个示范回答的监督损失可写为
+\[
+  \mathcal L_{\mathrm{SFT}}(\theta)
+    =-\sum_{t=1}^{T}\log p_\theta(y_t^*\mid x,y^*_{<t}).
+\]
+每一步给定指令和示范回答的真实前缀，提高下一个目标 token 的概率，再用梯度更新可训练参数。Few-shot prompting 与微调都能用到示例；前者把示例放在推理输入里，后者用示例计算训练损失。
+
+\textbf{评估时留出了什么？}训练用翻译题，测试换一批新句子，检验的是同一任务中的泛化。要检验模型能否遵循一种新任务的指令，就在指令微调时留出整个任务类型。讲义中的 Flan-T5 把多类任务写成文本输入与输出，并在留出的任务类型上评估；“留出”指本次指令微调的数据划分。（录播 pp.~35--41；\relatedexercise{SC4002-L13-E03}{用未参与微调的推断任务评估}。）
+
+\lecturetopic{SC4002-L13-T03}{RLHF：从候选回答的比较中学习偏好}
+同一篇新闻可以有多种忠实的摘要。监督微调提高示范措辞的概率，一份参考答案能提供的信号有限。若有几份候选摘要，人可以直接比较哪份更切题、更忠实。不同标注者对“8 分”的理解可能不同，相对偏好更容易表达。（录播 pp.~42--48。）
+
+\begin{enumerate}
+  \item \textbf{收集偏好。}给标注者同一个输入 $x$ 和多个候选回答，记录哪一个更好。例如 $y^+\succ y^-$ 表示偏好前者。
+  \item \textbf{训练奖励模型。}奖励模型 $r_\phi(x,y)$ 对候选回答评分。学习目标是让受偏好的回答得分更高，即 $r_\phi(x,y^+)>r_\phi(x,y^-)$。
+  \item \textbf{更新生成模型。}语言模型针对输入生成新回答，奖励模型给它评分。强化学习用这个分数更新语言模型的参数 $\theta$，提高产生高奖励回答的倾向。
+\end{enumerate}
+
+\textbf{评分的局限。}假如评分器偏爱冗长的答案，模型可能通过重复结论提高得分，而摘要质量并未改善。这种利用评分规则的行为称为 reward hacking（奖励投机）。Hallucination（幻觉）指回答编造了事实。检查前者要比较实际质量与奖励分数，检查后者要对照原文或可靠证据。（录播 pp.~47--50；\relatedexercise{SC4002-L13-E04}{地震新闻的摘要排序}。）
+
+\lecturetopic{SC4002-L13-T04}{后半学期复习：从文本表示到生成回答}
+下表对应课堂复习讲义。点击讲次可回到各讲的定义、推导和例题。
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}llX@{}}
+\toprule
+讲次 & 复习页码 & 需要能解释的关系 \\
+\midrule
+\hyperref[lecture:SC4002-L08]{第 8 讲} & 1--11 & 预测与标签决定损失，反向传播计算梯度，梯度下降更新参数。\\
+\hyperref[lecture:SC4002-L09]{第 9 讲} & 12--22 & Skip-gram 从中心词预测邻词；自回归语言模型从前缀预测下一词。\\
+\hyperref[lecture:SC4002-L10]{第 10 讲} & 23--32 & RNN 逐步更新隐藏状态，早期 Seq2Seq 用一个固定长度向量概括源句。\\
+\hyperref[lecture:SC4002-L11]{第 11 讲} & 33--43 & Cross-attention 让 decoder 的 query 从 encoder 提供的 keys、values 中按当前生成需要提取信息。\\
+\hyperref[lecture:SC4002-L12]{第 12 讲} & 44--58 & BPE 划分 token，MLM 和 CLM 定义预测任务；生成时用贪心、束搜索或抽样选词。\\
+\hyperref[lecture:SC4002-L13]{第 13 讲} & 59--62 & 提示词提供任务和示例，指令微调学习示范回答，偏好对齐学习人对回答的比较。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection*{一分钟回顾}
+看见一个示例，先判断它放在哪里：进入提示词会改变本次预测的条件，进入训练损失则会影响参数。训练语言模型时，预训练的目标来自文本，指令微调的目标来自示范答案；本讲的 RLHF 再用人类偏好训练奖励模型，用奖励更新生成模型。
+\endgroup

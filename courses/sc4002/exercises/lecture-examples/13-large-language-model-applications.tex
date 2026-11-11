@@ -1,0 +1,35 @@
+% Based on templates/lecture-example.tex. Worked examples from Lec6-recorded.pdf.
+\begingroup
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4002-L13-EX}{第 13 讲：大语言模型的应用与指令学习}
+
+\textbf{日期与来源。}2026-11-11，\texttt{Lec6-recorded.pdf} pp.~20、25、28、36、45--47。以下按讲义示例重新表述题意，保留示例中的条件与排序。
+
+\exercisequestion{SC4002-L13-E01}{英译法：数一数提示词里的示范}
+提示词要求把英语翻成法语，先给出 sea otter、peppermint、plush giraffe 及各自的法语译文，最后给出待翻译的 cheese。判断所用的提示方式，并写出输出。（录播 p.~20；\relatedtopic{SC4002-L13-T01}{上下文学习}。）
+\begin{workedsolution}
+前三组各有一个输入和一个完成的译文，所以是 3-shot prompting。最后一项是待答输入，模型可接着输出 \textit{fromage}。去掉前三组，只保留翻译指令和 cheese，就得到 zero-shot 提示。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L13-E02}{多步算术：分别判断示例数与推导方式}
+讲义先演示“原有 5 个网球，又买 2 罐、每罐 3 个”，再问食堂原有 23 个苹果，用掉 20 个，又买入 6 个，剩几个。另一个提示直接问：16 个球中一半是高尔夫球，其中一半是蓝色，蓝色高尔夫球有几个？这次只要求逐步计算。（录播 pp.~25、28；\relatedtopic{SC4002-L13-T01}{CoT 提示}。）
+\begin{workedsolution}
+\nopagebreak[4]
+如果网球示例列出 $5+2\times3=11$，它就示范了怎样把两步变化写成算式。食堂先剩 $23-20=3$ 个，再加 $6$ 个，答案是 $9$。这一版有一个已解示例，属于 one-shot CoT。另一题直接算 $16\times\tfrac12\times\tfrac12=4$；它要求分步作答，示范数为零，属于 zero-shot CoT。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L13-E03}{Flan-T5：留出一种任务，怎样读测试结果？}
+训练示例包括常识推理和翻译，测试时给模型一种留出的自然语言推断任务。前提是“到了我这个年纪，你大概已经学到了一条教训”；待判断的说法是“到三十多岁时你会学到多少条教训，并不确定”。给出支持、矛盾或无法判断三类中的一类。（录播 p.~36；\relatedtopic{SC4002-L13-T02}{指令微调与任务泛化}。）
+\begin{workedsolution}
+选“无法判断”。前提没有给出说话者的年龄，也没有交代三十多岁时的情况。这个例子检验模型能否读懂新任务的指令并给出规定类型的回答。若测试集只是换了一批新翻译句子，仍在考原有的翻译任务。
+\end{workedsolution}
+
+\exercisequestion{SC4002-L13-E04}{地震新闻：把人的排序变成训练信号}
+讲义对同一篇新闻给出三份候选摘要：$s_1$ 报告旧金山地震、轻微财产损失及无人受伤；$s_2$ 泛谈湾区天气及自然灾害；$s_3$ 报告地震并声称损失严重。标注者给出的排序是 $s_1\succ s_3\succ s_2$。训练奖励模型时可以从中读出哪些比较？（录播 pp.~45--47；\relatedtopic{SC4002-L13-T03}{人类偏好与奖励模型}。）
+\begin{workedsolution}
+按这次完整排序，可以得到三对偏好：$s_1\succ s_3$、$s_1\succ s_2$、$s_3\succ s_2$。奖励模型学习对同一输入给出这一相对次序；排序没有指定相邻两项的分差。$s_3$ 排在泛谈天气的 $s_2$ 前面，只表示标注者相对更喜欢它，其中“损失严重”仍需要原文支持。
+\end{workedsolution}
+\endgroup
