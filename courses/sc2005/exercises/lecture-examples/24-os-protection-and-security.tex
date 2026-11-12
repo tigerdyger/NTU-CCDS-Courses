@@ -1,0 +1,39 @@
+% Based on templates/lecture-example.tex. Matrix and boot sequence from Security.pdf.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC2005-L24-EX}{第 24 讲：读权限矩阵与启动验证结果}
+
+\textbf{日期与来源。}2026-11-12。例 1 使用 Security 第 21--23 页的矩阵；例 2 根据第 34--35 页的启动过程设计判断情形。
+
+\linespread{1.15}\selectfont
+\setlength{\parskip}{0.4em}
+
+\exercisequestion{SC2005-L24-E01}{Carl 能否写目录？谁可以写 \texttt{/usr}？}
+讲义给出以下权限矩阵。R 表示读，W 表示写，横线表示该单元格没有授权。Carl 已完成登录。判断他的写请求，再列出所有可以写 \texttt{/usr} 的人。对应\relatedtopic{SC2005-L24-T02}{授权与访问控制矩阵}。
+
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+主体 & \texttt{/etc} & \texttt{/homes} & \texttt{/usr} \\
+\midrule
+Alice & R  & R  & RW \\
+Bob   & RW & RW & RW \\
+Carl  & --- & --- & R \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{workedsolution}
+沿 Carl 的行读，唯一授权是读 \texttt{/usr}。因此他请求写 \texttt{/usr} 时，系统拒绝。沿 \texttt{/usr} 的列读，Alice、Bob 有 W，Carl 只有 R，所以能写的是 \textbf{Alice 和 Bob}。若只撤销 Bob 对该目录的写权限，就把 Bob 行与 \texttt{/usr} 列的交叉项从 RW 改为 R。
+\end{workedsolution}
+
+\exercisequestion{SC2005-L24-E02}{两个内核都可能有问题，启动验证能发现哪一种？}
+固件已经验证并启动引导加载程序，加载程序只接受由受信任密钥签名的内核。内核 A 在签名后被修改，仍附着原签名；内核 B 一字未改，但发布时就有一个程序错误。两者各会得到什么验证结果？对应\relatedtopic{SC2005-L24-T04}{启动信任链}。
+
+\begin{workedsolution}
+\textbf{A 验证失败。}加载程序检查的是将要运行的镜像。修改后的内容与原签名不匹配，加载程序应拒绝启动它。
+
+\textbf{B 可以通过。}正确签名验证了镜像与签名时的内容一致，也表明签名由受信任公钥对应的私钥产生。那个程序错误原本就在签名覆盖的内容里，所以它不会导致签名验证失败。
+\end{workedsolution}
+\endgroup
