@@ -1,0 +1,41 @@
+% Based on templates/lecture-example.tex. PDF pages and caption timestamps.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedtopic}[2]{\hyperref[topic:#1]{#2}}
+\exercisegroup{SC4001-L13-EX}{第 13 讲：扩散与去噪}
+\textbf{日期与来源。}2026-11-13。例 1 沿用 PDF 第 16 页的噪声日程，例 2 和例 3 分别对应视频 Part 2、Part 4 的数值说明。
+
+\exercisequestion{SC4001-L13-E01}{加噪 100 步后，轨迹会停在零吗？}
+第 16 页的一维例子固定 $\beta_t=0.03$，从三个不同起点各走 100 步。沿用这一设置，另取 $x=2$ 演算，求 $z_{100}\mid x=2$ 的均值和方差。对应\relatedtopic{SC4001-L13-T01}{正向加噪与扩散核}。
+\begin{workedsolution}
+累计系数是 $\alpha_{100}=0.97^{100}\approx0.04755$。代入扩散核，
+\[
+ \mathbb E[z_{100}\mid x=2]=2\sqrt{0.97^{100}}\approx0.4361,\qquad
+ \operatorname{Var}(z_{100}\mid x=2)=1-0.97^{100}\approx0.9524 .
+\]
+给定起点时，均值逐渐向零收缩，单次轨迹仍有随机波动。这里的标准差约为 $0.976$，所以图上轨迹穿过零或彼此交叉都很自然。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L13-E02}{两个起点都按高斯加噪，总体是什么分布？}
+视频 Part 2 约 09:22 用 $-2$ 和 $+2$ 附近的两个峰解释边缘化。为写出具体密度，设干净数据等概率取 $x=-2$ 或 $x=2$。固定 $t$，假设 $0<\alpha_t<1$，求只观察 $z_t$ 时的分布。对应\relatedtopic{SC4001-L13-T02}{条件分布和边缘分布}。
+\begin{workedsolution}
+固定 $x$ 后，$z_t$ 的均值是 $\sqrt{\alpha_t}x$，方差是 $1-\alpha_t$。按两个起点的概率加权，得到混合分布
+\[
+ \tfrac12\mathcal N(-2\sqrt{\alpha_t},1-\alpha_t)
+ +\tfrac12\mathcal N(2\sqrt{\alpha_t},1-\alpha_t).
+\]
+在低噪声时，两个分量的中心相距较远，可以看到两个峰。随着 $\alpha_t$ 接近零，两个中心靠拢，各分量的方差趋于 1，整体趋近标准高斯。把某次观测倒推回起点时，两种来源都可能对它有贡献。
+\end{workedsolution}
+
+\exercisequestion{SC4001-L13-E03}{零卷积的输出为零，权重为什么还能更新？}
+PDF 第 59 页用 $y=wx+b$ 分析零初始化。视频 Part 4 约 21:48 取输入 $x=2$、目标 $1$，损失为 $L=\tfrac12(y-1)^2$。令 $w=b=0$，求第一次反向传播时的三个梯度。对应\relatedtopic{SC4001-L13-T04}{ControlNet 的连接层}。
+\begin{workedsolution}
+初始输出 $y=0$，上游梯度 $\partial L/\partial y=y-1=-1$。由链式法则，
+\[
+ \frac{\partial L}{\partial w}=(y-1)x=-2,\qquad
+ \frac{\partial L}{\partial b}=y-1=-1,\qquad
+ \frac{\partial L}{\partial x}=(y-1)w=0.
+\]
+取正学习率 $\eta$ 做一次梯度下降后，$w=2\eta$、$b=\eta$。初始时连接层既能输出零，也能更新自己的参数。待 $w$ 离开零，损失梯度就有可能经这一层传回前面的可训练特征。
+\end{workedsolution}
+\endgroup

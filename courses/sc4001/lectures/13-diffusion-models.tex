@@ -1,0 +1,97 @@
+% Based on templates/lecture.tex. PDF page numbers, not printed slide numbers.
+\begingroup
+\renewcommand{\recordid}[1]{}
+\renewcommand{\relatedexercise}[2]{\hyperref[exercise:#1]{#2}}
+\section{第 13 节课：扩散模型}
+\label{lecture:SC4001-L13}
+\lecturemeta
+  {SC4001-L13}{2026-11-13（第十三周）}
+  {13\_diffusion，Diffusion Models}
+  {PDF pp.~1--70。封面注明本讲不纳入考试}
+  {13\_diffusion\_part1--4，四段英文字幕}
+  {已完成学习，公式与例题已核对}
+
+\setlength{\parskip}{0.3em}
+\setlength{\abovedisplayskip}{6pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{6pt plus 2pt minus 2pt}
+
+扩散模型可以从一张随机噪声图生成新图。训练用的监督信号来自一个已知操作：取一张真实图片，抽取一份噪声混入图中，保留这份噪声作为预测目标。生成时，模型根据当前画面反复估计噪声，使下一步的样本逐渐显出训练数据中的结构。
+
+\lecturetopic{SC4001-L13-T01}{正向加噪与任意时间步的直接采样}
+\textbf{PDF pp.~10--23，视频 Part 1--2。}
+设 $z_0=x$ 是干净图片，$z_t$ 是与它同形状的带噪图片。预先选定噪声日程（noise schedule）$\{\beta_t\}$，每一步独立抽取标准高斯噪声：
+\[
+ z_t=\sqrt{1-\beta_t}\,z_{t-1}+\sqrt{\beta_t}\,\epsilon_t,
+ \qquad \epsilon_t\sim\mathcal N(0,I).
+\]
+第一项衰减上一步的信号和噪声，第二项加入协方差为 $\beta_t I$ 的新噪声。给定 $z_{t-1}$ 即可采样下一步，因此这是一条马尔可夫链。高分辨率图像的相邻像素往往提供更多结构线索，同样强度的噪声可能保留更多信息。
+
+沿用本讲记号，$\alpha_t=\prod_{s=1}^{t}(1-\beta_s)$ 是\textbf{累计}乘积，$\alpha_0=1$。展开前两步，原图的系数为 $\sqrt{\alpha_2}$，两项独立噪声的方差相加得到 $(1-\beta_2)\beta_1+\beta_2=1-\alpha_2$。依此递推，只需一次抽样就可生成第 $t$ 步的样本：
+\[
+ \boxed{z_t=\sqrt{\alpha_t}\,x+\sqrt{1-\alpha_t}\,\epsilon},
+ \qquad \epsilon\sim\mathcal N(0,I).
+\]
+这里的 $\epsilon$ 概括前 $t$ 步噪声的合成效果。此式给出与逐步加噪相同的条件分布，适用于只需终点的训练。当 $\alpha_T$ 足够小时，终点对 $x$ 的依赖很弱，可以用标准高斯作为生成的起点。见\relatedexercise{SC4001-L13-E01}{100 步后均值和方差的计算}。
+
+\lecturetopic{SC4001-L13-T02}{训练与生成各自知道什么}
+\textbf{PDF pp.~19--38，视频 Part 2。}
+用 $q$ 表示真实数据经过指定加噪规则得到的分布。条件栏里是否有原图 $x$，决定了哪些量能直接计算。
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lXX@{}}
+\toprule
+分布 & 手中已有的信息 & 可得到的结果 \\
+\midrule
+$q(z_t\mid x)$ & 已知干净图和时间步 & 扩散核为 $\mathcal N(\sqrt{\alpha_t}\,x,(1-\alpha_t)I)$。\\
+$q(z_t)$ & 时间步固定，原图也随机 & 对原图分布取平均得到的高斯混合，一般没有已知解析式。\\
+$q(z_{t-1}\mid z_t)$ & 生成时只有当前带噪样本与时间步 & 前一步可能来自多种原图，需要学习反向转移。\\
+$q(z_{t-1}\mid z_t,x)$ & 训练时还知道原图 & 线性高斯过程给出可计算的后验，均值是 $z_t$ 与 $x$ 的加权和。\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+对全部原图求边缘分布，需要计算
+\(
+ q(z_t)=\int q(z_t\mid x)\,p_{\rm data}(x)\,\mathrm dx
+\)。
+训练集提供样本，真实密度 $p_{\rm data}$ 通常未知。贝叶斯公式中的 $q(z_{t-1}\mid z_t)\propto q(z_t\mid z_{t-1})q(z_{t-1})$ 因而含有未知的边缘密度。给定原图后的差别见\relatedexercise{SC4001-L13-E02}{两个起点的混合分布}。
+
+\textbf{一次训练。}DDPM 用高斯分布近似每一步反向转移。讲义先给出均值预测目标：最后恢复图像的一步有重建项，其余步让网络预测的均值接近已知原图时的后验均值。实践中可将均值写成噪声预测的函数，再采用简化的均方误差。均匀抽取时间步 $t$，取一份标准高斯噪声 $\epsilon$，按扩散核构造 $z_t$，然后优化
+\[
+ \mathcal L_{\rm simple}=\mathbb E_{x,t,\epsilon}
+ \bigl[\|\epsilon_\theta(z_t,t)-\epsilon\|^2\bigr].
+\]
+时间步告诉网络信号与噪声的混合比例。平方误差下的最优预测是 $\mathbb E[\epsilon\mid z_t,t]$。
+
+\begin{center}
+\parbox{\linewidth}{\centering\input{figures/diffusion-noise-target}\par
+{\small 训练时噪声的两种用途，根据 PDF pp.~36--37 绘制。}}
+\end{center}
+
+\textbf{生成一张新图。}从 $z_T\sim\mathcal N(0,I)$ 出发，按 $t=T,\ldots,1$ 调用网络。用本讲的累计 $\alpha_t$ 写，DDPM 这一步采用的均值为
+\[
+ \mu_\theta(z_t,t)=\frac{1}{\sqrt{1-\beta_t}}
+ \left(z_t-\frac{\beta_t}{\sqrt{1-\alpha_t}}\,\epsilon_\theta(z_t,t)\right).
+\]
+对 $t>1$，取独立 $\eta\sim\mathcal N(0,I)$，令 $z_{t-1}=\mu_\theta(z_t,t)+\sigma_t\eta$。$\sigma_t^2$ 是选定的反向方差。讲义算法在 $t=1$ 直接输出预测均值。生成时手中没有原图，每一步都依赖刚生成的上一步结果，因此一张图需要多次网络求值。
+
+\lecturetopic{SC4001-L13-T03}{去噪网络与潜空间扩散}
+\textbf{PDF pp.~39--53，视频 Part 3--4。}
+U-Net 的输入是带噪表示和时间步，输出是与带噪表示同形状的噪声估计。降采样让特征覆盖更大的区域，升采样恢复空间分辨率，同尺度的跳跃连接保留位置信息。正弦时间嵌入经过投影后进入多个网络层，因此所有时间步可以共享一套参数。一次完整的 U-Net 调用只处理一个时间步。也可以用扩散 Transformer（DiT）处理带噪表示的图块，通过注意力交换不同位置的信息。
+
+\textbf{在哪种表示上去噪？}潜空间扩散（latent diffusion）先训练自编码器，用编码器 $E$ 将图片压缩为 $E(x)$，解码器 $D$ 学习还原图片。再把 $E(x)$ 作为干净样本训练扩散模型。生成时在潜空间反复调用去噪网络，最后运行一次 $D$ 输出像素图。若高和宽都缩至 $1/8$，空间位置只剩 $1/64$；实际耗时还取决于通道数和每层运算。自编码器负责保留可重建的信息，扩散模型学习这些潜表示如何分布。
+
+第 43--46 页还介绍了级联生成与 LoRA。级联模型先生成 $64\times64$ 的构图，后续模型结合文字和小图逐级生成 $256\times256$、$1024\times1024$ 的细节。LoRA 用 $W+BA$ 适配预训练模型，固定原权重 $W$，只学习低秩因子 $B,A$，减少要更新和保存的参数。
+
+\lecturetopic{SC4001-L13-T04}{文字条件、空间条件与 ControlNet}
+\textbf{PDF pp.~51、54--65，视频 Part 4。}
+文字可以说明“画一个宇航员”，一幅姿势骨架图还可以指定肩、肘与手腕的位置。文字通过交叉注意力进入去噪网络：图像特征产生查询 $Q$，文本编码产生键 $K$ 与值 $V$。每个图像位置按与各个词的相关程度对 $V$ 加权，因而不同位置可以用到提示词中的不同信息。
+
+ControlNet 以边缘、姿势或深度等图像提供空间条件。它冻结预训练去噪网络，复制部分网络块构成可训练分支，把空间条件送入分支，再把分支特征加到原网络的对应层。连接处使用权重和偏置都初始化为零的 $1\times1$ 卷积。刚开始，新增分支对原网络输出的贡献为零。只要输入特征和上游损失梯度使权重梯度非零，连接层就能在第一次更新后传递信息，见\relatedexercise{SC4001-L13-E03}{零卷积的首次梯度更新}。
+
+网络结合文字与空间条件预测噪声。第 62 页的苹果示例中，早期图像已经自然，后来生成的轮廓才贴合给定的苹果和叶子。判断控制效果，要比较输出轮廓与输入边缘图。
+
+\subsection{一分钟回顾}
+训练时从 $(x,t,\epsilon)$ 构造一对输入和标签：网络读 $(z_t,t)$，预测混在 $z_t$ 里的 $\epsilon$。DDPM 生成时只有初始噪声，靠学到的反向转移逐步产生新样本。潜空间扩散把这些重复运算移到压缩表示中；文字通过交叉注意力影响图像特征，ControlNet 则将空间条件送入对应位置。
+\endgroup

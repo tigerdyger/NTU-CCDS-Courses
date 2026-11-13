@@ -1,0 +1,15 @@
+% Original diagram based on 13_diffusion.pdf, PDF pp. 36--37.
+\begin{tikzpicture}[font=\small,>=Stealth,
+ box/.style={draw=noteBlue,rounded corners,fill=noteBlue!4,
+             inner xsep=6pt,inner ysep=4pt,align=center},
+ edge/.style={->,noteBlue,thick}]
+  \node[box] (draws) at (0,0) {真图 $x$，时间步 $t$\\抽取噪声 $\epsilon$};
+  \node[box] (mixed) at (3.15,0) {按扩散核混合\\得到 $z_t$};
+  \node[box] (net) at (6.4,0) {去噪网络\\输入 $(z_t,t)$};
+  \node[box] (loss) at (10.2,0) {均方误差\\比较预测与标签};
+  \draw[edge] (draws)--(mixed);
+  \draw[edge] (mixed)--(net);
+  \draw[edge] (net)--node[above]{预测 $\hat\epsilon$}(loss);
+  \draw[edge,dashed] (draws.south)--++(0,-0.55)-|
+    node[pos=0.25,below]{保留实际抽取的 $\epsilon$ 作为标签}(loss.south);
+\end{tikzpicture}
